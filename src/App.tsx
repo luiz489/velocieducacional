@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import Alunos from "@/pages/Alunos";
 import Turmas from "@/pages/Turmas";
+import Matriculas from "@/pages/Matriculas";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/alunos" element={<Alunos />} />
             <Route path="/turmas" element={<Turmas />} />
+            <Route path="/matriculas" element={<Matriculas />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
