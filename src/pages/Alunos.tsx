@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, Plus, MoreHorizontal, Filter } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Filter, FileText, BookOpen } from "lucide-react";
+import { gerarFichaAluno, gerarBoletim } from "@/lib/relatorios";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -191,7 +192,34 @@ export default function Alunos() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Ver Ficha</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => gerarFichaAluno({
+                        nome: aluno.nome,
+                        cpf: aluno.cpf,
+                        data_nascimento: aluno.data_nascimento,
+                        endereco: "Rua Exemplo, 123 - Centro",
+                        responsavel: aluno.responsavel,
+                        turma: aluno.turma,
+                        status: aluno.status,
+                      })}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Gerar Ficha (PDF)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => gerarBoletim(
+                        { nome: aluno.nome, turma: aluno.turma },
+                        [
+                          { disciplina: "Matemática", av1: 8.5, av2: 7.0, recuperacao: null, media: 7.75, frequencia: 96, situacao: "Aprovado" },
+                          { disciplina: "Português", av1: 7.0, av2: 8.0, recuperacao: null, media: 7.5, frequencia: 92, situacao: "Aprovado" },
+                          { disciplina: "Ciências", av1: 6.0, av2: 5.5, recuperacao: 7.0, media: 6.17, frequencia: 88, situacao: "Recuperação" },
+                          { disciplina: "História", av1: 9.0, av2: 8.5, recuperacao: null, media: 8.75, frequencia: 95, situacao: "Aprovado" },
+                          { disciplina: "Geografia", av1: 7.5, av2: 7.0, recuperacao: null, media: 7.25, frequencia: 90, situacao: "Aprovado" },
+                          { disciplina: "Inglês", av1: 8.0, av2: 9.0, recuperacao: null, media: 8.5, frequencia: 98, situacao: "Aprovado" },
+                          { disciplina: "Artes", av1: 9.5, av2: 9.0, recuperacao: null, media: 9.25, frequencia: 100, situacao: "Aprovado" },
+                          { disciplina: "Ed. Física", av1: 10, av2: 9.5, recuperacao: null, media: 9.75, frequencia: 100, situacao: "Aprovado" },
+                        ]
+                      )}>
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        Gerar Boletim (PDF)
+                      </DropdownMenuItem>
                       <DropdownMenuItem>Editar</DropdownMenuItem>
                       <DropdownMenuItem>Matrícula</DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive">Inativar</DropdownMenuItem>
