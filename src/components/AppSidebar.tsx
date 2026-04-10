@@ -6,7 +6,7 @@ import {
   GraduationCap,
   ClipboardList,
   UserCheck,
-  Calendar,
+  AlertTriangle,
   Settings,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -51,7 +51,7 @@ const menuGroups = [
     items: [
       { title: "Notas", url: "/notas", icon: GraduationCap },
       { title: "Frequência", url: "/frequencia", icon: UserCheck },
-      { title: "Ocorrências", url: "/ocorrencias", icon: Calendar },
+      { title: "Ocorrências", url: "/ocorrencias", icon: AlertTriangle },
     ],
   },
 ];
