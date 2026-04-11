@@ -45,6 +45,7 @@ const menuGroups = [
     items: [
       { title: "Contas a Receber", url: "/financeiro", icon: DollarSign },
       { title: "Contas a Pagar", url: "/contas-a-pagar", icon: ClipboardList },
+      { title: "Contratos", url: "/contratos", icon: ClipboardList },
     ],
   },
   {
