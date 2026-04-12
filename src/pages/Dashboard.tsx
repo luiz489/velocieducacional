@@ -1,5 +1,7 @@
-import { Users, DollarSign, AlertTriangle, Cake, TrendingUp, BookOpen } from "lucide-react";
+import { useState } from "react";
+import { Users, DollarSign, AlertTriangle, Cake, TrendingUp, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -16,6 +18,8 @@ const OCORRENCIA_COLORS: Record<string, string> = {
   "Observação": "hsl(38, 92%, 50%)",
 };
 
+const MESES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(value);
 
@@ -23,24 +27,60 @@ const formatCurrencyFull = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 export default function Dashboard() {
-  const { data, isLoading } = useDashboardData();
+  const now = new Date();
+  const [refMonth, setRefMonth] = useState(now.getMonth());
+  const [refYear, setRefYear] = useState(now.getFullYear());
+  const { data, isLoading } = useDashboardData(refMonth, refYear);
+
+  const isCurrentMonth = refMonth === now.getMonth() && refYear === now.getFullYear();
+
+  const goBack = () => {
+    if (refMonth === 0) { setRefMonth(11); setRefYear(y => y - 1); }
+    else setRefMonth(m => m - 1);
+  };
+
+  const goForward = () => {
+    if (isCurrentMonth) return;
+    if (refMonth === 11) { setRefMonth(0); setRefYear(y => y + 1); }
+    else setRefMonth(m => m + 1);
+  };
+
+  const goToday = () => { setRefMonth(now.getMonth()); setRefYear(now.getFullYear()); };
 
   const kpis = data
     ? [
         { title: "Total de Alunos", value: String(data.kpis.totalAlunos), icon: Users, change: `${data.kpis.totalAlunos} ativos`, color: "text-info" },
         { title: "Turmas Ativas", value: String(data.kpis.totalTurmas), icon: BookOpen, change: `${data.kpis.turnosDistintos} turnos`, color: "text-primary" },
-        { title: "Inadimplência", value: `${data.kpis.inadimplencia.toFixed(1)}%`, icon: AlertTriangle, change: "Mês atual", color: "text-warning" },
-        { title: "Receita Mensal", value: formatCurrency(data.kpis.recebido), icon: DollarSign, change: "Recebido este mês", color: "text-success" },
-        { title: "Matrículas Novas", value: String(data.kpis.matriculasEsteMes), icon: TrendingUp, change: "Este mês", color: "text-info" },
-        { title: "Aniversariantes", value: String(data.kpis.aniversariantes), icon: Cake, change: "Este mês", color: "text-destructive" },
+        { title: "Inadimplência", value: `${data.kpis.inadimplencia.toFixed(1)}%`, icon: AlertTriangle, change: "Neste período", color: "text-warning" },
+        { title: "Receita Mensal", value: formatCurrency(data.kpis.recebido), icon: DollarSign, change: "Recebido no período", color: "text-success" },
+        { title: "Matrículas Novas", value: String(data.kpis.matriculasEsteMes), icon: TrendingUp, change: "No período", color: "text-info" },
+        { title: "Aniversariantes", value: String(data.kpis.aniversariantes), icon: Cake, change: "No período", color: "text-destructive" },
       ]
     : [];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Visão geral do sistema escolar</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Visão geral do sistema escolar</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={goBack} className="h-8 w-8">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium min-w-[140px] text-center">
+            {MESES_FULL[refMonth]} {refYear}
+          </span>
+          <Button variant="outline" size="icon" onClick={goForward} disabled={isCurrentMonth} className="h-8 w-8">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentMonth && (
+            <Button variant="ghost" size="sm" onClick={goToday} className="text-xs h-8">
+              Hoje
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* KPIs */}
@@ -171,14 +211,14 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-1">
         <Card className="shadow-sm">
-          <CardHeader><CardTitle className="text-base">Resumo Financeiro</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Resumo Financeiro — {MESES_FULL[refMonth]} {refYear}</CardTitle></CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-[140px] w-full" /> : (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Recebido este mês</span>
+                  <span className="text-sm text-muted-foreground">Recebido</span>
                   <span className="text-sm font-semibold text-success">{formatCurrencyFull(data?.resumoFinanceiro.recebido || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center">

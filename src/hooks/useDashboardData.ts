@@ -3,24 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function useDashboardData() {
+export function useDashboardData(refMonth: number, refYear: number) {
   return useQuery({
-    queryKey: ["dashboard-data"],
+    queryKey: ["dashboard-data", refYear, refMonth],
     queryFn: async () => {
       const now = new Date();
-      const currentMonth = now.getMonth(); // 0-based
-      const currentYear = now.getFullYear();
-      const startOfMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
       const today = now.toISOString().split("T")[0];
+      const mesStr = String(refMonth + 1).padStart(2, "0");
+      const startOfMonth = `${refYear}-${mesStr}-01`;
+      const endOfMonth = `${refYear}-${mesStr}-31`;
 
-      // Parallel queries
-      const [
-        alunosRes,
-        turmasRes,
-        matriculasRes,
-        financeiroRes,
-        ocorrenciasRes,
-      ] = await Promise.all([
+      const [alunosRes, turmasRes, matriculasRes, financeiroRes, ocorrenciasRes] = await Promise.all([
         supabase.from("alunos").select("id, status, data_nascimento"),
         supabase.from("turmas").select("id, turno"),
         supabase.from("matriculas").select("id, data_ingresso, turma_id, aluno_id, status_pagamento"),
@@ -34,29 +27,22 @@ export function useDashboardData() {
       const financeiro = financeiroRes.data || [];
       const ocorrencias = ocorrenciasRes.data || [];
 
-      // KPIs
       const totalAlunos = alunos.filter(a => a.status === "Ativo").length;
       const totalTurmas = turmas.length;
+      const matriculasEsteMes = matriculas.filter(m => m.data_ingresso >= startOfMonth && m.data_ingresso <= endOfMonth).length;
 
-      // Matrículas novas este mês
-      const matriculasEsteMes = matriculas.filter(m => m.data_ingresso >= startOfMonth).length;
-
-      // Aniversariantes do mês
-      const mesAtual = String(currentMonth + 1).padStart(2, "0");
       const aniversariantes = alunos.filter(a => {
         const mes = a.data_nascimento?.split("-")[1];
-        return mes === mesAtual;
+        return mes === mesStr;
       }).length;
 
-      // Financeiro do mês atual
-      const financeiroMesAtual = financeiro.filter(f => f.data_vencimento >= startOfMonth && f.data_vencimento <= `${currentYear}-${mesAtual}-31`);
-      const totalPrevisto = financeiroMesAtual.reduce((s, f) => s + Number(f.valor), 0);
-      const recebido = financeiroMesAtual.filter(f => f.status === "Pago").reduce((s, f) => s + Number(f.valor), 0);
-      const aReceber = financeiroMesAtual.filter(f => f.status === "Pendente" && f.data_vencimento >= today).reduce((s, f) => s + Number(f.valor), 0);
-      const emAtraso = financeiroMesAtual.filter(f => f.status === "Pendente" && f.data_vencimento < today).reduce((s, f) => s + Number(f.valor), 0);
-      const inadimplencia = totalPrevisto > 0 ? ((emAtraso / totalPrevisto) * 100) : 0;
+      const financeiroMes = financeiro.filter(f => f.data_vencimento >= startOfMonth && f.data_vencimento <= endOfMonth);
+      const totalPrevisto = financeiroMes.reduce((s, f) => s + Number(f.valor), 0);
+      const recebido = financeiroMes.filter(f => f.status === "Pago").reduce((s, f) => s + Number(f.valor), 0);
+      const aReceber = financeiroMes.filter(f => f.status === "Pendente" && f.data_vencimento >= today).reduce((s, f) => s + Number(f.valor), 0);
+      const emAtraso = financeiroMes.filter(f => f.status === "Pendente" && f.data_vencimento < today).reduce((s, f) => s + Number(f.valor), 0);
+      const inadimplencia = totalPrevisto > 0 ? (emAtraso / totalPrevisto) * 100 : 0;
 
-      // Alunos por turno (via matrículas -> turma)
       const turmaMap = new Map(turmas.map(t => [t.id, t.turno]));
       const turnoCount: Record<string, number> = {};
       matriculas.forEach(m => {
@@ -65,19 +51,17 @@ export function useDashboardData() {
       });
       const alunosPorTurno = Object.entries(turnoCount).map(([name, value]) => ({ name, value }));
 
-      // Matrículas por mês (últimos 6 meses)
       const matriculasMensais = [];
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         const mesKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const count = matriculas.filter(m => m.data_ingresso.startsWith(mesKey)).length;
         matriculasMensais.push({ mes: MESES[d.getMonth()], matriculas: count });
       }
 
-      // Receita mensal (últimos 6 meses)
       const receitaMensal = [];
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         const mesKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const mesFinanceiro = financeiro.filter(f => f.data_vencimento.startsWith(mesKey));
         const previsto = mesFinanceiro.reduce((s, f) => s + Number(f.valor), 0);
@@ -85,10 +69,9 @@ export function useDashboardData() {
         receitaMensal.push({ mes: MESES[d.getMonth()], recebido: rec, previsto });
       }
 
-      // Inadimplência por mês (últimos 4 meses)
       const inadimplenciaData = [];
       for (let i = 3; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         const mesKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const mesEnd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-31`;
         const mesFinanceiro = financeiro.filter(f => f.data_vencimento.startsWith(mesKey));
@@ -98,14 +81,12 @@ export function useDashboardData() {
         inadimplenciaData.push({ mes: MESES[d.getMonth()], taxa });
       }
 
-      // Ocorrências por tipo
       const ocorrenciaTipoCount: Record<string, number> = {};
       ocorrencias.forEach(o => {
         ocorrenciaTipoCount[o.tipo] = (ocorrenciaTipoCount[o.tipo] || 0) + 1;
       });
       const ocorrenciasTipo = Object.entries(ocorrenciaTipoCount).map(([tipo, quantidade]) => ({ tipo, quantidade }));
 
-      // Turnos distintos
       const turnosDistintos = new Set(turmas.map(t => t.turno)).size;
 
       return {
