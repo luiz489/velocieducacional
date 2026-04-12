@@ -81,6 +81,20 @@ export default function Dashboard() {
               Hoje
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            disabled={isLoading || !data}
+            onClick={() => {
+              if (data) {
+                exportarDashboardPDF({ refMonth, refYear, ...data });
+              }
+            }}
+          >
+            <FileDown className="h-4 w-4" />
+            Exportar PDF
+          </Button>
         </div>
       </div>
 
