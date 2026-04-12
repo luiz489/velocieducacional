@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, DollarSign, AlertTriangle, Cake, TrendingUp, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, DollarSign, AlertTriangle, Cake, TrendingUp, BookOpen, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { exportarDashboardPDF } from "@/lib/exportDashboardPDF";
 
 const TURNO_COLORS = ["hsl(220, 70%, 25%)", "hsl(210, 60%, 50%)", "hsl(215, 25%, 70%)", "hsl(38, 92%, 50%)"];
 const OCORRENCIA_COLORS: Record<string, string> = {
