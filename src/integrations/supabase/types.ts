@@ -59,6 +59,39 @@ export type Database = {
         }
         Relationships: []
       }
+      aprovadores: {
+        Row: {
+          ativo: boolean
+          cargo: string
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          updated_at: string
+          valor_max_aprovacao: number
+        }
+        Insert: {
+          ativo?: boolean
+          cargo: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+          valor_max_aprovacao?: number
+        }
+        Update: {
+          ativo?: boolean
+          cargo?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+          valor_max_aprovacao?: number
+        }
+        Relationships: []
+      }
       contas_a_pagar: {
         Row: {
           categoria: string
@@ -142,6 +175,59 @@ export type Database = {
           valor_mensal?: number
         }
         Relationships: []
+      }
+      cotacoes: {
+        Row: {
+          condicao_pagamento: string | null
+          created_at: string
+          fornecedor: string
+          id: string
+          observacoes: string | null
+          prazo_entrega: string | null
+          quantidade: number
+          selecionada: boolean
+          solicitacao_id: string
+          updated_at: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          condicao_pagamento?: string | null
+          created_at?: string
+          fornecedor: string
+          id?: string
+          observacoes?: string | null
+          prazo_entrega?: string | null
+          quantidade?: number
+          selecionada?: boolean
+          solicitacao_id: string
+          updated_at?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Update: {
+          condicao_pagamento?: string | null
+          created_at?: string
+          fornecedor?: string
+          id?: string
+          observacoes?: string | null
+          prazo_entrega?: string | null
+          quantidade?: number
+          selecionada?: boolean
+          solicitacao_id?: string
+          updated_at?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotacoes_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_compra"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financeiro: {
         Row: {
@@ -313,6 +399,71 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitacoes_compra: {
+        Row: {
+          aprovador_id: string | null
+          created_at: string
+          data_aprovacao: string | null
+          data_necessidade: string | null
+          departamento: string
+          descricao: string
+          id: string
+          justificativa: string | null
+          motivo_rejeicao: string | null
+          numero_solicitacao: number
+          observacoes: string | null
+          solicitante: string
+          status: string
+          updated_at: string
+          urgencia: string
+          valor_estimado: number
+        }
+        Insert: {
+          aprovador_id?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_necessidade?: string | null
+          departamento?: string
+          descricao: string
+          id?: string
+          justificativa?: string | null
+          motivo_rejeicao?: string | null
+          numero_solicitacao?: number
+          observacoes?: string | null
+          solicitante: string
+          status?: string
+          updated_at?: string
+          urgencia?: string
+          valor_estimado?: number
+        }
+        Update: {
+          aprovador_id?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_necessidade?: string | null
+          departamento?: string
+          descricao?: string
+          id?: string
+          justificativa?: string | null
+          motivo_rejeicao?: string | null
+          numero_solicitacao?: number
+          observacoes?: string | null
+          solicitante?: string
+          status?: string
+          updated_at?: string
+          urgencia?: string
+          valor_estimado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_compra_aprovador_id_fkey"
+            columns: ["aprovador_id"]
+            isOneToOne: false
+            referencedRelation: "aprovadores"
             referencedColumns: ["id"]
           },
         ]
