@@ -8,6 +8,7 @@ import {
   UserCheck,
   AlertTriangle,
   Settings,
+  ShoppingCart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -46,6 +47,7 @@ const menuGroups = [
       { title: "Contas a Receber", url: "/financeiro", icon: DollarSign },
       { title: "Contas a Pagar", url: "/contas-a-pagar", icon: ClipboardList },
       { title: "Contratos", url: "/contratos", icon: ClipboardList },
+      { title: "Compras", url: "/compras", icon: ShoppingCart },
     ],
   },
   {
