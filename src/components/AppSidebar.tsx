@@ -9,7 +9,9 @@ import {
   AlertTriangle,
   Settings,
   ShoppingCart,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
