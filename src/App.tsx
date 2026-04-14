@@ -15,6 +15,7 @@ import Ocorrencias from "@/pages/Ocorrencias";
 import ContasPagar from "@/pages/ContasPagar";
 import Contratos from "@/pages/Contratos";
 import Compras from "@/pages/Compras";
+import Admin from "@/pages/Admin";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 
