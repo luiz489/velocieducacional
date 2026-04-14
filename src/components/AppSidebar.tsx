@@ -10,6 +10,7 @@ import {
   Settings,
   ShoppingCart,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
