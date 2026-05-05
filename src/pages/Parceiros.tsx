@@ -163,10 +163,26 @@ export default function Parceiros() {
             </div>
           </div>
           {coords && (
-            <p className="text-xs text-muted-foreground mt-3">
-              Localização ativa: {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)} — ordenado por proximidade.
-              <Button variant="link" size="sm" className="h-auto p-0 ml-2" onClick={() => setCoords(null)}>limpar</Button>
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p className="text-xs text-muted-foreground">
+                Localização ativa: {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)} — ordenado por proximidade.
+              </p>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Raio:</Label>
+                <Select value={raio} onValueChange={setRaio}>
+                  <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="5">Até 5 km</SelectItem>
+                    <SelectItem value="10">Até 10 km</SelectItem>
+                    <SelectItem value="25">Até 25 km</SelectItem>
+                    <SelectItem value="50">Até 50 km</SelectItem>
+                    <SelectItem value="100">Até 100 km</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => { setCoords(null); setRaio("todos"); }}>limpar GPS</Button>
+            </div>
           )}
         </CardContent>
       </Card>
