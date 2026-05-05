@@ -103,9 +103,13 @@ export default function Parceiros() {
           _dist: p.latitude && p.longitude ? distKm(coords.lat, coords.lon, Number(p.latitude), Number(p.longitude)) : Infinity,
         }))
         .sort((a: any, b: any) => a._dist - b._dist);
+      if (raio !== "todos") {
+        const max = Number(raio);
+        arr = arr.filter((p: any) => p._dist <= max);
+      }
     }
     return arr;
-  }, [parceiros, estado, cidade, busca, coords]);
+  }, [parceiros, estado, cidade, busca, coords, raio]);
 
   return (
     <div className="space-y-6">
