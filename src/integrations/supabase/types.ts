@@ -359,6 +359,60 @@ export type Database = {
           },
         ]
       }
+      parceiros: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          cidade: string
+          created_at: string
+          descricao: string | null
+          email: string | null
+          endereco: string | null
+          estado: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nome: string
+          telefone: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string
+          cidade: string
+          created_at?: string
+          descricao?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome: string
+          telefone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          cidade?: string
+          created_at?: string
+          descricao?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome?: string
+          telefone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       pedagogico: {
         Row: {
           av1: number | null

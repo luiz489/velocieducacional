@@ -16,6 +16,7 @@ import ContasPagar from "@/pages/ContasPagar";
 import Contratos from "@/pages/Contratos";
 import Compras from "@/pages/Compras";
 import Admin from "@/pages/Admin";
+import Parceiros from "@/pages/Parceiros";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 
@@ -49,6 +50,7 @@ function ProtectedRoutes() {
         <Route path="/compras" element={<Compras />} />
         <Route path="/notas" element={<Pedagogico />} />
         <Route path="/ocorrencias" element={<Ocorrencias />} />
+            <Route path="/parceiros" element={<Parceiros />} />
             <Route path="/admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<NotFound />} />

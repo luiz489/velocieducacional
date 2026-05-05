@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   LogOut,
   ShieldCheck,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
@@ -59,6 +60,12 @@ const menuGroups = [
       { title: "Notas", url: "/notas", icon: GraduationCap },
       { title: "Frequência", url: "/frequencia", icon: UserCheck },
       { title: "Ocorrências", url: "/ocorrencias", icon: AlertTriangle },
+    ],
+  },
+  {
+    label: "Comunidade",
+    items: [
+      { title: "Parceiros", url: "/parceiros", icon: MapPin },
     ],
   },
 ];
