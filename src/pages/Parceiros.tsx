@@ -212,7 +212,7 @@ export default function Parceiros() {
                   <span>
                     {p.endereco ? `${p.endereco} — ` : ""}{p.cidade}/{p.estado}
                     {coords && p._dist !== Infinity && (
-                      <span className="block text-xs text-primary font-medium">{p._dist.toFixed(1)} km de você</span>
+                      <span className="block text-xs text-primary font-medium">{formatDist(p._dist)} de você</span>
                     )}
                   </span>
                 </div>
