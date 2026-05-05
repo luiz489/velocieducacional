@@ -44,6 +44,10 @@ export default function Parceiros() {
   const [busca, setBusca] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [raio, setRaio] = useState<string>("todos");
+
+  const formatDist = (km: number) =>
+    km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 
   useEffect(() => {
     (async () => {
