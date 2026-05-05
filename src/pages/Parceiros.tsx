@@ -44,6 +44,10 @@ export default function Parceiros() {
   const [busca, setBusca] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [raio, setRaio] = useState<string>("todos");
+
+  const formatDist = (km: number) =>
+    km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 
   useEffect(() => {
     (async () => {
@@ -99,9 +103,13 @@ export default function Parceiros() {
           _dist: p.latitude && p.longitude ? distKm(coords.lat, coords.lon, Number(p.latitude), Number(p.longitude)) : Infinity,
         }))
         .sort((a: any, b: any) => a._dist - b._dist);
+      if (raio !== "todos") {
+        const max = Number(raio);
+        arr = arr.filter((p: any) => p._dist <= max);
+      }
     }
     return arr;
-  }, [parceiros, estado, cidade, busca, coords]);
+  }, [parceiros, estado, cidade, busca, coords, raio]);
 
   return (
     <div className="space-y-6">
@@ -155,10 +163,26 @@ export default function Parceiros() {
             </div>
           </div>
           {coords && (
-            <p className="text-xs text-muted-foreground mt-3">
-              Localização ativa: {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)} — ordenado por proximidade.
-              <Button variant="link" size="sm" className="h-auto p-0 ml-2" onClick={() => setCoords(null)}>limpar</Button>
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p className="text-xs text-muted-foreground">
+                Localização ativa: {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)} — ordenado por proximidade.
+              </p>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Raio:</Label>
+                <Select value={raio} onValueChange={setRaio}>
+                  <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="5">Até 5 km</SelectItem>
+                    <SelectItem value="10">Até 10 km</SelectItem>
+                    <SelectItem value="25">Até 25 km</SelectItem>
+                    <SelectItem value="50">Até 50 km</SelectItem>
+                    <SelectItem value="100">Até 100 km</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => { setCoords(null); setRaio("todos"); }}>limpar GPS</Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -188,7 +212,7 @@ export default function Parceiros() {
                   <span>
                     {p.endereco ? `${p.endereco} — ` : ""}{p.cidade}/{p.estado}
                     {coords && p._dist !== Infinity && (
-                      <span className="block text-xs text-primary font-medium">{p._dist.toFixed(1)} km de você</span>
+                      <span className="block text-xs text-primary font-medium">{formatDist(p._dist)} de você</span>
                     )}
                   </span>
                 </div>
