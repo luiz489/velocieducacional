@@ -57,7 +57,8 @@ const menuGroups = [
   {
     label: "Pedagógico",
     items: [
-      { title: "Matrizes Curriculares", url: "/matrizes-curriculares", icon: BookOpen },
+      { title: "Disciplinas", url: "/disciplinas", icon: BookOpen },
+      { title: "Matrizes Curriculares", url: "/matrizes-curriculares", icon: GraduationCap },
       { title: "Notas", url: "/notas", icon: GraduationCap },
       { title: "Frequência", url: "/frequencia", icon: UserCheck },
       { title: "Ocorrências", url: "/ocorrencias", icon: AlertTriangle },
