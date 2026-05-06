@@ -229,6 +229,39 @@ export type Database = {
           },
         ]
       }
+      disciplinas: {
+        Row: {
+          ativo: boolean
+          carga_horaria: number
+          codigo: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          carga_horaria?: number
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          carga_horaria?: number
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financeiro: {
         Row: {
           created_at: string
@@ -320,6 +353,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      matriz_disciplinas: {
+        Row: {
+          carga_horaria: number
+          created_at: string
+          disciplina_id: string
+          id: string
+          matriz_id: string
+          ordem: number
+        }
+        Insert: {
+          carga_horaria?: number
+          created_at?: string
+          disciplina_id: string
+          id?: string
+          matriz_id: string
+          ordem?: number
+        }
+        Update: {
+          carga_horaria?: number
+          created_at?: string
+          disciplina_id?: string
+          id?: string
+          matriz_id?: string
+          ordem?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriz_disciplinas_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriz_disciplinas_matriz_id_fkey"
+            columns: ["matriz_id"]
+            isOneToOne: false
+            referencedRelation: "matrizes_curriculares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matrizes_curriculares: {
+        Row: {
+          ano_letivo: number
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          serie: string
+          turno: string
+          updated_at: string
+        }
+        Insert: {
+          ano_letivo: number
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          serie: string
+          turno?: string
+          updated_at?: string
+        }
+        Update: {
+          ano_letivo?: number
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          serie?: string
+          turno?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       ocorrencias: {
         Row: {
