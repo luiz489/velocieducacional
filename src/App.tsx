@@ -52,6 +52,7 @@ function ProtectedRoutes() {
         <Route path="/notas" element={<Pedagogico />} />
         <Route path="/ocorrencias" element={<Ocorrencias />} />
             <Route path="/parceiros" element={<Parceiros />} />
+            <Route path="/matrizes-curriculares" element={<MatrizesCurriculares />} />
             <Route path="/admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<NotFound />} />
