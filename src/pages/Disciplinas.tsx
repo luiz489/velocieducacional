@@ -37,6 +37,25 @@ export default function Disciplinas() {
     },
   });
 
+  const { data: usos } = useQuery({
+    queryKey: ["disciplinas-usos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("matriz_disciplinas")
+        .select("disciplina_id, matrizes_curriculares(id, nome, serie, ano_letivo, turno)");
+      if (error) throw error;
+      const map = new Map<string, { id: string; nome: string; serie: string; ano_letivo: number; turno: string }[]>();
+      (data as any[])?.forEach((row) => {
+        const m = row.matrizes_curriculares;
+        if (!m) return;
+        const arr = map.get(row.disciplina_id) ?? [];
+        arr.push(m);
+        map.set(row.disciplina_id, arr);
+      });
+      return map;
+    },
+  });
+
   const save = useMutation({
     mutationFn: async () => {
       const payload = { ...form, codigo: form.codigo || null, descricao: form.descricao || null };
