@@ -167,16 +167,32 @@ export default function Disciplinas() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Código</TableHead>
                   <TableHead>Carga (h)</TableHead>
+                  <TableHead>Matrizes que usam</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data?.map((d) => (
+                {data?.map((d) => {
+                  const matrizes = usos?.get(d.id) ?? [];
+                  return (
                   <TableRow key={d.id}>
                     <TableCell className="font-medium">{d.nome}</TableCell>
                     <TableCell>{d.codigo || "-"}</TableCell>
                     <TableCell>{d.carga_horaria}</TableCell>
+                    <TableCell>
+                      {matrizes.length === 0 ? (
+                        <span className="text-muted-foreground text-sm">Nenhuma</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 max-w-md">
+                          {matrizes.map((m) => (
+                            <Badge key={m.id} variant="outline" className="text-xs">
+                              {m.nome} · {m.ano_letivo} · {m.turno}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={d.ativo ? "default" : "secondary"}>{d.ativo ? "Ativa" : "Inativa"}</Badge>
                     </TableCell>
@@ -185,14 +201,21 @@ export default function Disciplinas() {
                         <Pencil className="h-3 w-3" />
                       </Button>
                       <Button size="sm" variant="outline"
-                        onClick={() => { if (confirm("Excluir disciplina?")) remove.mutate(d.id); }}>
+                        onClick={() => {
+                          if (matrizes.length > 0) {
+                            toast.error(`Disciplina vinculada a ${matrizes.length} matriz(es). Remova os vínculos primeiro.`);
+                            return;
+                          }
+                          if (confirm("Excluir disciplina?")) remove.mutate(d.id);
+                        }}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
                 {!data?.length && (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Nenhuma disciplina.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Nenhuma disciplina.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
