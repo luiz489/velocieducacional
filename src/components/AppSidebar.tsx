@@ -12,6 +12,11 @@ import {
   LogOut,
   ShieldCheck,
   MapPin,
+  Megaphone,
+  Clock,
+  CalendarDays,
+  ClipboardEdit,
+  IdCard,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
@@ -63,6 +68,16 @@ const menuGroups = [
       { title: "Notas", url: "/notas", icon: GraduationCap },
       { title: "Frequência", url: "/frequencia", icon: UserCheck },
       { title: "Ocorrências", url: "/ocorrencias", icon: AlertTriangle },
+      { title: "Horário Escolar", url: "/horarios", icon: Clock },
+      { title: "Calendários", url: "/calendario", icon: CalendarDays },
+      { title: "(Re)matrícula", url: "/rematricula", icon: ClipboardEdit },
+      { title: "Carteirinhas", url: "/carteirinhas", icon: IdCard },
+    ],
+  },
+  {
+    label: "Comunicação",
+    items: [
+      { title: "Avisos", url: "/avisos", icon: Megaphone },
     ],
   },
   {
