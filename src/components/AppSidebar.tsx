@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
+import logoDM from "@/assets/logo-dm.png";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -82,12 +83,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-accent">
-            <GraduationCap className="h-5 w-5 text-sidebar-accent-foreground" />
-          </div>
+          <img src={logoDM} alt="Colégio DM" className="h-10 w-10 rounded-full shrink-0" />
           {!collapsed && (
             <div>
-              <h2 className="text-sm font-bold text-sidebar-primary">EduGestão</h2>
+              <h2 className="text-sm font-bold text-sidebar-primary">Colégio DM</h2>
               <p className="text-xs text-sidebar-foreground/60">ERP Escolar</p>
             </div>
           )}

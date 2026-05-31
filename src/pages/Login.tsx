@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import logoDM from "@/assets/logo-dm.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -57,11 +58,9 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-              <GraduationCap className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <img src={logoDM} alt="Colégio DM" className="h-16 w-16 rounded-full" />
           </div>
-          <CardTitle className="text-2xl">EduGestão</CardTitle>
+          <CardTitle className="text-2xl">Colégio DM</CardTitle>
           <CardDescription>
             {isSignUp ? "Crie sua conta para acessar o sistema" : "Faça login para acessar o sistema"}
           </CardDescription>
