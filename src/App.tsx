@@ -19,6 +19,11 @@ import Admin from "@/pages/Admin";
 import Parceiros from "@/pages/Parceiros";
 import MatrizesCurriculares from "@/pages/MatrizesCurriculares";
 import Disciplinas from "@/pages/Disciplinas";
+import Avisos from "@/pages/Avisos";
+import Horarios from "@/pages/Horarios";
+import Calendario from "@/pages/Calendario";
+import Rematricula from "@/pages/Rematricula";
+import Carteirinhas from "@/pages/Carteirinhas";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 
@@ -55,6 +60,11 @@ function ProtectedRoutes() {
             <Route path="/parceiros" element={<Parceiros />} />
             <Route path="/matrizes-curriculares" element={<MatrizesCurriculares />} />
             <Route path="/disciplinas" element={<Disciplinas />} />
+            <Route path="/avisos" element={<Avisos />} />
+            <Route path="/horarios" element={<Horarios />} />
+            <Route path="/calendario" element={<Calendario />} />
+            <Route path="/rematricula" element={<Rematricula />} />
+            <Route path="/carteirinhas" element={<Carteirinhas />} />
             <Route path="/admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<NotFound />} />
