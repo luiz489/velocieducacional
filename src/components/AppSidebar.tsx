@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
+import logoDM from "@/assets/logo-dm.png";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
