@@ -92,6 +92,93 @@ export type Database = {
         }
         Relationships: []
       }
+      avisos: {
+        Row: {
+          anexo_url: string | null
+          anonimo: boolean
+          autor: string | null
+          canal: string
+          created_at: string
+          destinatario_aluno_id: string | null
+          id: string
+          mensagem: string
+          prioridade: string
+          publicado: boolean
+          publicado_em: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          anexo_url?: string | null
+          anonimo?: boolean
+          autor?: string | null
+          canal?: string
+          created_at?: string
+          destinatario_aluno_id?: string | null
+          id?: string
+          mensagem: string
+          prioridade?: string
+          publicado?: boolean
+          publicado_em?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          anexo_url?: string | null
+          anonimo?: boolean
+          autor?: string | null
+          canal?: string
+          created_at?: string
+          destinatario_aluno_id?: string | null
+          id?: string
+          mensagem?: string
+          prioridade?: string
+          publicado?: boolean
+          publicado_em?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      carteirinhas: {
+        Row: {
+          aluno_id: string
+          codigo: string
+          created_at: string
+          emitida_em: string
+          foto_url: string | null
+          id: string
+          qr_data: string | null
+          status: string
+          updated_at: string
+          validade: string
+        }
+        Insert: {
+          aluno_id: string
+          codigo: string
+          created_at?: string
+          emitida_em?: string
+          foto_url?: string | null
+          id?: string
+          qr_data?: string | null
+          status?: string
+          updated_at?: string
+          validade: string
+        }
+        Update: {
+          aluno_id?: string
+          codigo?: string
+          created_at?: string
+          emitida_em?: string
+          foto_url?: string | null
+          id?: string
+          qr_data?: string | null
+          status?: string
+          updated_at?: string
+          validade?: string
+        }
+        Relationships: []
+      }
       contas_a_pagar: {
         Row: {
           categoria: string
@@ -262,6 +349,45 @@ export type Database = {
         }
         Relationships: []
       }
+      eventos_calendario: {
+        Row: {
+          cor: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          descricao: string | null
+          id: string
+          publico_alvo: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          cor?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio: string
+          descricao?: string | null
+          id?: string
+          publico_alvo?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          cor?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          descricao?: string | null
+          id?: string
+          publico_alvo?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financeiro: {
         Row: {
           created_at: string
@@ -308,6 +434,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      horarios_aulas: {
+        Row: {
+          ano_letivo: number
+          created_at: string
+          dia_semana: number
+          disciplina: string
+          hora_fim: string
+          hora_inicio: string
+          id: string
+          professor: string | null
+          sala: string | null
+          turma_id: string
+          updated_at: string
+        }
+        Insert: {
+          ano_letivo: number
+          created_at?: string
+          dia_semana: number
+          disciplina: string
+          hora_fim: string
+          hora_inicio: string
+          id?: string
+          professor?: string | null
+          sala?: string | null
+          turma_id: string
+          updated_at?: string
+        }
+        Update: {
+          ano_letivo?: number
+          created_at?: string
+          dia_semana?: number
+          disciplina?: string
+          hora_fim?: string
+          hora_inicio?: string
+          id?: string
+          professor?: string | null
+          sala?: string | null
+          turma_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       matriculas: {
         Row: {
@@ -585,6 +753,45 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rematriculas: {
+        Row: {
+          aluno_id: string
+          ano_letivo_destino: number
+          created_at: string
+          data_abertura: string
+          data_conclusao: string | null
+          id: string
+          observacoes: string | null
+          status: string
+          turma_destino_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          ano_letivo_destino: number
+          created_at?: string
+          data_abertura?: string
+          data_conclusao?: string | null
+          id?: string
+          observacoes?: string | null
+          status?: string
+          turma_destino_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          ano_letivo_destino?: number
+          created_at?: string
+          data_abertura?: string
+          data_conclusao?: string | null
+          id?: string
+          observacoes?: string | null
+          status?: string
+          turma_destino_id?: string | null
           updated_at?: string
         }
         Relationships: []
