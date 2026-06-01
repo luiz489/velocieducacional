@@ -24,6 +24,7 @@ import Horarios from "@/pages/Horarios";
 import Calendario from "@/pages/Calendario";
 import Rematricula from "@/pages/Rematricula";
 import Carteirinhas from "@/pages/Carteirinhas";
+import AppMobile from "@/pages/AppMobile";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 
