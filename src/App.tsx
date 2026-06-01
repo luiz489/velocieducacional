@@ -99,6 +99,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<AuthRoute />} />
+          <Route path="/app" element={<AppMobile />} />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>
