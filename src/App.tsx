@@ -25,6 +25,7 @@ import Calendario from "@/pages/Calendario";
 import Rematricula from "@/pages/Rematricula";
 import Carteirinhas from "@/pages/Carteirinhas";
 import AppMobile from "@/pages/AppMobile";
+import AppFinanceiro from "@/pages/AppFinanceiro";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 
@@ -100,6 +101,7 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<AuthRoute />} />
           <Route path="/app" element={<AppMobile />} />
+          <Route path="/app/financeiro" element={<AppFinanceiro />} />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>

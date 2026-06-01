@@ -27,7 +27,7 @@ type Tile = {
 
 const tiles: Tile[] = [
   { title: "Notas", icon: GraduationCap, to: "/notas", accent: "primary" },
-  { title: "Financeiro", icon: DollarSign, to: "/financeiro", badge: 2, accent: "primary" },
+  { title: "Financeiro", icon: DollarSign, to: "/app/financeiro", badge: 2, accent: "primary" },
   { title: "Horário Escolar", icon: Clock, to: "/horarios", accent: "navy" },
   { title: "Calendário Anual", icon: CalendarDays, to: "/calendario", accent: "navy" },
   { title: "Avisos Secretaria", icon: Megaphone, to: "/avisos?canal=secretaria", badge: 3, accent: "primary" },
