@@ -101,6 +101,7 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<AuthRoute />} />
           <Route path="/app" element={<AppMobile />} />
+          <Route path="/app/financeiro" element={<AppFinanceiro />} />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>
