@@ -71,20 +71,36 @@ export default function AppFinanceiro() {
   const [tab, setTab] = useState<"abertas" | "historico">("abertas");
   const [carneOpen, setCarneOpen] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<string>(alunosDoResponsavel[0].id);
+  const [filtroCarne, setFiltroCarne] = useState<"em_aberto" | "vencidas" | "todas">("em_aberto");
 
   const baixarCarne = () => {
     const aluno = alunosDoResponsavel.find((a) => a.id === alunoSelecionado);
     if (!aluno) return;
-    const abertasParcelas = parcelas
-      .filter((p) => p.status !== "Pago")
-      .map((p) => ({ id: p.id, descricao: p.descricao, vencimento: p.vencimento, valor: p.valor }));
-    if (abertasParcelas.length === 0) {
-      toast.error("Nenhuma parcela em aberto para gerar carnê.");
+
+    let filtradas = parcelas;
+    if (filtroCarne === "em_aberto") {
+      filtradas = parcelas.filter((p) => p.status === "Em aberto");
+    } else if (filtroCarne === "vencidas") {
+      filtradas = parcelas.filter((p) => p.status === "Vencido");
+    } else if (filtroCarne === "todas") {
+      filtradas = parcelas.filter((p) => p.status !== "Pago");
+    }
+
+    const parcelasPDF = filtradas.map((p) => ({
+      id: p.id,
+      descricao: p.descricao,
+      vencimento: p.vencimento,
+      valor: p.valor,
+    }));
+
+    if (parcelasPDF.length === 0) {
+      toast.error("Nenhuma parcela encontrada para o filtro selecionado.");
       return;
     }
+
     gerarCarnePDF(
       { nome: aluno.nome, turma: aluno.turma, responsavel: RESPONSAVEL, matricula: aluno.matricula },
-      abertasParcelas,
+      parcelasPDF,
     );
     setCarneOpen(false);
     toast.success(`Carnê de ${aluno.nome} gerado com sucesso!`);
