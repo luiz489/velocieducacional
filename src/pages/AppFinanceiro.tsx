@@ -71,20 +71,36 @@ export default function AppFinanceiro() {
   const [tab, setTab] = useState<"abertas" | "historico">("abertas");
   const [carneOpen, setCarneOpen] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<string>(alunosDoResponsavel[0].id);
+  const [filtroCarne, setFiltroCarne] = useState<"em_aberto" | "vencidas" | "todas">("em_aberto");
 
   const baixarCarne = () => {
     const aluno = alunosDoResponsavel.find((a) => a.id === alunoSelecionado);
     if (!aluno) return;
-    const abertasParcelas = parcelas
-      .filter((p) => p.status !== "Pago")
-      .map((p) => ({ id: p.id, descricao: p.descricao, vencimento: p.vencimento, valor: p.valor }));
-    if (abertasParcelas.length === 0) {
-      toast.error("Nenhuma parcela em aberto para gerar carnê.");
+
+    let filtradas = parcelas;
+    if (filtroCarne === "em_aberto") {
+      filtradas = parcelas.filter((p) => p.status === "Em aberto");
+    } else if (filtroCarne === "vencidas") {
+      filtradas = parcelas.filter((p) => p.status === "Vencido");
+    } else if (filtroCarne === "todas") {
+      filtradas = parcelas.filter((p) => p.status !== "Pago");
+    }
+
+    const parcelasPDF = filtradas.map((p) => ({
+      id: p.id,
+      descricao: p.descricao,
+      vencimento: p.vencimento,
+      valor: p.valor,
+    }));
+
+    if (parcelasPDF.length === 0) {
+      toast.error("Nenhuma parcela encontrada para o filtro selecionado.");
       return;
     }
+
     gerarCarnePDF(
       { nome: aluno.nome, turma: aluno.turma, responsavel: RESPONSAVEL, matricula: aluno.matricula },
-      abertasParcelas,
+      parcelasPDF,
     );
     setCarneOpen(false);
     toast.success(`Carnê de ${aluno.nome} gerado com sucesso!`);
@@ -272,10 +288,36 @@ export default function AppFinanceiro() {
           <DialogHeader>
             <DialogTitle>Baixar carnê</DialogTitle>
             <DialogDescription>
-              Selecione o aluno para gerar o carnê em PDF com as parcelas em aberto.
+              Selecione o aluno e o tipo de parcelas para gerar o carnê em PDF.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Filtro de parcelas */}
+          <div className="py-2">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Parcelas</p>
+            <div className="flex gap-2">
+              {([
+                { key: "em_aberto", label: "Em aberto" },
+                { key: "vencidas", label: "Vencidas" },
+                { key: "todas", label: "Todas" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setFiltroCarne(opt.key)}
+                  className={`flex-1 text-[11px] font-semibold py-2 rounded-xl border transition ${
+                    filtroCarne === opt.key
+                      ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2 py-2">
+            <p className="text-xs font-medium text-muted-foreground">Aluno</p>
             {alunosDoResponsavel.map((a) => {
               const ativo = alunoSelecionado === a.id;
               return (
