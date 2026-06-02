@@ -13,6 +13,30 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { gerarCarnePDF } from "@/lib/carne";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+
+type AlunoVinculado = {
+  id: string;
+  nome: string;
+  turma: string;
+  matricula: string;
+};
+
+const RESPONSAVEL = "Família Silva";
+
+const alunosDoResponsavel: AlunoVinculado[] = [
+  { id: "a1", nome: "Lucas Silva", turma: "7º Ano A", matricula: "2026-0142" },
+  { id: "a2", nome: "Sofia Silva", turma: "3º Ano B", matricula: "2026-0188" },
+];
 
 type Parcela = {
   id: string;
