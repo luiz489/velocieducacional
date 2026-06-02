@@ -158,7 +158,7 @@ function drawBoleto(
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(234, 88, 12);
-  doc.text("Pix", pixX + 19, pixY + 44, { align: "center" });
+  doc.text("Pix", pixX + 19, pixY + 44, { align: "center" } as any);
   doc.setTextColor(20);
 
   // Footer
