@@ -338,6 +338,50 @@ export default function AppFinanceiro() {
             </div>
           </div>
 
+          {/* Intervalo de vencimentos */}
+          <div className="py-1">
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-xs font-medium text-muted-foreground">
+                Filtrar por intervalo de vencimento
+              </span>
+              <input
+                type="checkbox"
+                checked={usarIntervalo}
+                onChange={(e) => setUsarIntervalo(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+            </label>
+            {usarIntervalo && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <Label htmlFor="mes-inicio" className="text-[10px] text-muted-foreground">
+                    De
+                  </Label>
+                  <Input
+                    id="mes-inicio"
+                    type="month"
+                    value={mesInicio}
+                    onChange={(e) => setMesInicio(e.target.value)}
+                    className="h-9 text-xs mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mes-fim" className="text-[10px] text-muted-foreground">
+                    Até
+                  </Label>
+                  <Input
+                    id="mes-fim"
+                    type="month"
+                    value={mesFim}
+                    onChange={(e) => setMesFim(e.target.value)}
+                    className="h-9 text-xs mt-1"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+
           <div className="space-y-2 py-2">
             <p className="text-xs font-medium text-muted-foreground">Aluno</p>
             {alunosDoResponsavel.map((a) => {
