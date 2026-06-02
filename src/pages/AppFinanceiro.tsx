@@ -265,6 +265,58 @@ export default function AppFinanceiro() {
           </div>
         )}
       </section>
+
+      {/* Diálogo: selecionar aluno para baixar carnê */}
+      <Dialog open={carneOpen} onOpenChange={setCarneOpen}>
+        <DialogContent className="sm:max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Baixar carnê</DialogTitle>
+            <DialogDescription>
+              Selecione o aluno para gerar o carnê em PDF com as parcelas em aberto.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {alunosDoResponsavel.map((a) => {
+              const ativo = alunoSelecionado === a.id;
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => setAlunoSelecionado(a.id)}
+                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition ${
+                    ativo
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="h-10 w-10 rounded-full bg-primary/15 text-primary font-bold flex items-center justify-center">
+                    {a.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{a.nome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {a.turma} · Matrícula {a.matricula}
+                    </p>
+                  </div>
+                  <div
+                    className={`h-4 w-4 rounded-full border-2 ${
+                      ativo ? "border-primary bg-primary" : "border-muted-foreground/40"
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setCarneOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={baixarCarne} className="gap-2">
+              <Download className="h-4 w-4" />
+              Baixar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
