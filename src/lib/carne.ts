@@ -145,7 +145,7 @@ function drawBoleto(
   doc.setDrawColor(234, 88, 12);
   doc.roundedRect(pixX, pixY, 38, 38, 1.5, 1.5);
   // Fake QR pattern
-  doc.setFillColor(20);
+  doc.setFillColor(20, 20, 20);
   const cells = 8;
   const cs = 38 / cells;
   for (let i = 0; i < cells; i++) {
