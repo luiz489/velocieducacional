@@ -74,6 +74,15 @@ export default function AppFinanceiro() {
   const [carneOpen, setCarneOpen] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<string>(alunosDoResponsavel[0].id);
   const [filtroCarne, setFiltroCarne] = useState<"em_aberto" | "vencidas" | "todas">("em_aberto");
+  const [usarIntervalo, setUsarIntervalo] = useState(false);
+  const [mesInicio, setMesInicio] = useState("2026-01");
+  const [mesFim, setMesFim] = useState("2026-12");
+
+  // dd/mm/yyyy -> yyyy-mm
+  const venc2YM = (v: string) => {
+    const [, m, y] = v.split("/");
+    return `${y}-${m}`;
+  };
 
   const baixarCarne = () => {
     const aluno = alunosDoResponsavel.find((a) => a.id === alunoSelecionado);
@@ -86,6 +95,17 @@ export default function AppFinanceiro() {
       filtradas = parcelas.filter((p) => p.status === "Vencido");
     } else if (filtroCarne === "todas") {
       filtradas = parcelas.filter((p) => p.status !== "Pago");
+    }
+
+    if (usarIntervalo) {
+      if (mesInicio > mesFim) {
+        toast.error("Intervalo inválido: mês inicial após o final.");
+        return;
+      }
+      filtradas = filtradas.filter((p) => {
+        const ym = venc2YM(p.vencimento);
+        return ym >= mesInicio && ym <= mesFim;
+      });
     }
 
     const parcelasPDF = filtradas.map((p) => ({
