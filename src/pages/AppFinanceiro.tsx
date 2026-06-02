@@ -288,10 +288,36 @@ export default function AppFinanceiro() {
           <DialogHeader>
             <DialogTitle>Baixar carnê</DialogTitle>
             <DialogDescription>
-              Selecione o aluno para gerar o carnê em PDF com as parcelas em aberto.
+              Selecione o aluno e o tipo de parcelas para gerar o carnê em PDF.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Filtro de parcelas */}
+          <div className="py-2">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Parcelas</p>
+            <div className="flex gap-2">
+              {([
+                { key: "em_aberto", label: "Em aberto" },
+                { key: "vencidas", label: "Vencidas" },
+                { key: "todas", label: "Todas" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setFiltroCarne(opt.key)}
+                  className={`flex-1 text-[11px] font-semibold py-2 rounded-xl border transition ${
+                    filtroCarne === opt.key
+                      ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2 py-2">
+            <p className="text-xs font-medium text-muted-foreground">Aluno</p>
             {alunosDoResponsavel.map((a) => {
               const ativo = alunoSelecionado === a.id;
               return (
