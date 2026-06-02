@@ -11,7 +11,7 @@ import {
   Copy,
   Calendar,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { gerarCarnePDF } from "@/lib/carne";
 import {
@@ -23,6 +23,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type AlunoVinculado = {
   id: string;
