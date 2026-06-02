@@ -13,6 +13,30 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { gerarCarnePDF } from "@/lib/carne";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+
+type AlunoVinculado = {
+  id: string;
+  nome: string;
+  turma: string;
+  matricula: string;
+};
+
+const RESPONSAVEL = "Família Silva";
+
+const alunosDoResponsavel: AlunoVinculado[] = [
+  { id: "a1", nome: "Lucas Silva", turma: "7º Ano A", matricula: "2026-0142" },
+  { id: "a2", nome: "Sofia Silva", turma: "3º Ano B", matricula: "2026-0188" },
+];
 
 type Parcela = {
   id: string;
@@ -45,6 +69,26 @@ const statusStyles: Record<Parcela["status"], string> = {
 
 export default function AppFinanceiro() {
   const [tab, setTab] = useState<"abertas" | "historico">("abertas");
+  const [carneOpen, setCarneOpen] = useState(false);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<string>(alunosDoResponsavel[0].id);
+
+  const baixarCarne = () => {
+    const aluno = alunosDoResponsavel.find((a) => a.id === alunoSelecionado);
+    if (!aluno) return;
+    const abertasParcelas = parcelas
+      .filter((p) => p.status !== "Pago")
+      .map((p) => ({ id: p.id, descricao: p.descricao, vencimento: p.vencimento, valor: p.valor }));
+    if (abertasParcelas.length === 0) {
+      toast.error("Nenhuma parcela em aberto para gerar carnê.");
+      return;
+    }
+    gerarCarnePDF(
+      { nome: aluno.nome, turma: aluno.turma, responsavel: RESPONSAVEL, matricula: aluno.matricula },
+      abertasParcelas,
+    );
+    setCarneOpen(false);
+    toast.success(`Carnê de ${aluno.nome} gerado com sucesso!`);
+  };
 
   const abertas = parcelas.filter((p) => p.status !== "Pago");
   const pagas = parcelas.filter((p) => p.status === "Pago");
@@ -125,7 +169,10 @@ export default function AppFinanceiro() {
       {/* Ações rápidas */}
       <section className="px-4 pt-4">
         <div className="grid grid-cols-3 gap-2">
-          <button className="bg-card border rounded-xl p-3 flex flex-col items-center gap-1.5 hover:shadow-md transition active:scale-95">
+          <button
+            onClick={() => setCarneOpen(true)}
+            className="bg-card border rounded-xl p-3 flex flex-col items-center gap-1.5 hover:shadow-md transition active:scale-95"
+          >
             <div className="h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
               <Receipt className="h-4 w-4" />
             </div>
@@ -218,6 +265,58 @@ export default function AppFinanceiro() {
           </div>
         )}
       </section>
+
+      {/* Diálogo: selecionar aluno para baixar carnê */}
+      <Dialog open={carneOpen} onOpenChange={setCarneOpen}>
+        <DialogContent className="sm:max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Baixar carnê</DialogTitle>
+            <DialogDescription>
+              Selecione o aluno para gerar o carnê em PDF com as parcelas em aberto.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {alunosDoResponsavel.map((a) => {
+              const ativo = alunoSelecionado === a.id;
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => setAlunoSelecionado(a.id)}
+                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition ${
+                    ativo
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="h-10 w-10 rounded-full bg-primary/15 text-primary font-bold flex items-center justify-center">
+                    {a.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{a.nome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {a.turma} · Matrícula {a.matricula}
+                    </p>
+                  </div>
+                  <div
+                    className={`h-4 w-4 rounded-full border-2 ${
+                      ativo ? "border-primary bg-primary" : "border-muted-foreground/40"
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setCarneOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={baixarCarne} className="gap-2">
+              <Download className="h-4 w-4" />
+              Baixar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
