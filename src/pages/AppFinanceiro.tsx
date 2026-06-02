@@ -169,7 +169,10 @@ export default function AppFinanceiro() {
       {/* Ações rápidas */}
       <section className="px-4 pt-4">
         <div className="grid grid-cols-3 gap-2">
-          <button className="bg-card border rounded-xl p-3 flex flex-col items-center gap-1.5 hover:shadow-md transition active:scale-95">
+          <button
+            onClick={() => setCarneOpen(true)}
+            className="bg-card border rounded-xl p-3 flex flex-col items-center gap-1.5 hover:shadow-md transition active:scale-95"
+          >
             <div className="h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
               <Receipt className="h-4 w-4" />
             </div>
