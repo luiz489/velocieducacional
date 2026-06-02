@@ -11,7 +11,7 @@ import {
   Copy,
   Calendar,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { gerarCarnePDF } from "@/lib/carne";
 import {
