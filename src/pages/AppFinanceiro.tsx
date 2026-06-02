@@ -23,6 +23,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type AlunoVinculado = {
   id: string;
@@ -72,6 +74,15 @@ export default function AppFinanceiro() {
   const [carneOpen, setCarneOpen] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<string>(alunosDoResponsavel[0].id);
   const [filtroCarne, setFiltroCarne] = useState<"em_aberto" | "vencidas" | "todas">("em_aberto");
+  const [usarIntervalo, setUsarIntervalo] = useState(false);
+  const [mesInicio, setMesInicio] = useState("2026-01");
+  const [mesFim, setMesFim] = useState("2026-12");
+
+  // dd/mm/yyyy -> yyyy-mm
+  const venc2YM = (v: string) => {
+    const [, m, y] = v.split("/");
+    return `${y}-${m}`;
+  };
 
   const baixarCarne = () => {
     const aluno = alunosDoResponsavel.find((a) => a.id === alunoSelecionado);
@@ -84,6 +95,17 @@ export default function AppFinanceiro() {
       filtradas = parcelas.filter((p) => p.status === "Vencido");
     } else if (filtroCarne === "todas") {
       filtradas = parcelas.filter((p) => p.status !== "Pago");
+    }
+
+    if (usarIntervalo) {
+      if (mesInicio > mesFim) {
+        toast.error("Intervalo inválido: mês inicial após o final.");
+        return;
+      }
+      filtradas = filtradas.filter((p) => {
+        const ym = venc2YM(p.vencimento);
+        return ym >= mesInicio && ym <= mesFim;
+      });
     }
 
     const parcelasPDF = filtradas.map((p) => ({
@@ -315,6 +337,50 @@ export default function AppFinanceiro() {
               ))}
             </div>
           </div>
+
+          {/* Intervalo de vencimentos */}
+          <div className="py-1">
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-xs font-medium text-muted-foreground">
+                Filtrar por intervalo de vencimento
+              </span>
+              <input
+                type="checkbox"
+                checked={usarIntervalo}
+                onChange={(e) => setUsarIntervalo(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+            </label>
+            {usarIntervalo && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <Label htmlFor="mes-inicio" className="text-[10px] text-muted-foreground">
+                    De
+                  </Label>
+                  <Input
+                    id="mes-inicio"
+                    type="month"
+                    value={mesInicio}
+                    onChange={(e) => setMesInicio(e.target.value)}
+                    className="h-9 text-xs mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mes-fim" className="text-[10px] text-muted-foreground">
+                    Até
+                  </Label>
+                  <Input
+                    id="mes-fim"
+                    type="month"
+                    value={mesFim}
+                    onChange={(e) => setMesFim(e.target.value)}
+                    className="h-9 text-xs mt-1"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
 
           <div className="space-y-2 py-2">
             <p className="text-xs font-medium text-muted-foreground">Aluno</p>
