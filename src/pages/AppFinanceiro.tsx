@@ -69,6 +69,26 @@ const statusStyles: Record<Parcela["status"], string> = {
 
 export default function AppFinanceiro() {
   const [tab, setTab] = useState<"abertas" | "historico">("abertas");
+  const [carneOpen, setCarneOpen] = useState(false);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<string>(alunosDoResponsavel[0].id);
+
+  const baixarCarne = () => {
+    const aluno = alunosDoResponsavel.find((a) => a.id === alunoSelecionado);
+    if (!aluno) return;
+    const abertasParcelas = parcelas
+      .filter((p) => p.status !== "Pago")
+      .map((p) => ({ id: p.id, descricao: p.descricao, vencimento: p.vencimento, valor: p.valor }));
+    if (abertasParcelas.length === 0) {
+      toast.error("Nenhuma parcela em aberto para gerar carnê.");
+      return;
+    }
+    gerarCarnePDF(
+      { nome: aluno.nome, turma: aluno.turma, responsavel: RESPONSAVEL, matricula: aluno.matricula },
+      abertasParcelas,
+    );
+    setCarneOpen(false);
+    toast.success(`Carnê de ${aluno.nome} gerado com sucesso!`);
+  };
 
   const abertas = parcelas.filter((p) => p.status !== "Pago");
   const pagas = parcelas.filter((p) => p.status === "Pago");
