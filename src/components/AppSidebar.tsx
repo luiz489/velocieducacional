@@ -63,6 +63,7 @@ const menuGroups = [
   {
     label: "Pedagógico",
     items: [
+      { title: "Professores", url: "/professores", icon: UserCheck },
       { title: "Disciplinas", url: "/disciplinas", icon: BookOpen },
       { title: "Matrizes Curriculares", url: "/matrizes-curriculares", icon: GraduationCap },
       { title: "Notas", url: "/notas", icon: GraduationCap },
