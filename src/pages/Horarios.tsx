@@ -66,13 +66,37 @@ export default function Horarios() {
     },
   });
 
+  const { data: professores } = useQuery({
+    queryKey: ["professores-ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professores")
+        .select("id, nome, ativo")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data as ProfessorOpt[];
+    },
+  });
+
+  const profMap = useMemo(() => {
+    const m = new Map<string, string>();
+    professores?.forEach((p) => m.set(p.id, p.nome));
+    return m;
+  }, [professores]);
+
   const save = useMutation({
     mutationFn: async () => {
+      const profNome = form.professor_id ? profMap.get(form.professor_id) ?? null : null;
       const { error } = await supabase.from("horarios_aulas").insert({
-        ...form,
+        dia_semana: form.dia_semana,
+        hora_inicio: form.hora_inicio,
+        hora_fim: form.hora_fim,
+        disciplina: form.disciplina,
         turma_id: turmaId,
         ano_letivo: ano,
-        professor: form.professor || null,
+        professor_id: form.professor_id || null,
+        professor: profNome,
         sala: form.sala || null,
       });
       if (error) throw error;
@@ -81,7 +105,7 @@ export default function Horarios() {
       toast.success("Aula adicionada");
       qc.invalidateQueries({ queryKey: ["horarios"] });
       setOpen(false);
-      setForm({ dia_semana: 1, hora_inicio: "07:00", hora_fim: "07:50", disciplina: "", professor: "", sala: "" });
+      setForm({ dia_semana: 1, hora_inicio: "07:00", hora_fim: "07:50", disciplina: "", professor_id: "", sala: "" });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -192,7 +216,12 @@ export default function Horarios() {
               </div>
               <div>
                 <Label>Professor</Label>
-                <Input value={form.professor} onChange={(e) => setForm({ ...form, professor: e.target.value })} />
+                <Select value={form.professor_id} onValueChange={(v) => setForm({ ...form, professor_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {professores?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Sala</Label>
