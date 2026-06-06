@@ -21,6 +21,7 @@ import MatrizesCurriculares from "@/pages/MatrizesCurriculares";
 import Disciplinas from "@/pages/Disciplinas";
 import Avisos from "@/pages/Avisos";
 import Horarios from "@/pages/Horarios";
+import Professores from "@/pages/Professores";
 import Calendario from "@/pages/Calendario";
 import Rematricula from "@/pages/Rematricula";
 import Carteirinhas from "@/pages/Carteirinhas";
@@ -67,6 +68,7 @@ function ProtectedRoutes() {
             <Route path="/calendario" element={<Calendario />} />
             <Route path="/rematricula" element={<Rematricula />} />
             <Route path="/carteirinhas" element={<Carteirinhas />} />
+            <Route path="/professores" element={<Professores />} />
             <Route path="/admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<NotFound />} />
