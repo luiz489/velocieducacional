@@ -21,9 +21,12 @@ type Aula = {
   hora_fim: string;
   disciplina: string;
   professor: string | null;
+  professor_id: string | null;
   sala: string | null;
   ano_letivo: number;
 };
+
+type ProfessorOpt = { id: string; nome: string; ativo: boolean };
 
 export default function Horarios() {
   const qc = useQueryClient();
@@ -35,7 +38,7 @@ export default function Horarios() {
     hora_inicio: "07:00",
     hora_fim: "07:50",
     disciplina: "",
-    professor: "",
+    professor_id: "",
     sala: "",
   });
 
