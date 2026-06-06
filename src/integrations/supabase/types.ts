@@ -445,6 +445,7 @@ export type Database = {
           hora_inicio: string
           id: string
           professor: string | null
+          professor_id: string | null
           sala: string | null
           turma_id: string
           updated_at: string
@@ -458,6 +459,7 @@ export type Database = {
           hora_inicio: string
           id?: string
           professor?: string | null
+          professor_id?: string | null
           sala?: string | null
           turma_id: string
           updated_at?: string
@@ -471,11 +473,20 @@ export type Database = {
           hora_inicio?: string
           id?: string
           professor?: string | null
+          professor_id?: string | null
           sala?: string | null
           turma_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "horarios_aulas_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       matriculas: {
         Row: {
@@ -735,6 +746,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      professores: {
+        Row: {
+          ativo: boolean
+          cpf: string | null
+          created_at: string
+          data_admissao: string | null
+          disciplinas: string[]
+          email: string | null
+          formacao: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          disciplinas?: string[]
+          email?: string | null
+          formacao?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          disciplinas?: string[]
+          email?: string | null
+          formacao?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
