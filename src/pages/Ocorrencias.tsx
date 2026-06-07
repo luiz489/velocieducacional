@@ -22,16 +22,14 @@ import { Card, CardContent } from "@/components/ui/card";
 
 type TipoOcorrencia = "Advertência" | "Elogio" | "Observação";
 
-interface Ocorrencia {
+interface OcorrenciaRow {
   id: string;
-  aluno_id: string | null;
-  aluno: string;
-  turma: string | null;
-  tipo: TipoOcorrencia;
-  descricao: string;
-  data: string;
-  registrado_por: string;
+  aluno_id: string;
   professor_id: string | null;
+  tipo: string;
+  descricao: string;
+  data_ocorrencia: string;
+  registrado_por: string;
 }
 
 const tipoConfig: Record<TipoOcorrencia, { icon: typeof AlertTriangle; color: string; badgeVariant: "destructive" | "default" | "secondary" }> = {
@@ -53,13 +51,13 @@ export default function Ocorrencias() {
     professor_id: "",
   });
 
-  // Listas dos cadastros
+  // Cadastros
   const { data: alunos = [] } = useQuery({
-    queryKey: ["alunos-ativos"],
+    queryKey: ["alunos-lista"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("alunos")
-        .select("id, nome, turma_id, turmas(nome)")
+        .select("id, nome")
         .order("nome");
       if (error) throw error;
       return data || [];
@@ -79,31 +77,51 @@ export default function Ocorrencias() {
     },
   });
 
+  // Mapa aluno_id -> turma (via matriculas)
+  const { data: matriculas = [] } = useQuery({
+    queryKey: ["matriculas-com-turma"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("matriculas")
+        .select("aluno_id, turmas(nome)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const turmaMap = useMemo(() => {
+    const m = new Map<string, string>();
+    matriculas.forEach((mt: any) => {
+      if (mt.aluno_id && mt.turmas?.nome) m.set(mt.aluno_id, mt.turmas.nome);
+    });
+    return m;
+  }, [matriculas]);
+
+  const alunoMap = useMemo(() => {
+    const m = new Map<string, string>();
+    alunos.forEach(a => m.set(a.id, a.nome));
+    return m;
+  }, [alunos]);
+
   const { data: ocorrencias = [], isLoading } = useQuery({
     queryKey: ["ocorrencias"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ocorrencias")
         .select("*")
-        .order("data", { ascending: false });
+        .order("data_ocorrencia", { ascending: false });
       if (error) throw error;
-      return (data || []) as Ocorrencia[];
+      return (data || []) as OcorrenciaRow[];
     },
   });
 
   const criar = useMutation({
     mutationFn: async () => {
-      const aluno = alunos.find(a => a.id === form.aluno_id);
       const prof = professores.find(p => p.id === form.professor_id);
-      if (!aluno) throw new Error("Selecione um aluno");
-      const turmaNome = (aluno as any).turmas?.nome || null;
       const { error } = await supabase.from("ocorrencias").insert({
         aluno_id: form.aluno_id,
-        aluno: aluno.nome,
-        turma: turmaNome,
         tipo: form.tipo,
         descricao: form.descricao,
-        data: form.data,
+        data_ocorrencia: form.data,
         registrado_por: prof?.nome || "—",
         professor_id: form.professor_id || null,
       } as any);
@@ -119,13 +137,14 @@ export default function Ocorrencias() {
   });
 
   const filtered = useMemo(() => ocorrencias.filter((o) => {
+    const alunoNome = alunoMap.get(o.aluno_id) || "";
     const matchSearch =
-      o.aluno.toLowerCase().includes(search.toLowerCase()) ||
+      alunoNome.toLowerCase().includes(search.toLowerCase()) ||
       o.descricao.toLowerCase().includes(search.toLowerCase()) ||
       (o.registrado_por || "").toLowerCase().includes(search.toLowerCase());
     const matchTipo = tipoFilter === "todos" || o.tipo === tipoFilter;
     return matchSearch && matchTipo;
-  }), [ocorrencias, search, tipoFilter]);
+  }), [ocorrencias, search, tipoFilter, alunoMap]);
 
   const totalAdv = ocorrencias.filter((o) => o.tipo === "Advertência").length;
   const totalElo = ocorrencias.filter((o) => o.tipo === "Elogio").length;
@@ -158,11 +177,14 @@ export default function Ocorrencias() {
                     <Select value={form.aluno_id} onValueChange={v => setForm({ ...form, aluno_id: v })}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o aluno" /></SelectTrigger>
                       <SelectContent>
-                        {alunos.map((a: any) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.nome}{a.turmas?.nome ? ` — ${a.turmas.nome}` : ""}
-                          </SelectItem>
-                        ))}
+                        {alunos.map(a => {
+                          const turma = turmaMap.get(a.id);
+                          return (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.nome}{turma ? ` — ${turma}` : ""}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   )}
@@ -294,18 +316,18 @@ export default function Ocorrencias() {
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : filtered.map((oc) => {
-              const cfg = tipoConfig[oc.tipo];
+              const cfg = tipoConfig[oc.tipo as TipoOcorrencia] || tipoConfig["Observação"];
               const Icon = cfg.icon;
               return (
                 <TableRow key={oc.id}>
                   <TableCell className="text-muted-foreground text-sm">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" />
-                      {new Date(oc.data).toLocaleDateString("pt-BR")}
+                      {new Date(oc.data_ocorrencia).toLocaleDateString("pt-BR")}
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{oc.aluno}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">{oc.turma || "—"}</TableCell>
+                  <TableCell className="font-medium">{alunoMap.get(oc.aluno_id) || "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">{turmaMap.get(oc.aluno_id) || "—"}</TableCell>
                   <TableCell>
                     <Badge variant={cfg.badgeVariant} className="gap-1">
                       <Icon className="h-3 w-3" />
