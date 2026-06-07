@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, ShoppingCart, UserCheck, FileText, CheckCircle, XCircle, Eye, ClipboardList } from "lucide-react";
+import { useFornecedores } from "@/hooks/useFornecedores";
+import { Link } from "react-router-dom";
 
 const fmt = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
@@ -369,32 +371,35 @@ function SolicitacoesTab() {
 function CotacoesSection({ solicitacaoId, status }: { solicitacaoId: string; status: string }) {
   const qc = useQueryClient();
   const { data: cotacoes = [], isLoading } = useCotacoes(solicitacaoId);
+  const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({
-    fornecedor: "", valor_unitario: "", quantidade: "1", prazo_entrega: "", condicao_pagamento: "", observacoes: "",
+    fornecedor_id: "", valor_unitario: "", quantidade: "1", prazo_entrega: "", condicao_pagamento: "", observacoes: "",
   });
 
   const addCotacao = useMutation({
     mutationFn: async () => {
       const vu = Number(form.valor_unitario) || 0;
       const qt = Number(form.quantidade) || 1;
+      const forn = fornecedores.find(f => f.id === form.fornecedor_id);
       const { error } = await supabase.from("cotacoes").insert({
         solicitacao_id: solicitacaoId,
-        fornecedor: form.fornecedor,
+        fornecedor: forn?.nome || "",
+        fornecedor_id: form.fornecedor_id || null,
         valor_unitario: vu,
         quantidade: qt,
         valor_total: vu * qt,
         prazo_entrega: form.prazo_entrega || null,
         condicao_pagamento: form.condicao_pagamento || null,
         observacoes: form.observacoes || null,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cotacoes", solicitacaoId] });
       toast.success("Cotação adicionada!");
       setFormOpen(false);
-      setForm({ fornecedor: "", valor_unitario: "", quantidade: "1", prazo_entrega: "", condicao_pagamento: "", observacoes: "" });
+      setForm({ fornecedor_id: "", valor_unitario: "", quantidade: "1", prazo_entrega: "", condicao_pagamento: "", observacoes: "" });
     },
     onError: () => toast.error("Erro ao adicionar cotação"),
   });
@@ -430,7 +435,21 @@ function CotacoesSection({ solicitacaoId, status }: { solicitacaoId: string; sta
       {formOpen && (
         <Card className="p-4">
           <div className="space-y-3">
-            <div><Label>Fornecedor *</Label><Input value={form.fornecedor} onChange={e => setForm(f => ({ ...f, fornecedor: e.target.value }))} /></div>
+            <div>
+              <Label>Fornecedor *</Label>
+              {fornecedores.length === 0 && !loadingForn ? (
+                <p className="text-xs text-muted-foreground py-1">
+                  Nenhum fornecedor. <Link to="/parceiros" className="text-primary underline">Cadastrar →</Link>
+                </p>
+              ) : (
+                <Select value={form.fornecedor_id} onValueChange={v => setForm(f => ({ ...f, fornecedor_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder={loadingForn ? "Carregando..." : "Selecione"} /></SelectTrigger>
+                  <SelectContent>
+                    {fornecedores.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Valor Unitário *</Label><Input type="number" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} /></div>
               <div><Label>Quantidade</Label><Input type="number" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} /></div>
@@ -440,7 +459,7 @@ function CotacoesSection({ solicitacaoId, status }: { solicitacaoId: string; sta
               <div><Label>Condição de Pagamento</Label><Input value={form.condicao_pagamento} onChange={e => setForm(f => ({ ...f, condicao_pagamento: e.target.value }))} placeholder="Ex: 30/60 dias" /></div>
             </div>
             <div><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
-            <Button size="sm" onClick={() => addCotacao.mutate()} disabled={!form.fornecedor || !form.valor_unitario || addCotacao.isPending}>
+            <Button size="sm" onClick={() => addCotacao.mutate()} disabled={!form.fornecedor_id || !form.valor_unitario || addCotacao.isPending}>
               {addCotacao.isPending ? "Salvando..." : "Salvar Cotação"}
             </Button>
           </div>

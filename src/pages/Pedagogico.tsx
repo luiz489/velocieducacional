@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GraduationCap, BookOpen, Users, Save, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +43,7 @@ const turmas = [
   { id: "t5", nome: "7º Ano B" },
 ];
 
-const disciplinas = [
+const disciplinasFallback = [
   "Matemática", "Português", "Ciências", "História", "Geografia", "Inglês", "Artes", "Ed. Física",
 ];
 
@@ -120,6 +122,26 @@ function EditableCell({ value, onChange }: { value: number | null; onChange: (v:
 export default function Pedagogico() {
   const [turmaId, setTurmaId] = useState("t1");
   const [disciplina, setDisciplina] = useState("Matemática");
+
+  const { data: disciplinasDB = [] } = useQuery({
+    queryKey: ["disciplinas-ativas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("disciplinas")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const disciplinas = disciplinasDB.length > 0 ? disciplinasDB.map(d => d.nome) : disciplinasFallback;
+
+  useEffect(() => {
+    if (disciplinas.length > 0 && !disciplinas.includes(disciplina)) {
+      setDisciplina(disciplinas[0]);
+    }
+  }, [disciplinasDB]); // eslint-disable-line react-hooks/exhaustive-deps
   const [notas, setNotas] = useState<NotaAluno[]>(gerarNotas);
   const [frequencia] = useState<FrequenciaAluno[]>(gerarFrequencia);
   const [search, setSearch] = useState("");
