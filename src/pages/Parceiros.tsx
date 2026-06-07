@@ -3,18 +3,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Phone, Globe, Mail, Navigation, Search } from "lucide-react";
+import { MapPin, Phone, Globe, Mail, Navigation, Search, Plus } from "lucide-react";
 import { ESTADOS, CIDADES_SP } from "@/lib/cidadesSP";
+
+type TipoParceiro = "Fornecedor" | "Cliente" | "Outro";
 
 interface Parceiro {
   id: string;
   nome: string;
   categoria: string;
+  tipo: TipoParceiro;
   descricao: string | null;
   estado: string;
   cidade: string;
@@ -36,32 +43,46 @@ function distKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const tipoColor: Record<TipoParceiro, string> = {
+  Fornecedor: "bg-blue-100 text-blue-700 border-blue-200",
+  Cliente: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  Outro: "bg-slate-100 text-slate-700 border-slate-200",
+};
+
 export default function Parceiros() {
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [loading, setLoading] = useState(true);
   const [estado, setEstado] = useState("SP");
   const [cidade, setCidade] = useState<string>("todas");
+  const [tipo, setTipo] = useState<string>("todos");
   const [busca, setBusca] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [raio, setRaio] = useState<string>("todos");
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    nome: "", tipo: "Fornecedor" as TipoParceiro, categoria: "",
+    descricao: "", estado: "SP", cidade: "", endereco: "",
+    telefone: "", email: "", website: "",
+  });
 
   const formatDist = (km: number) =>
     km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("parceiros")
-        .select("*")
-        .eq("ativo", true)
-        .order("nome");
-      if (error) toast({ title: "Erro ao carregar parceiros", description: error.message, variant: "destructive" });
-      setParceiros((data as Parceiro[]) || []);
-      setLoading(false);
-    })();
-  }, []);
+  const fetchAll = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("parceiros")
+      .select("*")
+      .eq("ativo", true)
+      .order("nome");
+    if (error) toast({ title: "Erro ao carregar parceiros", description: error.message, variant: "destructive" });
+    setParceiros((data as Parceiro[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchAll(); }, []);
 
   const usarGPS = () => {
     if (!navigator.geolocation) {
@@ -87,6 +108,7 @@ export default function Parceiros() {
   const lista = useMemo(() => {
     let arr = parceiros.filter((p) => p.estado === estado);
     if (cidade !== "todas") arr = arr.filter((p) => p.cidade === cidade);
+    if (tipo !== "todos") arr = arr.filter((p) => p.tipo === tipo);
     if (busca.trim()) {
       const q = busca.toLowerCase();
       arr = arr.filter(
@@ -109,22 +131,116 @@ export default function Parceiros() {
       }
     }
     return arr;
-  }, [parceiros, estado, cidade, busca, coords, raio]);
+  }, [parceiros, estado, cidade, tipo, busca, coords, raio]);
+
+  const salvar = async () => {
+    if (!form.nome || !form.categoria || !form.cidade) {
+      toast({ title: "Campos obrigatórios", description: "Nome, categoria e cidade são obrigatórios.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("parceiros").insert({
+      nome: form.nome,
+      tipo: form.tipo,
+      categoria: form.categoria,
+      descricao: form.descricao || null,
+      estado: form.estado,
+      cidade: form.cidade,
+      endereco: form.endereco || null,
+      telefone: form.telefone || null,
+      email: form.email || null,
+      website: form.website || null,
+      ativo: true,
+    });
+    setSaving(false);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Parceiro cadastrado!", description: form.nome });
+    setOpen(false);
+    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", endereco: "", telefone: "", email: "", website: "" });
+    fetchAll();
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Parceiros</h1>
-        <p className="text-muted-foreground">Encontre parceiros disponíveis na sua região</p>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Parceiros</h1>
+          <p className="text-muted-foreground">Fornecedores, clientes e parceiros institucionais</p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Parceiro</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Cadastrar Parceiro</DialogTitle>
+              <DialogDescription>Use o tipo "Fornecedor" para amarrar em Contas a Pagar, Compras e Contratos.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
+                <div>
+                  <Label>Tipo *</Label>
+                  <Select value={form.tipo} onValueChange={(v: TipoParceiro) => setForm({ ...form, tipo: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Fornecedor">Fornecedor</SelectItem>
+                      <SelectItem value="Cliente">Cliente</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div><Label>Categoria *</Label><Input value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })} placeholder="Ex: Material, Limpeza, Tecnologia" /></div>
+              <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Estado *</Label>
+                  <Select value={form.estado} onValueChange={v => setForm({ ...form, estado: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ESTADOS.map(e => <SelectItem key={e.uf} value={e.uf}>{e.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Cidade *</Label><Input value={form.cidade} onChange={e => setForm({ ...form, cidade: e.target.value })} /></div>
+              </div>
+              <div><Label>Endereço</Label><Input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Telefone</Label><Input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} /></div>
+                <div><Label>E-mail</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+              </div>
+              <div><Label>Website</Label><Input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} placeholder="https://" /></div>
+              <Button onClick={salvar} disabled={saving} className="w-full mt-2">
+                {saving ? "Salvando..." : "Cadastrar"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filtrar por localização</CardTitle>
-          <CardDescription>Use o GPS do dispositivo ou selecione o estado e cidade</CardDescription>
+          <CardTitle className="text-lg">Filtros</CardTitle>
+          <CardDescription>Filtre por tipo, localização ou busque por nome</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-5">
+            <div>
+              <Label>Tipo</Label>
+              <Select value={tipo} onValueChange={setTipo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="Fornecedor">Fornecedor</SelectItem>
+                  <SelectItem value="Cliente">Cliente</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Estado</Label>
               <Select value={estado} onValueChange={setEstado}>
@@ -156,9 +272,9 @@ export default function Parceiros() {
               </div>
             </div>
             <div className="flex items-end">
-              <Button onClick={usarGPS} disabled={gpsLoading} className="w-full gap-2">
+              <Button onClick={usarGPS} disabled={gpsLoading} className="w-full gap-2" variant="outline">
                 <Navigation className="h-4 w-4" />
-                {gpsLoading ? "Localizando..." : coords ? "Atualizar GPS" : "Usar minha localização"}
+                {gpsLoading ? "Localizando..." : coords ? "Atualizar GPS" : "Usar GPS"}
               </Button>
             </div>
           </div>
@@ -202,6 +318,9 @@ export default function Parceiros() {
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base">{p.nome}</CardTitle>
+                  <Badge variant="outline" className={tipoColor[p.tipo as TipoParceiro] || tipoColor.Outro}>{p.tipo}</Badge>
+                </div>
+                <div className="flex items-center gap-2">
                   <Badge variant="secondary">{p.categoria}</Badge>
                 </div>
                 {p.descricao && <CardDescription>{p.descricao}</CardDescription>}

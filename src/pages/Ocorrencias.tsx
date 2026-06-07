@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Search, Plus, Filter, AlertTriangle, ThumbsUp, Eye, Calendar } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,26 +22,15 @@ import { Card, CardContent } from "@/components/ui/card";
 
 type TipoOcorrencia = "Advertência" | "Elogio" | "Observação";
 
-interface Ocorrencia {
+interface OcorrenciaRow {
   id: string;
-  aluno: string;
-  turma: string;
-  tipo: TipoOcorrencia;
+  aluno_id: string;
+  professor_id: string | null;
+  tipo: string;
   descricao: string;
-  data: string;
+  data_ocorrencia: string;
   registrado_por: string;
 }
-
-const mockOcorrencias: Ocorrencia[] = [
-  { id: "1", aluno: "Ana Carolina Silva", turma: "5º Ano A", tipo: "Elogio", descricao: "Excelente participação na feira de ciências, apresentou projeto de destaque.", data: "2026-04-08", registrado_por: "Prof. Marcos" },
-  { id: "2", aluno: "João Pedro Souza", turma: "6º Ano B", tipo: "Advertência", descricao: "Uso de celular durante a aula de matemática após advertência verbal.", data: "2026-04-07", registrado_por: "Prof. Fernanda" },
-  { id: "3", aluno: "Maria Fernanda Costa", turma: "4º Ano A", tipo: "Observação", descricao: "Aluna apresentou dificuldade na leitura, sugerido acompanhamento pedagógico.", data: "2026-04-05", registrado_por: "Prof. Clara" },
-  { id: "4", aluno: "Pedro Henrique Santos", turma: "7º Ano B", tipo: "Advertência", descricao: "Envolvido em conflito com colega durante o intervalo.", data: "2026-04-04", registrado_por: "Coord. Roberto" },
-  { id: "5", aluno: "Laura Beatriz Oliveira", turma: "5º Ano B", tipo: "Elogio", descricao: "Ajudou colegas com dificuldades na atividade em grupo de história.", data: "2026-04-03", registrado_por: "Prof. Juliana" },
-  { id: "6", aluno: "Gabriel Almeida", turma: "6º Ano A", tipo: "Observação", descricao: "Frequentes atrasos nas últimas duas semanas. Responsável notificado.", data: "2026-04-02", registrado_por: "Secretaria" },
-  { id: "7", aluno: "Isabela Rodrigues", turma: "4º Ano B", tipo: "Advertência", descricao: "Não entregou trabalho de português pela terceira vez consecutiva.", data: "2026-04-01", registrado_por: "Prof. Fernanda" },
-  { id: "8", aluno: "Lucas Martins", turma: "7º Ano A", tipo: "Elogio", descricao: "Melhor nota da turma na avaliação de ciências. Parabéns pelo esforço!", data: "2026-03-30", registrado_por: "Prof. Marcos" },
-];
 
 const tipoConfig: Record<TipoOcorrencia, { icon: typeof AlertTriangle; color: string; badgeVariant: "destructive" | "default" | "secondary" }> = {
   "Advertência": { icon: AlertTriangle, color: "text-destructive", badgeVariant: "destructive" },
@@ -45,33 +38,120 @@ const tipoConfig: Record<TipoOcorrencia, { icon: typeof AlertTriangle; color: st
   "Observação": { icon: Eye, color: "text-amber-600", badgeVariant: "secondary" },
 };
 
-const mockAlunos = [
-  "Ana Carolina Silva", "João Pedro Souza", "Maria Fernanda Costa",
-  "Pedro Henrique Santos", "Laura Beatriz Oliveira", "Gabriel Almeida",
-  "Isabela Rodrigues", "Lucas Martins",
-];
-
 export default function Ocorrencias() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
-
-  const filtered = mockOcorrencias.filter((o) => {
-    const matchSearch =
-      o.aluno.toLowerCase().includes(search.toLowerCase()) ||
-      o.descricao.toLowerCase().includes(search.toLowerCase()) ||
-      o.registrado_por.toLowerCase().includes(search.toLowerCase());
-    const matchTipo = tipoFilter === "todos" || o.tipo === tipoFilter;
-    return matchSearch && matchTipo;
+  const [form, setForm] = useState({
+    aluno_id: "",
+    tipo: "Observação" as TipoOcorrencia,
+    descricao: "",
+    data: new Date().toISOString().split("T")[0],
+    professor_id: "",
   });
 
-  const totalAdv = mockOcorrencias.filter((o) => o.tipo === "Advertência").length;
-  const totalElo = mockOcorrencias.filter((o) => o.tipo === "Elogio").length;
-  const totalObs = mockOcorrencias.filter((o) => o.tipo === "Observação").length;
+  // Cadastros
+  const { data: alunos = [] } = useQuery({
+    queryKey: ["alunos-lista"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("alunos")
+        .select("id, nome")
+        .order("nome");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: professores = [] } = useQuery({
+    queryKey: ["professores-ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professores")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Mapa aluno_id -> turma (via matriculas)
+  const { data: matriculas = [] } = useQuery({
+    queryKey: ["matriculas-com-turma"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("matriculas")
+        .select("aluno_id, turmas(nome)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const turmaMap = useMemo(() => {
+    const m = new Map<string, string>();
+    matriculas.forEach((mt: any) => {
+      if (mt.aluno_id && mt.turmas?.nome) m.set(mt.aluno_id, mt.turmas.nome);
+    });
+    return m;
+  }, [matriculas]);
+
+  const alunoMap = useMemo(() => {
+    const m = new Map<string, string>();
+    alunos.forEach(a => m.set(a.id, a.nome));
+    return m;
+  }, [alunos]);
+
+  const { data: ocorrencias = [], isLoading } = useQuery({
+    queryKey: ["ocorrencias"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ocorrencias")
+        .select("*")
+        .order("data_ocorrencia", { ascending: false });
+      if (error) throw error;
+      return (data || []) as OcorrenciaRow[];
+    },
+  });
+
+  const criar = useMutation({
+    mutationFn: async () => {
+      const prof = professores.find(p => p.id === form.professor_id);
+      const { error } = await supabase.from("ocorrencias").insert({
+        aluno_id: form.aluno_id,
+        tipo: form.tipo,
+        descricao: form.descricao,
+        data_ocorrencia: form.data,
+        registrado_por: prof?.nome || "—",
+        professor_id: form.professor_id || null,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ocorrencias"] });
+      toast.success("Ocorrência registrada!");
+      setDialogOpen(false);
+      setForm({ aluno_id: "", tipo: "Observação", descricao: "", data: new Date().toISOString().split("T")[0], professor_id: "" });
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao registrar"),
+  });
+
+  const filtered = useMemo(() => ocorrencias.filter((o) => {
+    const alunoNome = alunoMap.get(o.aluno_id) || "";
+    const matchSearch =
+      alunoNome.toLowerCase().includes(search.toLowerCase()) ||
+      o.descricao.toLowerCase().includes(search.toLowerCase()) ||
+      (o.registrado_por || "").toLowerCase().includes(search.toLowerCase());
+    const matchTipo = tipoFilter === "todos" || o.tipo === tipoFilter;
+    return matchSearch && matchTipo;
+  }), [ocorrencias, search, tipoFilter, alunoMap]);
+
+  const totalAdv = ocorrencias.filter((o) => o.tipo === "Advertência").length;
+  const totalElo = ocorrencias.filter((o) => o.tipo === "Elogio").length;
+  const totalObs = ocorrencias.filter((o) => o.tipo === "Observação").length;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ocorrências</h1>
@@ -85,20 +165,33 @@ export default function Ocorrencias() {
             <DialogHeader>
               <DialogTitle>Registrar Nova Ocorrência</DialogTitle>
             </DialogHeader>
-            <form className="space-y-4 mt-2" onSubmit={(e) => { e.preventDefault(); setDialogOpen(false); }}>
+            <form className="space-y-4 mt-2" onSubmit={(e) => { e.preventDefault(); criar.mutate(); }}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <Label htmlFor="oc-aluno">Aluno</Label>
-                  <Select>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o aluno" /></SelectTrigger>
-                    <SelectContent>
-                      {mockAlunos.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Label>Aluno *</Label>
+                  {alunos.length === 0 ? (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Nenhum aluno. <Link to="/alunos" className="text-primary underline">Cadastrar →</Link>
+                    </p>
+                  ) : (
+                    <Select value={form.aluno_id} onValueChange={v => setForm({ ...form, aluno_id: v })}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o aluno" /></SelectTrigger>
+                      <SelectContent>
+                        {alunos.map(a => {
+                          const turma = turmaMap.get(a.id);
+                          return (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.nome}{turma ? ` — ${turma}` : ""}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="oc-tipo">Tipo</Label>
-                  <Select defaultValue="Observação">
+                  <Label>Tipo</Label>
+                  <Select value={form.tipo} onValueChange={(v: TipoOcorrencia) => setForm({ ...form, tipo: v })}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Advertência">Advertência</SelectItem>
@@ -108,21 +201,40 @@ export default function Ocorrencias() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="oc-data">Data</Label>
-                  <Input id="oc-data" type="date" defaultValue={new Date().toISOString().split("T")[0]} className="mt-1" />
+                  <Label>Data</Label>
+                  <Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} className="mt-1" />
                 </div>
                 <div className="col-span-2">
-                  <Label htmlFor="oc-desc">Descrição</Label>
-                  <Textarea id="oc-desc" placeholder="Descreva a ocorrência com detalhes..." className="mt-1 min-h-[100px]" />
+                  <Label>Descrição *</Label>
+                  <Textarea
+                    required
+                    value={form.descricao}
+                    onChange={e => setForm({ ...form, descricao: e.target.value })}
+                    placeholder="Descreva a ocorrência com detalhes..."
+                    className="mt-1 min-h-[100px]"
+                  />
                 </div>
                 <div className="col-span-2">
-                  <Label htmlFor="oc-reg">Registrado por</Label>
-                  <Input id="oc-reg" placeholder="Nome do professor ou coordenador" className="mt-1" />
+                  <Label>Registrado por (Professor) *</Label>
+                  {professores.length === 0 ? (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Nenhum professor. <Link to="/professores" className="text-primary underline">Cadastrar →</Link>
+                    </p>
+                  ) : (
+                    <Select value={form.professor_id} onValueChange={v => setForm({ ...form, professor_id: v })}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {professores.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit">Registrar</Button>
+                <Button type="submit" disabled={!form.aluno_id || !form.professor_id || !form.descricao || criar.isPending}>
+                  {criar.isPending ? "Salvando..." : "Registrar"}
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -199,19 +311,23 @@ export default function Ocorrencias() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((oc) => {
-              const cfg = tipoConfig[oc.tipo];
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+              </TableRow>
+            ) : filtered.map((oc) => {
+              const cfg = tipoConfig[oc.tipo as TipoOcorrencia] || tipoConfig["Observação"];
               const Icon = cfg.icon;
               return (
                 <TableRow key={oc.id}>
                   <TableCell className="text-muted-foreground text-sm">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" />
-                      {new Date(oc.data).toLocaleDateString("pt-BR")}
+                      {new Date(oc.data_ocorrencia).toLocaleDateString("pt-BR")}
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{oc.aluno}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">{oc.turma}</TableCell>
+                  <TableCell className="font-medium">{alunoMap.get(oc.aluno_id) || "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">{turmaMap.get(oc.aluno_id) || "—"}</TableCell>
                   <TableCell>
                     <Badge variant={cfg.badgeVariant} className="gap-1">
                       <Icon className="h-3 w-3" />
@@ -225,7 +341,7 @@ export default function Ocorrencias() {
                 </TableRow>
               );
             })}
-            {filtered.length === 0 && (
+            {!isLoading && filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Nenhuma ocorrência encontrada.
@@ -237,7 +353,7 @@ export default function Ocorrencias() {
       </div>
 
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>Mostrando {filtered.length} de {mockOcorrencias.length} ocorrências</span>
+        <span>Mostrando {filtered.length} de {ocorrencias.length} ocorrências</span>
       </div>
     </div>
   );

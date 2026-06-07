@@ -187,6 +187,7 @@ export type Database = {
           data_vencimento: string
           descricao: string
           fornecedor: string
+          fornecedor_id: string | null
           id: string
           status: string
           updated_at: string
@@ -199,6 +200,7 @@ export type Database = {
           data_vencimento: string
           descricao: string
           fornecedor: string
+          fornecedor_id?: string | null
           id?: string
           status?: string
           updated_at?: string
@@ -211,12 +213,21 @@ export type Database = {
           data_vencimento?: string
           descricao?: string
           fornecedor?: string
+          fornecedor_id?: string | null
           id?: string
           status?: string
           updated_at?: string
           valor?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contas_a_pagar_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contratos: {
         Row: {
@@ -227,6 +238,7 @@ export type Database = {
           descricao: string
           dia_vencimento: number
           fornecedor: string
+          fornecedor_id: string | null
           id: string
           observacoes: string | null
           status: string
@@ -241,6 +253,7 @@ export type Database = {
           descricao: string
           dia_vencimento?: number
           fornecedor: string
+          fornecedor_id?: string | null
           id?: string
           observacoes?: string | null
           status?: string
@@ -255,13 +268,22 @@ export type Database = {
           descricao?: string
           dia_vencimento?: number
           fornecedor?: string
+          fornecedor_id?: string | null
           id?: string
           observacoes?: string | null
           status?: string
           updated_at?: string
           valor_mensal?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contratos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cotacoes: {
         Row: {
@@ -618,6 +640,7 @@ export type Database = {
           data_ocorrencia: string
           descricao: string
           id: string
+          professor_id: string | null
           registrado_por: string | null
           tipo: string
         }
@@ -627,6 +650,7 @@ export type Database = {
           data_ocorrencia?: string
           descricao: string
           id?: string
+          professor_id?: string | null
           registrado_por?: string | null
           tipo?: string
         }
@@ -636,6 +660,7 @@ export type Database = {
           data_ocorrencia?: string
           descricao?: string
           id?: string
+          professor_id?: string | null
           registrado_por?: string | null
           tipo?: string
         }
@@ -645,6 +670,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
             referencedColumns: ["id"]
           },
         ]
@@ -664,6 +696,7 @@ export type Database = {
           longitude: number | null
           nome: string
           telefone: string | null
+          tipo: string
           updated_at: string
           website: string | null
         }
@@ -681,6 +714,7 @@ export type Database = {
           longitude?: number | null
           nome: string
           telefone?: string | null
+          tipo?: string
           updated_at?: string
           website?: string | null
         }
@@ -698,6 +732,7 @@ export type Database = {
           longitude?: number | null
           nome?: string
           telefone?: string | null
+          tipo?: string
           updated_at?: string
           website?: string | null
         }
@@ -709,6 +744,7 @@ export type Database = {
           av2: number | null
           created_at: string
           disciplina: string
+          disciplina_id: string | null
           frequencia_percentual: number | null
           id: string
           matricula_id: string
@@ -720,6 +756,7 @@ export type Database = {
           av2?: number | null
           created_at?: string
           disciplina: string
+          disciplina_id?: string | null
           frequencia_percentual?: number | null
           id?: string
           matricula_id: string
@@ -731,6 +768,7 @@ export type Database = {
           av2?: number | null
           created_at?: string
           disciplina?: string
+          disciplina_id?: string | null
           frequencia_percentual?: number | null
           id?: string
           matricula_id?: string
@@ -738,6 +776,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pedagogico_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pedagogico_matricula_id_fkey"
             columns: ["matricula_id"]
@@ -860,6 +905,7 @@ export type Database = {
           data_necessidade: string | null
           departamento: string
           descricao: string
+          fornecedor_id: string | null
           id: string
           justificativa: string | null
           motivo_rejeicao: string | null
@@ -878,6 +924,7 @@ export type Database = {
           data_necessidade?: string | null
           departamento?: string
           descricao: string
+          fornecedor_id?: string | null
           id?: string
           justificativa?: string | null
           motivo_rejeicao?: string | null
@@ -896,6 +943,7 @@ export type Database = {
           data_necessidade?: string | null
           departamento?: string
           descricao?: string
+          fornecedor_id?: string | null
           id?: string
           justificativa?: string | null
           motivo_rejeicao?: string | null
@@ -913,6 +961,13 @@ export type Database = {
             columns: ["aprovador_id"]
             isOneToOne: false
             referencedRelation: "aprovadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_compra_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros"
             referencedColumns: ["id"]
           },
         ]
