@@ -47,6 +47,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useFornecedores } from "@/hooks/useFornecedores";
+import { Link } from "react-router-dom";
 
 type Contrato = {
   id: string;
@@ -86,7 +88,7 @@ export default function Contratos() {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [form, setForm] = useState({
-    fornecedor: "",
+    fornecedor_id: "",
     descricao: "",
     valor_mensal: "",
     categoria: "Outros",
@@ -95,6 +97,7 @@ export default function Contratos() {
     dia_vencimento: "10",
     observacoes: "",
   });
+  const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
   const { data: contratos = [], isLoading } = useQuery({
     queryKey: ["contratos"],
@@ -110,8 +113,10 @@ export default function Contratos() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const forn = fornecedores.find(f => f.id === form.fornecedor_id);
       const { error } = await supabase.from("contratos").insert({
-        fornecedor: form.fornecedor,
+        fornecedor: forn?.nome || "",
+        fornecedor_id: form.fornecedor_id || null,
         descricao: form.descricao,
         valor_mensal: parseFloat(form.valor_mensal),
         categoria: form.categoria,
@@ -127,7 +132,7 @@ export default function Contratos() {
       toast.success("Contrato cadastrado com sucesso!");
       setOpen(false);
       setForm({
-        fornecedor: "",
+        fornecedor_id: "",
         descricao: "",
         valor_mensal: "",
         categoria: "Outros",
@@ -193,12 +198,19 @@ export default function Contratos() {
             >
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Fornecedor</Label>
-                  <Input
-                    required
-                    value={form.fornecedor}
-                    onChange={(e) => setForm({ ...form, fornecedor: e.target.value })}
-                  />
+                  <Label>Fornecedor *</Label>
+                  {fornecedores.length === 0 && !loadingForn ? (
+                    <p className="text-xs text-muted-foreground py-2">
+                      Nenhum fornecedor. <Link to="/parceiros" className="text-primary underline">Cadastrar →</Link>
+                    </p>
+                  ) : (
+                    <Select value={form.fornecedor_id} onValueChange={v => setForm({ ...form, fornecedor_id: v })}>
+                      <SelectTrigger><SelectValue placeholder={loadingForn ? "Carregando..." : "Selecione"} /></SelectTrigger>
+                      <SelectContent>
+                        {fornecedores.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Categoria</Label>

@@ -21,10 +21,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useFornecedores } from "@/hooks/useFornecedores";
+import { Link } from "react-router-dom";
 
 interface ContaPagar {
   id: string;
   fornecedor: string;
+  fornecedor_id: string | null;
   descricao: string;
   valor: number;
   categoria: string;
@@ -34,12 +37,12 @@ interface ContaPagar {
 }
 
 const mockContas: ContaPagar[] = [
-  { id: "1", fornecedor: "Papelaria ABC", descricao: "Material de escritório", valor: 350.00, categoria: "Material", data_vencimento: "2026-04-15", data_pagamento: null, status: "Pendente" },
-  { id: "2", fornecedor: "Energia Elétrica S/A", descricao: "Conta de luz - Março", valor: 1850.00, categoria: "Utilidades", data_vencimento: "2026-04-10", data_pagamento: null, status: "Vencido" },
-  { id: "3", fornecedor: "Limpeza Total", descricao: "Serviço de limpeza mensal", valor: 2400.00, categoria: "Serviços", data_vencimento: "2026-04-20", data_pagamento: null, status: "Pendente" },
-  { id: "4", fornecedor: "Editora Saber", descricao: "Livros didáticos 2026", valor: 5200.00, categoria: "Material Didático", data_vencimento: "2026-03-30", data_pagamento: "2026-03-28", status: "Pago" },
-  { id: "5", fornecedor: "Manutenção Predial", descricao: "Reparo na quadra esportiva", valor: 3800.00, categoria: "Manutenção", data_vencimento: "2026-04-25", data_pagamento: null, status: "Pendente" },
-  { id: "6", fornecedor: "Água e Saneamento", descricao: "Conta de água - Março", valor: 680.00, categoria: "Utilidades", data_vencimento: "2026-04-05", data_pagamento: "2026-04-04", status: "Pago" },
+  { id: "1", fornecedor: "Papelaria ABC", fornecedor_id: null, descricao: "Material de escritório", valor: 350.00, categoria: "Material", data_vencimento: "2026-04-15", data_pagamento: null, status: "Pendente" },
+  { id: "2", fornecedor: "Energia Elétrica S/A", fornecedor_id: null, descricao: "Conta de luz - Março", valor: 1850.00, categoria: "Utilidades", data_vencimento: "2026-04-10", data_pagamento: null, status: "Vencido" },
+  { id: "3", fornecedor: "Limpeza Total", fornecedor_id: null, descricao: "Serviço de limpeza mensal", valor: 2400.00, categoria: "Serviços", data_vencimento: "2026-04-20", data_pagamento: null, status: "Pendente" },
+  { id: "4", fornecedor: "Editora Saber", fornecedor_id: null, descricao: "Livros didáticos 2026", valor: 5200.00, categoria: "Material Didático", data_vencimento: "2026-03-30", data_pagamento: "2026-03-28", status: "Pago" },
+  { id: "5", fornecedor: "Manutenção Predial", fornecedor_id: null, descricao: "Reparo na quadra esportiva", valor: 3800.00, categoria: "Manutenção", data_vencimento: "2026-04-25", data_pagamento: null, status: "Pendente" },
+  { id: "6", fornecedor: "Água e Saneamento", fornecedor_id: null, descricao: "Conta de água - Março", valor: 680.00, categoria: "Utilidades", data_vencimento: "2026-04-05", data_pagamento: "2026-04-04", status: "Pago" },
 ];
 
 const categorias = ["Material", "Utilidades", "Serviços", "Material Didático", "Manutenção", "Salários", "Impostos", "Outros"];
@@ -50,7 +53,8 @@ export default function ContasPagar() {
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroCat, setFiltroCat] = useState("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ fornecedor: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "" });
+  const [form, setForm] = useState({ fornecedor_id: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "" });
+  const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
   const filtered = contas.filter((c) => {
     const matchBusca = c.fornecedor.toLowerCase().includes(busca.toLowerCase()) || c.descricao.toLowerCase().includes(busca.toLowerCase());
@@ -72,13 +76,15 @@ export default function ContasPagar() {
   };
 
   const handleSave = () => {
-    if (!form.fornecedor || !form.descricao || !form.valor || !form.data_vencimento) {
+    if (!form.fornecedor_id || !form.descricao || !form.valor || !form.data_vencimento) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
+    const forn = fornecedores.find(f => f.id === form.fornecedor_id);
     const nova: ContaPagar = {
       id: String(Date.now()),
-      fornecedor: form.fornecedor,
+      fornecedor: forn?.nome || "",
+      fornecedor_id: form.fornecedor_id,
       descricao: form.descricao,
       valor: parseFloat(form.valor),
       categoria: form.categoria,
@@ -87,7 +93,7 @@ export default function ContasPagar() {
       status: "Pendente",
     };
     setContas([nova, ...contas]);
-    setForm({ fornecedor: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "" });
+    setForm({ fornecedor_id: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "" });
     setDialogOpen(false);
     toast.success("Conta registrada com sucesso!");
   };
@@ -212,7 +218,18 @@ export default function ContasPagar() {
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label>Fornecedor *</Label>
-              <Input value={form.fornecedor} onChange={e => setForm({ ...form, fornecedor: e.target.value })} placeholder="Nome do fornecedor" />
+              {fornecedores.length === 0 && !loadingForn ? (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum fornecedor cadastrado. <Link to="/parceiros" className="text-primary underline">Cadastrar parceiro do tipo Fornecedor →</Link>
+                </p>
+              ) : (
+                <Select value={form.fornecedor_id} onValueChange={v => setForm({ ...form, fornecedor_id: v })}>
+                  <SelectTrigger><SelectValue placeholder={loadingForn ? "Carregando..." : "Selecione o fornecedor"} /></SelectTrigger>
+                  <SelectContent>
+                    {fornecedores.map(f => <SelectItem key={f.id} value={f.id}>{f.nome} <span className="text-muted-foreground text-xs">({f.categoria})</span></SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="grid gap-2">
               <Label>Descrição *</Label>
