@@ -39,9 +39,9 @@ export function useAlunos() {
   const createAluno = async (aluno: TablesInsert<"alunos">) => {
     // Validação de formato e dígitos verificadores do CPF
     if (aluno.cpf) {
-      const cpfValido = validarCPF(aluno.cpf);
-      if (!cpfValido.valido) {
-        toast.error(cpfValido.erro);
+      const cpfErro = validarCPF(aluno.cpf);
+      if (cpfErro) {
+        toast.error(cpfErro);
         return false;
       }
     }
