@@ -1,17 +1,17 @@
 /**
  * Valida um CPF brasileiro verificando formato e dígitos verificadores.
  * Aceita formatado (000.000.000-00) ou apenas números (00000000000).
- * Retorna { valido: true } ou { valido: false, erro: string }.
+ * Retorna `null` se válido, ou mensagem de erro se inválido.
  */
-export function validarCPF(cpf: string): { valido: true } | { valido: false; erro: string } {
+export function validarCPF(cpf: string): string | null {
   const limpo = cpf.replace(/\D/g, "");
 
   if (limpo.length !== 11) {
-    return { valido: false, erro: "CPF deve conter 11 dígitos numéricos." };
+    return "CPF deve conter 11 dígitos numéricos.";
   }
 
   if (/^(\d)\1{10}$/.test(limpo)) {
-    return { valido: false, erro: "CPF inválido (sequência repetida)." };
+    return "CPF inválido (sequência repetida).";
   }
 
   // Primeiro dígito verificador
@@ -22,7 +22,7 @@ export function validarCPF(cpf: string): { valido: true } | { valido: false; err
   let resto = (soma * 10) % 11;
   if (resto === 10) resto = 0;
   if (resto !== parseInt(limpo[9])) {
-    return { valido: false, erro: "CPF inválido (dígito verificador incorreto)." };
+    return "CPF inválido (dígito verificador incorreto).";
   }
 
   // Segundo dígito verificador
@@ -33,8 +33,8 @@ export function validarCPF(cpf: string): { valido: true } | { valido: false; err
   resto = (soma * 10) % 11;
   if (resto === 10) resto = 0;
   if (resto !== parseInt(limpo[10])) {
-    return { valido: false, erro: "CPF inválido (dígito verificador incorreto)." };
+    return "CPF inválido (dígito verificador incorreto).";
   }
 
-  return { valido: true };
+  return null;
 }
