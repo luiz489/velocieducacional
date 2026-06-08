@@ -302,6 +302,7 @@ function AlunoForm({
   onCancel: () => void;
   submitLabel?: string;
 }) {
+  const [cpf, setCpf] = useState(defaultValues?.cpf ? mascaraCPF(defaultValues.cpf) : "");
   return (
     <form className="space-y-4 mt-2" onSubmit={onSubmit}>
       <div className="grid grid-cols-2 gap-4">
@@ -311,7 +312,7 @@ function AlunoForm({
         </div>
         <div>
           <Label htmlFor="cpf">CPF</Label>
-          <Input id="cpf" name="cpf" placeholder="000.000.000-00" className="mt-1" defaultValue={defaultValues?.cpf} required />
+          <Input id="cpf" name="cpf" placeholder="000.000.000-00" className="mt-1" value={cpf} onChange={(e) => setCpf(mascaraCPF(e.target.value))} required />
         </div>
         <div>
           <Label htmlFor="nascimento">Data de Nascimento</Label>
