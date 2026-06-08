@@ -74,7 +74,7 @@ export default function Alunos() {
     const fd = new FormData(e.currentTarget);
     const ok = await updateAluno(editAluno.id, {
       nome: fd.get("nome") as string,
-      cpf: fd.get("cpf") as string,
+      cpf: limparCPF(fd.get("cpf") as string),
       data_nascimento: fd.get("nascimento") as string,
       endereco: (fd.get("endereco") as string) || null,
       responsavel_financeiro: fd.get("responsavel") as string,
