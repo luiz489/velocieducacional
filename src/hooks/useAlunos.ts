@@ -37,6 +37,14 @@ export function useAlunos() {
   }, [fetchAlunos, fetchTurmas]);
 
   const createAluno = async (aluno: TablesInsert<"alunos">) => {
+    // Validação de formato e dígitos verificadores do CPF
+    if (aluno.cpf) {
+      const cpfValido = validarCPF(aluno.cpf);
+      if (!cpfValido.valido) {
+        toast.error(cpfValido.erro);
+        return false;
+      }
+    }
     // Validação client-side de CPF duplicado
     const { data: existente } = await supabase
       .from("alunos")
