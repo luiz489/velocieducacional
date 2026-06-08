@@ -36,9 +36,23 @@ export function useAlunos() {
   }, [fetchAlunos, fetchTurmas]);
 
   const createAluno = async (aluno: TablesInsert<"alunos">) => {
+    // Validação client-side de CPF duplicado
+    const { data: existente } = await supabase
+      .from("alunos")
+      .select("id, nome")
+      .eq("cpf", aluno.cpf)
+      .maybeSingle();
+    if (existente) {
+      toast.error(`CPF já cadastrado para o aluno "${existente.nome}".`);
+      return false;
+    }
     const { error } = await supabase.from("alunos").insert(aluno);
     if (error) {
-      toast.error("Erro ao cadastrar aluno: " + error.message);
+      if (error.code === "23505" || error.message.toLowerCase().includes("alunos_cpf_unique")) {
+        toast.error("CPF já cadastrado no sistema.");
+      } else {
+        toast.error("Erro ao cadastrar aluno: " + error.message);
+      }
       return false;
     }
     toast.success("Aluno cadastrado com sucesso!");
@@ -47,9 +61,25 @@ export function useAlunos() {
   };
 
   const updateAluno = async (id: string, updates: TablesUpdate<"alunos">) => {
+    if (updates.cpf) {
+      const { data: existente } = await supabase
+        .from("alunos")
+        .select("id, nome")
+        .eq("cpf", updates.cpf)
+        .neq("id", id)
+        .maybeSingle();
+      if (existente) {
+        toast.error(`CPF já cadastrado para o aluno "${existente.nome}".`);
+        return false;
+      }
+    }
     const { error } = await supabase.from("alunos").update(updates).eq("id", id);
     if (error) {
-      toast.error("Erro ao atualizar aluno: " + error.message);
+      if (error.code === "23505" || error.message.toLowerCase().includes("alunos_cpf_unique")) {
+        toast.error("CPF já cadastrado no sistema.");
+      } else {
+        toast.error("Erro ao atualizar aluno: " + error.message);
+      }
       return false;
     }
     toast.success("Aluno atualizado com sucesso!");
@@ -62,12 +92,32 @@ export function useAlunos() {
   };
 
   const matricularAluno = async (alunoId: string, turmaId: string) => {
+    // Validação client-side de matrícula duplicada (mesmo aluno + mesma turma/período)
+    const { data: existente } = await supabase
+      .from("matriculas")
+      .select("id, turmas(nome, ano_letivo)")
+      .eq("aluno_id", alunoId)
+      .eq("turma_id", turmaId)
+      .maybeSingle();
+    if (existente) {
+      const t = (existente as any).turmas;
+      toast.error(
+        t
+          ? `Aluno já matriculado na turma "${t.nome}" (${t.ano_letivo}).`
+          : "Aluno já matriculado nesta turma."
+      );
+      return false;
+    }
     const { error } = await supabase.from("matriculas").insert({
       aluno_id: alunoId,
       turma_id: turmaId,
     });
     if (error) {
-      toast.error("Erro ao matricular: " + error.message);
+      if (error.code === "23505" || error.message.toLowerCase().includes("matriculas_aluno_turma_unique")) {
+        toast.error("Este aluno já está matriculado nesta turma e período.");
+      } else {
+        toast.error("Erro ao matricular: " + error.message);
+      }
       return false;
     }
     toast.success("Matrícula realizada com sucesso!");
