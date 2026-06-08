@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Search, Plus, MoreHorizontal, Filter, FileText, BookOpen, Pencil, GraduationCap, UserX } from "lucide-react";
 import { gerarFichaAluno, gerarBoletim } from "@/lib/relatorios";
-import { limparCPF } from "@/lib/masks";
+import { limparCPF, mascaraCPF } from "@/lib/masks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
