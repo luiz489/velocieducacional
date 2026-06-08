@@ -71,6 +71,11 @@ export function useAlunos() {
 
   const updateAluno = async (id: string, updates: TablesUpdate<"alunos">) => {
     if (updates.cpf) {
+      const cpfErro = validarCPF(updates.cpf);
+      if (cpfErro) {
+        toast.error(cpfErro);
+        return false;
+      }
       const { data: existente } = await supabase
         .from("alunos")
         .select("id, nome")
