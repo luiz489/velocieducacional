@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, Plus, MoreHorizontal, Filter, FileText, BookOpen, Pencil, GraduationCap, UserX } from "lucide-react";
 import { gerarFichaAluno, gerarBoletim } from "@/lib/relatorios";
+import { limparCPF, mascaraCPF } from "@/lib/masks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +57,7 @@ export default function Alunos() {
     const fd = new FormData(e.currentTarget);
     const ok = await createAluno({
       nome: fd.get("nome") as string,
-      cpf: fd.get("cpf") as string,
+      cpf: limparCPF(fd.get("cpf") as string),
       data_nascimento: fd.get("nascimento") as string,
       endereco: (fd.get("endereco") as string) || null,
       responsavel_financeiro: fd.get("responsavel") as string,
@@ -73,7 +74,7 @@ export default function Alunos() {
     const fd = new FormData(e.currentTarget);
     const ok = await updateAluno(editAluno.id, {
       nome: fd.get("nome") as string,
-      cpf: fd.get("cpf") as string,
+      cpf: limparCPF(fd.get("cpf") as string),
       data_nascimento: fd.get("nascimento") as string,
       endereco: (fd.get("endereco") as string) || null,
       responsavel_financeiro: fd.get("responsavel") as string,
@@ -301,6 +302,7 @@ function AlunoForm({
   onCancel: () => void;
   submitLabel?: string;
 }) {
+  const [cpf, setCpf] = useState(defaultValues?.cpf ? mascaraCPF(defaultValues.cpf) : "");
   return (
     <form className="space-y-4 mt-2" onSubmit={onSubmit}>
       <div className="grid grid-cols-2 gap-4">
@@ -310,7 +312,7 @@ function AlunoForm({
         </div>
         <div>
           <Label htmlFor="cpf">CPF</Label>
-          <Input id="cpf" name="cpf" placeholder="000.000.000-00" className="mt-1" defaultValue={defaultValues?.cpf} required />
+          <Input id="cpf" name="cpf" placeholder="000.000.000-00" className="mt-1" value={cpf} onChange={(e) => setCpf(mascaraCPF(e.target.value))} required />
         </div>
         <div>
           <Label htmlFor="nascimento">Data de Nascimento</Label>
