@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { validarCPF } from "@/lib/validations";
 
 export type Aluno = Tables<"alunos">;
 export type Turma = Tables<"turmas">;
@@ -36,6 +37,14 @@ export function useAlunos() {
   }, [fetchAlunos, fetchTurmas]);
 
   const createAluno = async (aluno: TablesInsert<"alunos">) => {
+    // Validação de formato e dígitos verificadores do CPF
+    if (aluno.cpf) {
+      const cpfErro = validarCPF(aluno.cpf);
+      if (cpfErro) {
+        toast.error(cpfErro);
+        return false;
+      }
+    }
     // Validação client-side de CPF duplicado
     const { data: existente } = await supabase
       .from("alunos")
@@ -62,6 +71,11 @@ export function useAlunos() {
 
   const updateAluno = async (id: string, updates: TablesUpdate<"alunos">) => {
     if (updates.cpf) {
+      const cpfErro = validarCPF(updates.cpf);
+      if (cpfErro) {
+        toast.error(cpfErro);
+        return false;
+      }
       const { data: existente } = await supabase
         .from("alunos")
         .select("id, nome")
