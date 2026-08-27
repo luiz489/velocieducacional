@@ -94,3 +94,36 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Tema exclusivo do console da plataforma (modo dono do ERP) */
+@layer base {
+  .plataforma-theme {
+    --background: 250 30% 8%;
+    --foreground: 250 20% 96%;
+    --card: 250 28% 12%;
+    --card-foreground: 250 20% 96%;
+    --popover: 250 28% 12%;
+    --popover-foreground: 250 20% 96%;
+    --primary: 265 85% 65%;
+    --primary-foreground: 250 30% 8%;
+    --secondary: 250 25% 18%;
+    --secondary-foreground: 250 20% 96%;
+    --muted: 250 25% 16%;
+    --muted-foreground: 250 12% 68%;
+    --accent: 170 70% 45%;
+    --accent-foreground: 250 30% 8%;
+    --destructive: 350 80% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 250 22% 22%;
+    --input: 250 22% 22%;
+    --ring: 265 85% 65%;
+    --sidebar-background: 250 32% 6%;
+    --sidebar-foreground: 250 15% 82%;
+    --sidebar-primary: 265 85% 70%;
+    --sidebar-primary-foreground: 250 30% 8%;
+    --sidebar-accent: 250 28% 16%;
+    --sidebar-accent-foreground: 250 20% 96%;
+    --sidebar-border: 250 22% 18%;
+    --sidebar-ring: 265 85% 65%;
+  }
+}

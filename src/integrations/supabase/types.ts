@@ -2583,6 +2583,79 @@ export type Database = {
         }
         Returns: undefined
       }
+      plataforma_clientes_resumo: {
+        Args: never
+        Returns: {
+          alunos_ativos: number | null
+          cidade: string | null
+          data_fim_trial: string | null
+          data_inicio: string | null
+          dia_vencimento: number | null
+          escola_ativa: boolean | null
+          escola_id: string | null
+          escola_nome: string | null
+          limite_alunos: number | null
+          limite_usuarios: number | null
+          plano_atual: string | null
+          status_assinatura: string | null
+          uf: string | null
+          usuarios_ativos: number | null
+          valor_mensal: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_clientes_resumo"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      plataforma_distribuicao_por_plano: {
+        Args: never
+        Returns: {
+          plano: string | null
+          qtd_clientes: number | null
+          receita_do_plano: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_distribuicao_por_plano"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      plataforma_faturas: {
+        Args: { p_ano?: number; p_mes?: number; p_status?: string }
+        Returns: {
+          competencia_ano: number
+          competencia_mes: number
+          criado_em: string
+          data_pagamento: string
+          data_vencimento: string
+          escola_id: string
+          escola_nome: string
+          id: string
+          status: string
+          valor: number
+        }[]
+      }
+      plataforma_overview: {
+        Args: never
+        Returns: {
+          em_trial: number | null
+          escolas_ativas: number | null
+          escolas_suspensas: number | null
+          inadimplentes: number | null
+          mrr_atual: number | null
+          total_alunos_plataforma: number | null
+          total_usuarios_plataforma: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_plataforma_overview"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       reativar_cliente_saas: {
         Args: { p_escola_id: string }
         Returns: undefined
