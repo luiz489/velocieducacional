@@ -105,7 +105,12 @@ export function useAlunos() {
     return updateAluno(id, { status: "Inativo" });
   };
 
-  const matricularAluno = async (alunoId: string, turmaId: string) => {
+  const matricularAluno = async (
+    alunoId: string,
+    turmaId: string,
+    escolaId: string,
+    opcoes?: { data_ingresso?: string; percentual_desconto?: number; bolsa_100?: boolean }
+  ) => {
     // Validação client-side de matrícula duplicada (mesmo aluno + mesma turma/período)
     const { data: existente } = await supabase
       .from("matriculas")
@@ -125,6 +130,10 @@ export function useAlunos() {
     const { error } = await supabase.from("matriculas").insert({
       aluno_id: alunoId,
       turma_id: turmaId,
+      escola_id: escolaId,
+      data_ingresso: opcoes?.data_ingresso,
+      percentual_desconto: opcoes?.percentual_desconto ?? 0,
+      bolsa_100: opcoes?.bolsa_100 ?? false,
     });
     if (error) {
       if (error.code === "23505" || error.message.toLowerCase().includes("matriculas_aluno_turma_unique")) {

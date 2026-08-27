@@ -111,8 +111,8 @@ export default function Alunos() {
   };
 
   const handleMatricula = async () => {
-    if (!matriculaAluno || !selectedTurma) return;
-    const ok = await matricularAluno(matriculaAluno.id, selectedTurma);
+    if (!matriculaAluno || !selectedTurma || !escolaAtivaId) return;
+    const ok = await matricularAluno(matriculaAluno.id, selectedTurma, escolaAtivaId);
     if (ok) {
       setMatriculaOpen(false);
       setMatriculaAluno(null);
