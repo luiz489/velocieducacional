@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,6 +44,7 @@ type MatrizDisc = {
 
 export default function MatrizesCurriculares() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Matriz | null>(null);
   const [manageId, setManageId] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export default function MatrizesCurriculares() {
         const { error } = await supabase.from("matrizes_curriculares").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("matrizes_curriculares").insert(payload);
+        const { error } = await supabase.from("matrizes_curriculares").insert({ ...payload, escola_id: escolaAtivaId });
         if (error) throw error;
       }
     },
@@ -230,6 +232,7 @@ export default function MatrizesCurriculares() {
 }
 
 function ManageDisciplinasDialog({ matrizId, onClose }: { matrizId: string; onClose: () => void }) {
+  const { escolaAtivaId } = useEscolaAtiva();
   const qc = useQueryClient();
   const { data: disciplinas } = useQuery({
     queryKey: ["disciplinas-ativas"],
@@ -260,7 +263,7 @@ function ManageDisciplinasDialog({ matrizId, onClose }: { matrizId: string; onCl
       } else {
         const disc = disciplinas?.find((d) => d.id === disciplinaId);
         const { error } = await supabase.from("matriz_disciplinas").insert({
-          matriz_id: matrizId, disciplina_id: disciplinaId, carga_horaria: disc?.carga_horaria ?? 0,
+          matriz_id: matrizId, disciplina_id: disciplinaId, carga_horaria: disc?.carga_horaria ?? 0, escola_id: escolaAtivaId,
         });
         if (error) throw error;
       }

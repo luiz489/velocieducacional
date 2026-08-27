@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, ShoppingCart, UserCheck, FileText, CheckCircle, XCircle, Eye, ClipboardList } from "lucide-react";
@@ -80,6 +81,7 @@ function useCotacoes(solicitacaoId?: string) {
 
 function AprovadoresTab() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const { data: aprovadores = [], isLoading } = useAprovadores();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ nome: "", cargo: "", email: "", valor_max_aprovacao: "" });
@@ -91,6 +93,7 @@ function AprovadoresTab() {
         cargo: form.cargo,
         email: form.email || null,
         valor_max_aprovacao: Number(form.valor_max_aprovacao) || 0,
+        escola_id: escolaAtivaId,
       });
       if (error) throw error;
     },
@@ -178,6 +181,7 @@ function AprovadoresTab() {
 
 function SolicitacoesTab() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const { data: solicitacoes = [], isLoading } = useSolicitacoes();
   const { data: aprovadores = [] } = useAprovadores();
   const [open, setOpen] = useState(false);
@@ -204,6 +208,7 @@ function SolicitacoesTab() {
         urgencia: form.urgencia,
         data_necessidade: form.data_necessidade || null,
         aprovador_id: aprovadorAdequado?.id || null,
+        escola_id: escolaAtivaId,
       });
       if (error) throw error;
     },
@@ -370,6 +375,7 @@ function SolicitacoesTab() {
 
 function CotacoesSection({ solicitacaoId, status }: { solicitacaoId: string; status: string }) {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const { data: cotacoes = [], isLoading } = useCotacoes(solicitacaoId);
   const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
   const [formOpen, setFormOpen] = useState(false);
@@ -392,6 +398,7 @@ function CotacoesSection({ solicitacaoId, status }: { solicitacaoId: string; sta
         prazo_entrega: form.prazo_entrega || null,
         condicao_pagamento: form.condicao_pagamento || null,
         observacoes: form.observacoes || null,
+        escola_id: escolaAtivaId,
       } as any);
       if (error) throw error;
     },

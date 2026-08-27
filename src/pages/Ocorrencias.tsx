@@ -14,6 +14,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -40,6 +41,7 @@ const tipoConfig: Record<TipoOcorrencia, { icon: typeof AlertTriangle; color: st
 
 export default function Ocorrencias() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [search, setSearch] = useState("");
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -124,6 +126,7 @@ export default function Ocorrencias() {
         data_ocorrencia: form.data,
         registrado_por: prof?.nome || "—",
         professor_id: form.professor_id || null,
+        escola_id: escolaAtivaId,
       } as any);
       if (error) throw error;
     },

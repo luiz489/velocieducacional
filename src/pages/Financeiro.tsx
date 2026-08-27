@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, DollarSign, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,42 +18,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-
-interface Lancamento {
-  id: string;
-  aluno_nome: string;
-  responsavel: string;
-  descricao: string;
-  tipo: "Mensalidade" | "Taxa Extra" | "Material" | "Outros";
-  valor: number;
-  data_vencimento: string;
-  data_pagamento: string | null;
-  status: "Pendente" | "Pago" | "Atrasado";
-  parcela: string;
-}
-
-const mockLancamentos: Lancamento[] = [
-  { id: "1", aluno_nome: "Ana Carolina Silva", responsavel: "Maria Silva", descricao: "Mensalidade Março/2026", tipo: "Mensalidade", valor: 850, data_vencimento: "2026-03-10", data_pagamento: "2026-03-08", status: "Pago", parcela: "3/12" },
-  { id: "2", aluno_nome: "Ana Carolina Silva", responsavel: "Maria Silva", descricao: "Mensalidade Abril/2026", tipo: "Mensalidade", valor: 850, data_vencimento: "2026-04-10", data_pagamento: null, status: "Pendente", parcela: "4/12" },
-  { id: "3", aluno_nome: "João Pedro Souza", responsavel: "Carlos Souza", descricao: "Mensalidade Março/2026", tipo: "Mensalidade", valor: 950, data_vencimento: "2026-03-10", data_pagamento: "2026-03-10", status: "Pago", parcela: "3/12" },
-  { id: "4", aluno_nome: "João Pedro Souza", responsavel: "Carlos Souza", descricao: "Mensalidade Abril/2026", tipo: "Mensalidade", valor: 950, data_vencimento: "2026-04-10", data_pagamento: null, status: "Pendente", parcela: "4/12" },
-  { id: "5", aluno_nome: "Maria Fernanda Costa", responsavel: "Patrícia Costa", descricao: "Mensalidade Fevereiro/2026", tipo: "Mensalidade", valor: 780, data_vencimento: "2026-02-10", data_pagamento: null, status: "Atrasado", parcela: "2/12" },
-  { id: "6", aluno_nome: "Maria Fernanda Costa", responsavel: "Patrícia Costa", descricao: "Mensalidade Março/2026", tipo: "Mensalidade", valor: 780, data_vencimento: "2026-03-10", data_pagamento: null, status: "Atrasado", parcela: "3/12" },
-  { id: "7", aluno_nome: "Maria Fernanda Costa", responsavel: "Patrícia Costa", descricao: "Mensalidade Abril/2026", tipo: "Mensalidade", valor: 780, data_vencimento: "2026-04-10", data_pagamento: null, status: "Pendente", parcela: "4/12" },
-  { id: "8", aluno_nome: "Pedro Henrique Santos", responsavel: "Roberto Santos", descricao: "Mensalidade Abril/2026", tipo: "Mensalidade", valor: 1050, data_vencimento: "2026-04-10", data_pagamento: null, status: "Pendente", parcela: "1/10" },
-  { id: "9", aluno_nome: "Laura Beatriz Oliveira", responsavel: "Juliana Oliveira", descricao: "Mensalidade Março/2026", tipo: "Mensalidade", valor: 850, data_vencimento: "2026-03-10", data_pagamento: "2026-03-12", status: "Pago", parcela: "3/12" },
-  { id: "10", aluno_nome: "Laura Beatriz Oliveira", responsavel: "Juliana Oliveira", descricao: "Mensalidade Abril/2026", tipo: "Mensalidade", valor: 850, data_vencimento: "2026-04-10", data_pagamento: null, status: "Pendente", parcela: "4/12" },
-  { id: "11", aluno_nome: "Gabriel Almeida", responsavel: "Marcos Almeida", descricao: "Taxa Material Didático", tipo: "Material", valor: 320, data_vencimento: "2026-03-15", data_pagamento: null, status: "Atrasado", parcela: "1/1" },
-  { id: "12", aluno_nome: "Isabela Rodrigues", responsavel: "Fernanda Rodrigues", descricao: "Mensalidade Abril/2026", tipo: "Mensalidade", valor: 780, data_vencimento: "2026-04-10", data_pagamento: null, status: "Pendente", parcela: "1/9" },
-  { id: "13", aluno_nome: "Gabriel Almeida", responsavel: "Marcos Almeida", descricao: "Mensalidade Março/2026", tipo: "Mensalidade", valor: 950, data_vencimento: "2026-03-10", data_pagamento: "2026-03-09", status: "Pago", parcela: "2/12" },
-  { id: "14", aluno_nome: "Gabriel Almeida", responsavel: "Marcos Almeida", descricao: "Mensalidade Abril/2026", tipo: "Mensalidade", valor: 950, data_vencimento: "2026-04-10", data_pagamento: null, status: "Pendente", parcela: "3/12" },
-];
+import { useFinanceiro, type LancamentoRow } from "@/hooks/useFinanceiro";
 
 function getStatusBadge(status: string) {
   switch (status) {
     case "Pago": return <Badge className="bg-success text-success-foreground">Pago</Badge>;
     case "Atrasado": return <Badge variant="destructive">Atrasado</Badge>;
+    case "Cancelado": return <Badge variant="outline">Cancelado</Badge>;
     default: return <Badge variant="secondary">Pendente</Badge>;
   }
 }
@@ -67,7 +40,6 @@ function getTipoBadge(tipo: string) {
   }
 }
 
-// Group inadimplentes
 interface Inadimplente {
   responsavel: string;
   aluno_nome: string;
@@ -76,7 +48,7 @@ interface Inadimplente {
   dias_atraso_max: number;
 }
 
-function getInadimplentes(lancamentos: Lancamento[]): Inadimplente[] {
+function getInadimplentes(lancamentos: LancamentoRow[]): Inadimplente[] {
   const atrasados = lancamentos.filter((l) => l.status === "Atrasado");
   const grouped: Record<string, Inadimplente> = {};
   const hoje = new Date();
@@ -94,12 +66,13 @@ function getInadimplentes(lancamentos: Lancamento[]): Inadimplente[] {
 }
 
 export default function Financeiro() {
+  const { lancamentos, loading, confirmarPagamento } = useFinanceiro();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [tipoFilter, setTipoFilter] = useState("todos");
-  const [confirmDialog, setConfirmDialog] = useState<Lancamento | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<LancamentoRow | null>(null);
 
-  const filtered = mockLancamentos.filter((l) => {
+  const filtered = lancamentos.filter((l) => {
     const matchSearch =
       l.aluno_nome.toLowerCase().includes(search.toLowerCase()) ||
       l.responsavel.toLowerCase().includes(search.toLowerCase()) ||
@@ -109,20 +82,30 @@ export default function Financeiro() {
     return matchSearch && matchStatus && matchTipo;
   });
 
-  const totalRecebido = mockLancamentos.filter((l) => l.status === "Pago").reduce((s, l) => s + l.valor, 0);
-  const totalPendente = mockLancamentos.filter((l) => l.status === "Pendente").reduce((s, l) => s + l.valor, 0);
-  const totalAtrasado = mockLancamentos.filter((l) => l.status === "Atrasado").reduce((s, l) => s + l.valor, 0);
+  const totalRecebido = lancamentos.filter((l) => l.status === "Pago").reduce((s, l) => s + l.valor, 0);
+  const totalPendente = lancamentos.filter((l) => l.status === "Pendente").reduce((s, l) => s + l.valor, 0);
+  const totalAtrasado = lancamentos.filter((l) => l.status === "Atrasado").reduce((s, l) => s + l.valor, 0);
   const totalGeral = totalRecebido + totalPendente + totalAtrasado;
   const inadimplencia = totalGeral > 0 ? ((totalAtrasado / totalGeral) * 100) : 0;
 
-  const inadimplentes = getInadimplentes(mockLancamentos);
+  const inadimplentes = getInadimplentes(lancamentos);
 
-  const handleConfirmPagamento = () => {
+  const handleConfirmPagamento = async () => {
     if (confirmDialog) {
-      toast.success(`Pagamento de R$ ${confirmDialog.valor.toFixed(2)} — ${confirmDialog.aluno_nome} confirmado.`);
-      setConfirmDialog(null);
+      const ok = await confirmarPagamento(confirmDialog.id);
+      if (ok) setConfirmDialog(null);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -131,12 +114,11 @@ export default function Financeiro() {
           <h1 className="text-2xl font-bold text-foreground">Financeiro</h1>
           <p className="text-sm text-muted-foreground">Contas a receber e gestão de inadimplência</p>
         </div>
-        <Button variant="outline" onClick={() => toast.info("Relatório exportado com sucesso!")}>
+        <Button variant="outline" onClick={() => toast.info("Exportação ainda não implementada.")}>
           <Download className="h-4 w-4 mr-2" />Exportar Relatório
         </Button>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-sm">
           <CardContent className="pt-5 pb-4 flex items-center gap-4">
@@ -187,7 +169,6 @@ export default function Financeiro() {
         </Card>
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="lancamentos" className="space-y-4">
         <TabsList>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
@@ -199,7 +180,6 @@ export default function Financeiro() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Lancamentos Tab */}
         <TabsContent value="lancamentos" className="space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -253,7 +233,7 @@ export default function Financeiro() {
                       </div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                      {l.descricao} <span className="text-xs">({l.parcela})</span>
+                      {l.descricao}
                     </TableCell>
                     <TableCell>{getTipoBadge(l.tipo)}</TableCell>
                     <TableCell className="font-medium">R$ {l.valor.toFixed(2)}</TableCell>
@@ -274,9 +254,6 @@ export default function Financeiro() {
                               Confirmar Pagamento
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem>Ver Detalhes</DropdownMenuItem>
-                          {l.status === "Pago" && <DropdownMenuItem>Gerar Recibo</DropdownMenuItem>}
-                          {l.status !== "Pago" && <DropdownMenuItem>Enviar Cobrança</DropdownMenuItem>}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -293,11 +270,10 @@ export default function Financeiro() {
             </Table>
           </div>
           <div className="text-sm text-muted-foreground">
-            Mostrando {filtered.length} de {mockLancamentos.length} lançamentos
+            Mostrando {filtered.length} de {lancamentos.length} lançamentos
           </div>
         </TabsContent>
 
-        {/* Inadimplentes Tab */}
         <TabsContent value="inadimplentes" className="space-y-4">
           {inadimplentes.length === 0 ? (
             <Card className="shadow-sm">
@@ -347,7 +323,6 @@ export default function Financeiro() {
                       <TableHead>Parcelas Atrasadas</TableHead>
                       <TableHead>Total Devido</TableHead>
                       <TableHead>Dias em Atraso</TableHead>
-                      <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -364,20 +339,6 @@ export default function Financeiro() {
                         <TableCell>
                           <span className="text-sm font-medium">{inad.dias_atraso_max} dias</span>
                         </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>Ver Parcelas</DropdownMenuItem>
-                              <DropdownMenuItem>Enviar Cobrança</DropdownMenuItem>
-                              <DropdownMenuItem>Negociar Dívida</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -388,7 +349,6 @@ export default function Financeiro() {
         </TabsContent>
       </Tabs>
 
-      {/* Confirm Payment Dialog */}
       <Dialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>

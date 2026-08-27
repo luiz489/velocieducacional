@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { IdCard, RefreshCw, Eye } from "lucide-react";
@@ -25,6 +26,7 @@ type Carteirinha = {
 
 export default function Carteirinhas() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [preview, setPreview] = useState<{ aluno: Aluno; carteira: Carteirinha } | null>(null);
 
   const { data: alunos } = useQuery({
@@ -60,7 +62,7 @@ export default function Carteirinhas() {
         if (error) throw error;
       } else {
         const { error } = await supabase.from("carteirinhas").insert({
-          aluno_id: aluno.id, codigo, validade, qr_data, status: "Ativa",
+          aluno_id: aluno.id, codigo, validade, qr_data, status: "Ativa", escola_id: escolaAtivaId,
         });
         if (error) throw error;
       }

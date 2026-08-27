@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,6 +46,7 @@ const PRIORIDADE_VARIANT: Record<string, "default" | "secondary" | "destructive"
 
 export default function Avisos() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [canal, setCanal] = useState<Canal>("secretaria");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Aviso | null>(null);
@@ -83,7 +85,7 @@ export default function Avisos() {
         const { error } = await supabase.from("avisos").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("avisos").insert(payload);
+        const { error } = await supabase.from("avisos").insert({ ...payload, escola_id: escolaAtivaId });
         if (error) throw error;
       }
     },

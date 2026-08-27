@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { toast } from "@/hooks/use-toast";
 import { MapPin, Phone, Globe, Mail, Navigation, Search, Plus } from "lucide-react";
 import { ESTADOS, CIDADES_SP } from "@/lib/cidadesSP";
@@ -50,6 +51,7 @@ const tipoColor: Record<TipoParceiro, string> = {
 };
 
 export default function Parceiros() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [loading, setLoading] = useState(true);
   const [estado, setEstado] = useState("SP");
@@ -151,6 +153,7 @@ export default function Parceiros() {
       email: form.email || null,
       website: form.website || null,
       ativo: true,
+      escola_id: escolaAtivaId,
     });
     setSaving(false);
     if (error) {

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Trash2, Clock } from "lucide-react";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 const DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -19,7 +20,8 @@ type Aula = {
   dia_semana: number;
   hora_inicio: string;
   hora_fim: string;
-  disciplina: string;
+  disciplina_id: string | null;
+  disciplina_texto_legado: string;
   professor: string | null;
   professor_id: string | null;
   sala: string | null;
@@ -27,9 +29,11 @@ type Aula = {
 };
 
 type ProfessorOpt = { id: string; nome: string; ativo: boolean };
+type DisciplinaOpt = { id: string; nome: string };
 
 export default function Horarios() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [turmaId, setTurmaId] = useState<string>("");
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [open, setOpen] = useState(false);
@@ -37,7 +41,7 @@ export default function Horarios() {
     dia_semana: 1,
     hora_inicio: "07:00",
     hora_fim: "07:50",
-    disciplina: "",
+    disciplina_id: "",
     professor_id: "",
     sala: "",
   });
@@ -79,25 +83,47 @@ export default function Horarios() {
     },
   });
 
+  const { data: disciplinas } = useQuery({
+    queryKey: ["disciplinas-ativas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("disciplinas")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data as DisciplinaOpt[];
+    },
+  });
+
   const profMap = useMemo(() => {
     const m = new Map<string, string>();
     professores?.forEach((p) => m.set(p.id, p.nome));
     return m;
   }, [professores]);
 
+  const discMap = useMemo(() => {
+    const m = new Map<string, string>();
+    disciplinas?.forEach((d) => m.set(d.id, d.nome));
+    return m;
+  }, [disciplinas]);
+
   const save = useMutation({
     mutationFn: async () => {
       const profNome = form.professor_id ? profMap.get(form.professor_id) ?? null : null;
+      const discNome = discMap.get(form.disciplina_id) ?? "";
       const { error } = await supabase.from("horarios_aulas").insert({
         dia_semana: form.dia_semana,
         hora_inicio: form.hora_inicio,
         hora_fim: form.hora_fim,
-        disciplina: form.disciplina,
+        disciplina_id: form.disciplina_id || null,
+        disciplina_texto_legado: discNome,
         turma_id: turmaId,
         ano_letivo: ano,
         professor_id: form.professor_id || null,
         professor: profNome,
         sala: form.sala || null,
+        escola_id: escolaAtivaId,
       });
       if (error) throw error;
     },
@@ -105,7 +131,7 @@ export default function Horarios() {
       toast.success("Aula adicionada");
       qc.invalidateQueries({ queryKey: ["horarios"] });
       setOpen(false);
-      setForm({ dia_semana: 1, hora_inicio: "07:00", hora_fim: "07:50", disciplina: "", professor_id: "", sala: "" });
+      setForm({ dia_semana: 1, hora_inicio: "07:00", hora_fim: "07:50", disciplina_id: "", professor_id: "", sala: "" });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -171,7 +197,7 @@ export default function Horarios() {
                   <div className="text-center text-sm font-semibold border-b pb-2">{d}</div>
                   {(grade[idx + 1] ?? []).map((a) => (
                     <div key={a.id} className="rounded-md border bg-card p-2 text-xs space-y-1 relative">
-                      <div className="font-semibold">{a.disciplina}</div>
+                      <div className="font-semibold">{a.disciplina_id ? (discMap.get(a.disciplina_id) ?? a.disciplina_texto_legado) : a.disciplina_texto_legado}</div>
                       <div className="text-muted-foreground">{a.hora_inicio.slice(0,5)} - {a.hora_fim.slice(0,5)}</div>
                       {a.professor && <div className="text-muted-foreground">Prof. {a.professor}</div>}
                       {a.sala && <div className="text-muted-foreground">Sala {a.sala}</div>}
@@ -204,7 +230,12 @@ export default function Horarios() {
               </div>
               <div>
                 <Label>Disciplina</Label>
-                <Input value={form.disciplina} onChange={(e) => setForm({ ...form, disciplina: e.target.value })} />
+                <Select value={form.disciplina_id} onValueChange={(v) => setForm({ ...form, disciplina_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {disciplinas?.map((d) => <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Início</Label>
@@ -231,7 +262,7 @@ export default function Horarios() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={() => save.mutate()} disabled={!form.disciplina}>Salvar</Button>
+            <Button onClick={() => save.mutate()} disabled={!form.disciplina_id}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

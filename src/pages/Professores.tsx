@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, GraduationCap } from "lucide-react";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 type Professor = {
   id: string;
@@ -40,6 +41,7 @@ const emptyForm = {
 
 export default function Professores() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Professor | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -95,7 +97,7 @@ export default function Professores() {
         const { error } = await supabase.from("professores").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("professores").insert(payload);
+        const { error } = await supabase.from("professores").insert({ ...payload, escola_id: escolaAtivaId });
         if (error) throw error;
       }
     },

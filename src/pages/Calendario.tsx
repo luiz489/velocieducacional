@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ type Evento = {
 
 export default function Calendario() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [tipo, setTipo] = useState<Tipo>("anual");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Evento | null>(null);
@@ -67,7 +69,7 @@ export default function Calendario() {
         const { error } = await supabase.from("eventos_calendario").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("eventos_calendario").insert(payload);
+        const { error } = await supabase.from("eventos_calendario").insert({ ...payload, escola_id: escolaAtivaId });
         if (error) throw error;
       }
     },

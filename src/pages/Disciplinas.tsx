@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ type Disciplina = {
 
 export default function Disciplinas() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Disciplina | null>(null);
   const [form, setForm] = useState({ nome: "", codigo: "", carga_horaria: 0, descricao: "", ativo: true });
@@ -63,7 +65,7 @@ export default function Disciplinas() {
         const { error } = await supabase.from("disciplinas").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("disciplinas").insert(payload);
+        const { error } = await supabase.from("disciplinas").insert({ ...payload, escola_id: escolaAtivaId });
         if (error) throw error;
       }
     },

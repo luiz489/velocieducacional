@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import {
   Select,
   SelectContent,
@@ -84,6 +85,7 @@ const statusColors: Record<string, string> = {
 
 export default function Contratos() {
   const queryClient = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("Todos");
@@ -124,6 +126,7 @@ export default function Contratos() {
         data_fim: form.data_fim || null,
         dia_vencimento: parseInt(form.dia_vencimento),
         observacoes: form.observacoes || null,
+        escola_id: escolaAtivaId,
       });
       if (error) throw error;
     },

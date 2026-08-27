@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -39,6 +40,7 @@ const STATUS_VARIANT: Record<Status, "default" | "secondary" | "destructive" | "
 
 export default function Rematricula() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     aluno_id: "",
@@ -86,6 +88,7 @@ export default function Rematricula() {
         turma_destino_id: form.turma_destino_id || null,
         status: form.status,
         observacoes: form.observacoes || null,
+        escola_id: escolaAtivaId,
       });
       if (error) throw error;
     },
