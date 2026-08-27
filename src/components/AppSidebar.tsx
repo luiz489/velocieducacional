@@ -69,6 +69,8 @@ const menuGroups = [
     label: "Pedagógico",
     items: [
       { title: "Professores", url: "/professores", icon: UserCheck },
+      { title: "Funcionários (CLT)", url: "/funcionarios", icon: UserCheck },
+      { title: "Pagamentos Funcionários", url: "/pagamentos-funcionarios", icon: Wallet },
       { title: "Disciplinas", url: "/disciplinas", icon: BookOpen },
       { title: "Matrizes Curriculares", url: "/matrizes-curriculares", icon: GraduationCap },
       { title: "Notas", url: "/notas", icon: GraduationCap },
