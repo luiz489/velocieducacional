@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { GraduationCap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { IdCard, RefreshCw, Eye } from "lucide-react";
 import { format, addYears } from "date-fns";
-import logoDM from "@/assets/logo-dm.png";
 
 type Aluno = { id: string; nome: string; cpf: string; data_nascimento: string };
 type Carteirinha = {
@@ -26,7 +26,8 @@ type Carteirinha = {
 
 export default function Carteirinhas() {
   const qc = useQueryClient();
-  const { escolaAtivaId } = useEscolaAtiva();
+  const { escolaAtivaId, escolas } = useEscolaAtiva();
+  const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Escola";
   const [preview, setPreview] = useState<{ aluno: Aluno; carteira: Carteirinha } | null>(null);
 
   const { data: alunos } = useQuery({
@@ -134,9 +135,11 @@ export default function Carteirinhas() {
           {preview && (
             <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-accent/10 p-5 space-y-3">
               <div className="flex items-center gap-3">
-                <img src={logoDM} alt="DM" className="h-12 w-12 rounded-full" />
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <GraduationCap className="h-6 w-6 text-primary" />
+                </div>
                 <div>
-                  <div className="text-xs uppercase text-muted-foreground">Colégio DM</div>
+                  <div className="text-xs uppercase text-muted-foreground">{escolaNome}</div>
                   <div className="font-bold">Carteirinha Estudantil</div>
                 </div>
               </div>

@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { GraduationCap } from "lucide-react";
 import {
   GraduationCap,
   DollarSign,
@@ -15,7 +17,6 @@ import {
   Bell,
   User,
 } from "lucide-react";
-import logoDM from "@/assets/logo-dm.png";
 
 type Tile = {
   title: string;
@@ -41,15 +42,20 @@ const tiles: Tile[] = [
 ];
 
 export default function AppMobile() {
+  const { escolaAtivaId, escolas } = useEscolaAtiva();
+  const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
       {/* Header */}
       <header className="bg-gradient-to-br from-primary to-orange-500 text-primary-foreground px-5 pt-8 pb-12 rounded-b-3xl shadow-lg">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <img src={logoDM} alt="Colégio DM" className="h-9 w-9 rounded-full bg-white p-0.5" />
+            <div className="h-9 w-9 rounded-full bg-white/90 flex items-center justify-center">
+              <GraduationCap className="h-5 w-5 text-primary" />
+            </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wider opacity-80">Colégio DM</p>
+              <p className="text-[11px] uppercase tracking-wider opacity-80">{escolaNome}</p>
               <p className="text-sm font-semibold">Área do Responsável</p>
             </div>
           </div>

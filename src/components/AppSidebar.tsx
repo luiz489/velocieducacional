@@ -22,8 +22,9 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { GraduationCap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import logoDM from "@/assets/logo-dm.png";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -108,15 +109,19 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
+  const { escolaAtivaId, escolas } = useEscolaAtiva();
+  const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
         <div className="flex items-center gap-3">
-          <img src={logoDM} alt="Colégio DM" className="h-10 w-10 rounded-full shrink-0" />
+          <div className="h-10 w-10 rounded-full shrink-0 bg-sidebar-primary/10 flex items-center justify-center">
+            <GraduationCap className="h-5 w-5 text-sidebar-primary" />
+          </div>
           {!collapsed && (
             <div>
-              <h2 className="text-sm font-bold text-sidebar-primary">Colégio DM</h2>
+              <h2 className="text-sm font-bold text-sidebar-primary">{escolaNome}</h2>
               <p className="text-xs text-sidebar-foreground/60">ERP Escolar</p>
             </div>
           )}
