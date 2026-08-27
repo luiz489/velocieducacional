@@ -7,7 +7,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -19,8 +19,10 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTurmas } from "@/hooks/useTurmas";
+import { useTurmas, type TurmaRow } from "@/hooks/useTurmas";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 function getOcupacaoColor(percent: number) {
   if (percent >= 95) return "destructive" as const;
@@ -48,6 +50,10 @@ export default function Turmas() {
   const [turno, setTurno] = useState("Manhã");
   const [sala, setSala] = useState("");
   const [vagas, setVagas] = useState("30");
+
+  const [turmaAlunos, setTurmaAlunos] = useState<TurmaRow | null>(null);
+  const [alunosDaTurma, setAlunosDaTurma] = useState<{ id: string; nome: string; cpf: string; status_pagamento: string }[]>([]);
+  const [loadingAlunos, setLoadingAlunos] = useState(false);
 
   const filtered = turmas.filter((t) => {
     const matchSearch =
@@ -85,6 +91,31 @@ export default function Turmas() {
       setDialogOpen(false);
       resetForm();
     }
+  };
+
+  const handleVerAlunos = async (turma: TurmaRow) => {
+    setTurmaAlunos(turma);
+    setLoadingAlunos(true);
+    const { data, error } = await supabase
+      .from("matriculas")
+      .select("status_pagamento, alunos ( id, nome, cpf )")
+      .eq("turma_id", turma.id);
+    setLoadingAlunos(false);
+    if (error) {
+      toast.error("Erro ao carregar alunos: " + error.message);
+      return;
+    }
+    setAlunosDaTurma(
+      (data ?? [])
+        .filter((m: any) => m.alunos)
+        .map((m: any) => ({
+          id: m.alunos.id,
+          nome: m.alunos.nome,
+          cpf: m.alunos.cpf,
+          status_pagamento: m.status_pagamento,
+        }))
+        .sort((a, b) => a.nome.localeCompare(b.nome))
+    );
   };
 
   if (loading) {
@@ -252,7 +283,7 @@ export default function Turmas() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver Alunos</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleVerAlunos(turma)}>Ver Alunos</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -273,6 +304,51 @@ export default function Turmas() {
       <div className="text-sm text-muted-foreground">
         Mostrando {filtered.length} de {turmas.length} turmas
       </div>
+
+      <Dialog open={!!turmaAlunos} onOpenChange={(open) => !open && setTurmaAlunos(null)}>
+        <DialogContent className="sm:max-w-md max-h-[75vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Alunos — {turmaAlunos?.nome}</DialogTitle>
+            <DialogDescription>
+              {turmaAlunos && `${turmaAlunos.turno} · Ano letivo ${turmaAlunos.ano_letivo}`}
+            </DialogDescription>
+          </DialogHeader>
+          {loadingAlunos ? (
+            <div className="space-y-2 py-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : alunosDaTurma.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Nenhum aluno matriculado nesta turma ainda.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>CPF</TableHead>
+                  <TableHead>Pagamento</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alunosDaTurma.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.nome}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{a.cpf}</TableCell>
+                    <TableCell>
+                      <Badge variant={a.status_pagamento === "Pago" ? "default" : a.status_pagamento === "Atrasado" ? "destructive" : "secondary"}>
+                        {a.status_pagamento}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
