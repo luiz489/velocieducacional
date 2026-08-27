@@ -10,6 +10,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, GraduationCap } from "lucide-react";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -25,6 +26,17 @@ type Professor = {
   data_admissao: string | null;
   observacoes: string | null;
   ativo: boolean;
+  tipo_contratacao: string;
+  cnpj: string | null;
+  razao_social: string | null;
+  banco_codigo: string | null;
+  banco_nome: string | null;
+  agencia: string | null;
+  conta: string | null;
+  tipo_conta: string | null;
+  chave_pix: string | null;
+  valor_mensal: number | null;
+  dia_pagamento: number | null;
 };
 
 const emptyForm = {
@@ -37,6 +49,17 @@ const emptyForm = {
   data_admissao: "",
   observacoes: "",
   ativo: true,
+  tipo_contratacao: "CLT",
+  cnpj: "",
+  razao_social: "",
+  banco_codigo: "",
+  banco_nome: "",
+  agencia: "",
+  conta: "",
+  tipo_conta: "Corrente",
+  chave_pix: "",
+  valor_mensal: "",
+  dia_pagamento: "5",
 };
 
 export default function Professores() {
@@ -73,6 +96,17 @@ export default function Professores() {
       data_admissao: p.data_admissao ?? "",
       observacoes: p.observacoes ?? "",
       ativo: p.ativo,
+      tipo_contratacao: p.tipo_contratacao ?? "CLT",
+      cnpj: p.cnpj ?? "",
+      razao_social: p.razao_social ?? "",
+      banco_codigo: p.banco_codigo ?? "",
+      banco_nome: p.banco_nome ?? "",
+      agencia: p.agencia ?? "",
+      conta: p.conta ?? "",
+      tipo_conta: p.tipo_conta ?? "Corrente",
+      chave_pix: p.chave_pix ?? "",
+      valor_mensal: p.valor_mensal != null ? String(p.valor_mensal) : "",
+      dia_pagamento: p.dia_pagamento != null ? String(p.dia_pagamento) : "5",
     });
     setOpen(true);
   };
@@ -92,6 +126,17 @@ export default function Professores() {
         data_admissao: form.data_admissao || null,
         observacoes: form.observacoes || null,
         ativo: form.ativo,
+        tipo_contratacao: form.tipo_contratacao,
+        cnpj: form.tipo_contratacao === "PJ" ? (form.cnpj || null) : null,
+        razao_social: form.tipo_contratacao === "PJ" ? (form.razao_social || null) : null,
+        banco_codigo: form.banco_codigo || null,
+        banco_nome: form.banco_nome || null,
+        agencia: form.agencia || null,
+        conta: form.conta || null,
+        tipo_conta: form.tipo_conta || null,
+        chave_pix: form.chave_pix || null,
+        valor_mensal: form.tipo_contratacao === "PJ" && form.valor_mensal ? Number(form.valor_mensal) : null,
+        dia_pagamento: form.tipo_contratacao === "PJ" && form.dia_pagamento ? Number(form.dia_pagamento) : null,
       };
       if (editing) {
         const { error } = await supabase.from("professores").update(payload).eq("id", editing.id);
@@ -122,6 +167,8 @@ export default function Professores() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const isPJ = form.tipo_contratacao === "PJ";
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-end justify-between gap-3 flex-wrap">
@@ -146,7 +193,7 @@ export default function Professores() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Disciplinas</TableHead>
-                <TableHead>Formação</TableHead>
+                <TableHead>Contratação</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[110px]">Ações</TableHead>
               </TableRow>
@@ -182,7 +229,16 @@ export default function Professores() {
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">{p.formacao}</TableCell>
+                  <TableCell>
+                    <Badge variant={p.tipo_contratacao === "PJ" ? "outline" : "secondary"}>
+                      {p.tipo_contratacao}
+                    </Badge>
+                    {p.tipo_contratacao === "PJ" && p.valor_mensal && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        R$ {Number(p.valor_mensal).toFixed(2)}/mês
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={p.ativo ? "default" : "outline"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
                   </TableCell>
@@ -210,7 +266,7 @@ export default function Professores() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar professor" : "Novo professor"}</DialogTitle>
           </DialogHeader>
@@ -251,25 +307,103 @@ export default function Professores() {
                 onChange={(e) => setForm({ ...form, disciplinas: e.target.value })}
               />
             </div>
-            <div className="col-span-2">
-              <Label>Observações</Label>
-              <Textarea
-                value={form.observacoes}
-                onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
-              />
-            </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <Checkbox
-                id="ativo"
-                checked={form.ativo}
-                onCheckedChange={(v) => setForm({ ...form, ativo: !!v })}
-              />
-              <Label htmlFor="ativo" className="cursor-pointer">
-                Professor ativo
-              </Label>
+          </div>
+
+          <div className="border-t pt-4 mt-2">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Contratação e dados financeiros</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <Label>Tipo de Contratação</Label>
+                <Select value={form.tipo_contratacao} onValueChange={(v) => setForm({ ...form, tipo_contratacao: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CLT">CLT (folha de pagamento)</SelectItem>
+                    <SelectItem value="PJ">Pessoa Jurídica (conta a pagar)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isPJ && (
+                <>
+                  <div>
+                    <Label>CNPJ</Label>
+                    <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" />
+                  </div>
+                  <div>
+                    <Label>Razão Social</Label>
+                    <Input value={form.razao_social} onChange={(e) => setForm({ ...form, razao_social: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Valor Mensal (R$)</Label>
+                    <Input type="number" step="0.01" value={form.valor_mensal} onChange={(e) => setForm({ ...form, valor_mensal: e.target.value })} placeholder="0,00" />
+                  </div>
+                  <div>
+                    <Label>Dia de Pagamento</Label>
+                    <Select value={form.dia_pagamento} onValueChange={(v) => setForm({ ...form, dia_pagamento: v })}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 15, 20, 25].map((d) => (
+                          <SelectItem key={d} value={String(d)}>Dia {d}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              <div className="col-span-2 text-xs text-muted-foreground -mb-1">Dados bancários (para depósito/PIX)</div>
+              <div>
+                <Label>Banco</Label>
+                <Input value={form.banco_nome} onChange={(e) => setForm({ ...form, banco_nome: e.target.value })} placeholder="Ex: Banco do Brasil" />
+              </div>
+              <div>
+                <Label>Código do Banco</Label>
+                <Input value={form.banco_codigo} onChange={(e) => setForm({ ...form, banco_codigo: e.target.value })} placeholder="Ex: 001" />
+              </div>
+              <div>
+                <Label>Agência</Label>
+                <Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} />
+              </div>
+              <div>
+                <Label>Conta</Label>
+                <Input value={form.conta} onChange={(e) => setForm({ ...form, conta: e.target.value })} />
+              </div>
+              <div>
+                <Label>Tipo de Conta</Label>
+                <Select value={form.tipo_conta} onValueChange={(v) => setForm({ ...form, tipo_conta: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Corrente">Corrente</SelectItem>
+                    <SelectItem value="Poupança">Poupança</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Chave PIX</Label>
+                <Input value={form.chave_pix} onChange={(e) => setForm({ ...form, chave_pix: e.target.value })} placeholder="CPF, e-mail, telefone ou aleatória" />
+              </div>
             </div>
           </div>
-          <DialogFooter>
+
+          <div className="col-span-2 mt-3">
+            <Label>Observações</Label>
+            <Textarea
+              value={form.observacoes}
+              onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+            />
+          </div>
+          <div className="col-span-2 flex items-center gap-2 mt-3">
+            <Checkbox
+              id="ativo"
+              checked={form.ativo}
+              onCheckedChange={(v) => setForm({ ...form, ativo: !!v })}
+            />
+            <Label htmlFor="ativo" className="cursor-pointer">
+              Professor ativo
+            </Label>
+          </div>
+
+          <DialogFooter className="mt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>

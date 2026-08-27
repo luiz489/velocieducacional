@@ -28,6 +28,7 @@ import Carteirinhas from "@/pages/Carteirinhas";
 import Documentos from "@/pages/Documentos";
 import GerarDocumento from "@/pages/GerarDocumento";
 import PlanosFinanceirosTurma from "@/pages/PlanosFinanceirosTurma";
+import PagamentosProfessores from "@/pages/PagamentosProfessores";
 import AppMobile from "@/pages/AppMobile";
 import AppFinanceiro from "@/pages/AppFinanceiro";
 import Login from "@/pages/Login";
@@ -65,6 +66,7 @@ function ProtectedRoutes() {
         <Route path="/financeiro" element={<FinanceiroPage />} />
         <Route path="/contas-a-pagar" element={<ContasPagar />} />
         <Route path="/planos-financeiros" element={<PlanosFinanceirosTurma />} />
+        <Route path="/pagamentos-professores" element={<PagamentosProfessores />} />
         <Route path="/contratos" element={<Contratos />} />
         <Route path="/compras" element={<Compras />} />
         <Route path="/notas" element={<Pedagogico />} />

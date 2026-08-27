@@ -85,9 +85,9 @@ export type Database = {
         Relationships: []
       }
       contas_a_pagar: {
-        Row: { categoria: string; created_at: string; data_pagamento: string | null; data_vencimento: string; descricao: string; escola_id: string; fornecedor: string; fornecedor_id: string | null; id: string; status: string; updated_at: string; valor: number }
-        Insert: { categoria?: string; created_at?: string; data_pagamento?: string | null; data_vencimento: string; descricao: string; escola_id: string; fornecedor: string; fornecedor_id?: string | null; id?: string; status?: string; updated_at?: string; valor: number }
-        Update: { categoria?: string; created_at?: string; data_pagamento?: string | null; data_vencimento?: string; descricao?: string; escola_id?: string; fornecedor?: string; fornecedor_id?: string | null; id?: string; status?: string; updated_at?: string; valor?: number }
+        Row: { categoria: string; competencia_ano: number | null; competencia_mes: number | null; created_at: string; data_pagamento: string | null; data_vencimento: string; descricao: string; escola_id: string; fornecedor: string; fornecedor_id: string | null; id: string; professor_id: string | null; status: string; updated_at: string; valor: number }
+        Insert: { categoria?: string; competencia_ano?: number | null; competencia_mes?: number | null; created_at?: string; data_pagamento?: string | null; data_vencimento: string; descricao: string; escola_id: string; fornecedor: string; fornecedor_id?: string | null; id?: string; professor_id?: string | null; status?: string; updated_at?: string; valor: number }
+        Update: { categoria?: string; competencia_ano?: number | null; competencia_mes?: number | null; created_at?: string; data_pagamento?: string | null; data_vencimento?: string; descricao?: string; escola_id?: string; fornecedor?: string; fornecedor_id?: string | null; id?: string; professor_id?: string | null; status?: string; updated_at?: string; valor?: number }
         Relationships: []
       }
       contratantes: {
@@ -271,9 +271,9 @@ export type Database = {
         Relationships: []
       }
       professores: {
-        Row: { ativo: boolean; cpf: string | null; created_at: string; data_admissao: string | null; disciplinas: string[]; email: string | null; escola_id: string; formacao: string | null; id: string; nome: string; observacoes: string | null; telefone: string | null; updated_at: string }
-        Insert: { ativo?: boolean; cpf?: string | null; created_at?: string; data_admissao?: string | null; disciplinas?: string[]; email?: string | null; escola_id: string; formacao?: string | null; id?: string; nome: string; observacoes?: string | null; telefone?: string | null; updated_at?: string }
-        Update: { ativo?: boolean; cpf?: string | null; created_at?: string; data_admissao?: string | null; disciplinas?: string[]; email?: string | null; escola_id?: string; formacao?: string | null; id?: string; nome?: string; observacoes?: string | null; telefone?: string | null; updated_at?: string }
+        Row: { agencia: string | null; ativo: boolean; banco_codigo: string | null; banco_nome: string | null; chave_pix: string | null; cnpj: string | null; conta: string | null; cpf: string | null; created_at: string; data_admissao: string | null; dia_pagamento: number | null; disciplinas: string[]; email: string | null; escola_id: string; formacao: string | null; id: string; nome: string; observacoes: string | null; razao_social: string | null; telefone: string | null; tipo_conta: string | null; tipo_contratacao: string; updated_at: string; valor_mensal: number | null }
+        Insert: { agencia?: string | null; ativo?: boolean; banco_codigo?: string | null; banco_nome?: string | null; chave_pix?: string | null; cnpj?: string | null; conta?: string | null; cpf?: string | null; created_at?: string; data_admissao?: string | null; dia_pagamento?: number | null; disciplinas?: string[]; email?: string | null; escola_id: string; formacao?: string | null; id?: string; nome: string; observacoes?: string | null; razao_social?: string | null; telefone?: string | null; tipo_conta?: string | null; tipo_contratacao?: string; updated_at?: string; valor_mensal?: number | null }
+        Update: { agencia?: string | null; ativo?: boolean; banco_codigo?: string | null; banco_nome?: string | null; chave_pix?: string | null; cnpj?: string | null; conta?: string | null; cpf?: string | null; created_at?: string; data_admissao?: string | null; dia_pagamento?: number | null; disciplinas?: string[]; email?: string | null; escola_id?: string; formacao?: string | null; id?: string; nome?: string; observacoes?: string | null; razao_social?: string | null; telefone?: string | null; tipo_conta?: string | null; tipo_contratacao?: string; updated_at?: string; valor_mensal?: number | null }
         Relationships: []
       }
       profiles: {
@@ -343,7 +343,11 @@ export type Database = {
         Relationships: []
       }
       v_documento_dados: {
-        Row: { aluno_cpf: string | null; aluno_id: string | null; ano: number | null; contratante_cpf: string | null; contratante_email: string | null; contratante_endereco: string | null; contratante_id: string | null; contratante_nome: string | null; contratante_rg: string | null; contratante_telefone: string | null; data_nascimento: string | null; ensino_padrao: string | null; escola_cidade: string | null; escola_cnpj: string | null; escola_id: string | null; escola_nome: string | null; escola_uf: string | null; matricula_id: string | null; naturalidade_cidade: string | null; naturalidade_uf: string | null; nome: string | null; nome_mae: string | null; nome_pai: string | null; serie: string | null }
+        Row: { aluno_cpf: string | null; aluno_id: string | null; ano: number | null; bolsa_100: boolean | null; contratante_cpf: string | null; contratante_email: string | null; contratante_endereco: string | null; contratante_id: string | null; contratante_nome: string | null; contratante_rg: string | null; contratante_telefone: string | null; data_nascimento: string | null; dia_vencimento: number | null; diretor_cargo: string | null; diretor_nome: string | null; ensino_padrao: string | null; escola_cidade: string | null; escola_cnpj: string | null; escola_id: string | null; escola_nome: string | null; escola_uf: string | null; matricula_id: string | null; naturalidade_cidade: string | null; naturalidade_uf: string | null; nome: string | null; nome_mae: string | null; nome_pai: string | null; numero_parcelas: number | null; percentual_desconto: number | null; ra_censo: string | null; serie: string | null; taxa_matricula: number | null; valor_mensalidade: number | null; valor_mensalidade_com_desconto: number | null; valor_mensalidade_com_desconto_extenso: string | null }
+        Relationships: []
+      }
+      v_pagamentos_professores_export: {
+        Row: { agencia: string | null; banco_codigo: string | null; banco_nome: string | null; chave_pix: string | null; cnpj: string | null; competencia_ano: number | null; competencia_mes: number | null; conta: string | null; conta_id: string | null; data_vencimento: string | null; escola_id: string | null; professor_id: string | null; professor_nome: string | null; razao_social: string | null; status: string | null; tipo_conta: string | null; valor: number | null }
         Relationships: []
       }
       v_faturamento_saas_mensal: {
@@ -363,8 +367,13 @@ export type Database = {
       bootstrap_admin: { Args: Record<string, never>; Returns: boolean }
       clonar_papeis_modelo_para_escola: { Args: { p_escola_id: string }; Returns: undefined }
       criar_novo_cliente_saas: { Args: { p_dias_trial?: number; p_nome_escola: string; p_plano_id: string }; Returns: string }
+      fn_data_por_extenso: { Args: { p_data?: string }; Returns: string }
+      fn_numero_por_extenso: { Args: { n: number }; Returns: string }
+      fn_tri_extenso: { Args: { n: number }; Returns: string }
+      fn_valor_por_extenso: { Args: { p_valor: number }; Returns: string }
       gerar_documento: { Args: { p_aluno_id: string; p_template_id: string; p_valores_manuais?: Json }; Returns: string }
       gerar_faturas_do_mes: { Args: { p_ano?: number; p_mes?: number }; Returns: { escola_id: string; escola_nome: string; fatura_id: string; valor: number }[] }
+      gerar_pagamentos_professores_pj: { Args: { p_ano?: number; p_mes?: number }; Returns: { out_conta_id: string; out_professor_id: string; out_professor_nome: string; out_valor: number }[] }
       has_role: { Args: { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin_erp: { Args: { p_user_id: string }; Returns: boolean }
