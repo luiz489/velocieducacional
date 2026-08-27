@@ -25,6 +25,8 @@ import Professores from "@/pages/Professores";
 import Calendario from "@/pages/Calendario";
 import Rematricula from "@/pages/Rematricula";
 import Carteirinhas from "@/pages/Carteirinhas";
+import Documentos from "@/pages/Documentos";
+import GerarDocumento from "@/pages/GerarDocumento";
 import AppMobile from "@/pages/AppMobile";
 import AppFinanceiro from "@/pages/AppFinanceiro";
 import Login from "@/pages/Login";
@@ -72,6 +74,8 @@ function ProtectedRoutes() {
             <Route path="/calendario" element={<Calendario />} />
             <Route path="/rematricula" element={<Rematricula />} />
             <Route path="/carteirinhas" element={<Carteirinhas />} />
+            <Route path="/documentos" element={<Documentos />} />
+            <Route path="/documentos/gerar" element={<GerarDocumento />} />
             <Route path="/professores" element={<Professores />} />
             <Route path="/admin" element={<Admin />} />
       </Route>

@@ -17,6 +17,8 @@ import {
   CalendarDays,
   ClipboardEdit,
   IdCard,
+  FileText,
+  FileSignature,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
@@ -79,6 +81,13 @@ const menuGroups = [
     label: "Comunicação",
     items: [
       { title: "Avisos", url: "/avisos", icon: Megaphone },
+    ],
+  },
+  {
+    label: "Documentos",
+    items: [
+      { title: "Gerar Documento", url: "/documentos/gerar", icon: FileSignature },
+      { title: "Configurar Documentos", url: "/documentos", icon: FileText },
     ],
   },
   {
