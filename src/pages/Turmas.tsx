@@ -338,7 +338,12 @@ export default function Turmas() {
                     <TableCell className="font-medium">{a.nome}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">{a.cpf}</TableCell>
                     <TableCell>
-                      <Badge variant={a.status_pagamento === "Pago" ? "default" : a.status_pagamento === "Atrasado" ? "destructive" : "secondary"}>
+                      <Badge variant={
+                        a.status_pagamento === "Pago" ? "default" :
+                        a.status_pagamento === "Atrasado" ? "destructive" :
+                        a.status_pagamento === "Sem cobrança" ? "outline" :
+                        "secondary"
+                      }>
                         {a.status_pagamento}
                       </Badge>
                     </TableCell>

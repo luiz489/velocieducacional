@@ -32,6 +32,7 @@ function getStatusBadge(status: string) {
   switch (status) {
     case "Pago": return <Badge className="bg-success text-success-foreground">Em dia</Badge>;
     case "Atrasado": return <Badge variant="destructive">Atrasado</Badge>;
+    case "Sem cobrança": return <Badge variant="outline">Sem cobrança</Badge>;
     default: return <Badge variant="secondary">Pendente</Badge>;
   }
 }
@@ -341,6 +342,7 @@ export default function Matriculas() {
             <SelectItem value="Pago">Em dia</SelectItem>
             <SelectItem value="Pendente">Pendente</SelectItem>
             <SelectItem value="Atrasado">Atrasado</SelectItem>
+            <SelectItem value="Sem cobrança">Sem cobrança</SelectItem>
           </SelectContent>
         </Select>
       </div>
