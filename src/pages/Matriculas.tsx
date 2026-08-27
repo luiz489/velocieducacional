@@ -24,7 +24,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAlunos } from "@/hooks/useAlunos";
 import { useMatriculas } from "@/hooks/useMatriculas";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
-import { limparCPF, mascaraCPF } from "@/lib/masks";
+import { limparCPF } from "@/lib/masks";
+import { AlunoCamposFieldset, lerAlunoCamposDeFormData } from "@/components/AlunoCamposFieldset";
 import { validarCPF } from "@/lib/validations";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -52,10 +53,6 @@ export default function Matriculas() {
 
   const [abaAluno, setAbaAluno] = useState<"existente" | "novo">("existente");
   const [formAlunoId, setFormAlunoId] = useState("");
-  const [novoNome, setNovoNome] = useState("");
-  const [novoCpf, setNovoCpf] = useState("");
-  const [novoNascimento, setNovoNascimento] = useState("");
-  const [novoResponsavel, setNovoResponsavel] = useState("");
 
   const [formTurmaId, setFormTurmaId] = useState("");
   const [formDataIngresso, setFormDataIngresso] = useState(new Date().toISOString().split("T")[0]);
@@ -77,10 +74,6 @@ export default function Matriculas() {
   const resetForm = () => {
     setAbaAluno("existente");
     setFormAlunoId("");
-    setNovoNome("");
-    setNovoCpf("");
-    setNovoNascimento("");
-    setNovoResponsavel("");
     setFormTurmaId("");
     setFormDataIngresso(new Date().toISOString().split("T")[0]);
     setFormDesconto("0");
@@ -103,11 +96,14 @@ export default function Matriculas() {
       let alunoId = formAlunoId;
 
       if (abaAluno === "novo") {
-        if (!novoNome || !novoCpf || !novoNascimento || !novoResponsavel) {
+        const fd = new FormData(e.currentTarget);
+        const campos = lerAlunoCamposDeFormData(fd);
+
+        if (!campos.nome || !campos.cpf || !campos.data_nascimento || !campos.responsavel_financeiro) {
           toast.error("Preencha nome, CPF, data de nascimento e responsável do novo aluno.");
           return;
         }
-        const cpfLimpo = limparCPF(novoCpf);
+        const cpfLimpo = limparCPF(campos.cpf);
         const cpfErro = validarCPF(cpfLimpo);
         if (cpfErro) {
           toast.error(cpfErro);
@@ -118,11 +114,8 @@ export default function Matriculas() {
           .from("alunos")
           .insert({
             escola_id: escolaAtivaId,
-            nome: novoNome,
+            ...campos,
             cpf: cpfLimpo,
-            data_nascimento: novoNascimento,
-            responsavel_financeiro: novoResponsavel,
-            status: "Ativo",
           })
           .select("id")
           .single();
@@ -219,28 +212,8 @@ export default function Matriculas() {
                   </Select>
                 </TabsContent>
 
-                <TabsContent value="novo" className="mt-3 space-y-3">
-                  <div>
-                    <Label>Nome Completo</Label>
-                    <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Nome do aluno" className="mt-1" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>CPF</Label>
-                      <Input value={novoCpf} onChange={(e) => setNovoCpf(mascaraCPF(e.target.value))} placeholder="000.000.000-00" className="mt-1" />
-                    </div>
-                    <div>
-                      <Label>Data de Nascimento</Label>
-                      <Input type="date" value={novoNascimento} onChange={(e) => setNovoNascimento(e.target.value)} className="mt-1" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Responsável Financeiro</Label>
-                    <Input value={novoResponsavel} onChange={(e) => setNovoResponsavel(e.target.value)} placeholder="Nome do responsável" className="mt-1" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Endereço, e-mail, RA e demais dados podem ser completados depois na tela de Alunos.
-                  </p>
+                <TabsContent value="novo" className="mt-3">
+                  <AlunoCamposFieldset />
                 </TabsContent>
               </Tabs>
 
