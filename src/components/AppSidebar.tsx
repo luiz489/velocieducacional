@@ -19,6 +19,7 @@ import {
   IdCard,
   FileText,
   FileSignature,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NavLink } from "@/components/NavLink";
@@ -58,6 +59,7 @@ const menuGroups = [
     items: [
       { title: "Contas a Receber", url: "/financeiro", icon: DollarSign },
       { title: "Contas a Pagar", url: "/contas-a-pagar", icon: ClipboardList },
+      { title: "Planos por Turma", url: "/planos-financeiros", icon: Wallet },
       { title: "Contratos", url: "/contratos", icon: ClipboardList },
       { title: "Compras", url: "/compras", icon: ShoppingCart },
     ],
