@@ -29,6 +29,10 @@ import AppMobile from "@/pages/AppMobile";
 import AppFinanceiro from "@/pages/AppFinanceiro";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
+import { PlataformaLayout } from "@/components/plataforma/PlataformaLayout";
+import VisaoGeral from "@/pages/plataforma/VisaoGeral";
+import Clientes from "@/pages/plataforma/Clientes";
+import Faturamento from "@/pages/plataforma/Faturamento";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +108,11 @@ const App = () => (
           <Route path="/login" element={<AuthRoute />} />
           <Route path="/app" element={<AppMobile />} />
           <Route path="/app/financeiro" element={<AppFinanceiro />} />
+          <Route path="/plataforma" element={<PlataformaLayout />}>
+            <Route index element={<VisaoGeral />} />
+            <Route path="clientes" element={<Clientes />} />
+            <Route path="faturamento" element={<Faturamento />} />
+          </Route>
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>
