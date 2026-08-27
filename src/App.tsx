@@ -35,6 +35,7 @@ import { PlataformaLayout } from "@/components/plataforma/PlataformaLayout";
 import VisaoGeral from "@/pages/plataforma/VisaoGeral";
 import Clientes from "@/pages/plataforma/Clientes";
 import Faturamento from "@/pages/plataforma/Faturamento";
+import { EscolaProvider } from "@/contexts/EscolaContext";
 
 const queryClient = new QueryClient();
 
@@ -108,17 +109,19 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<AuthRoute />} />
-          <Route path="/app" element={<AppMobile />} />
-          <Route path="/app/financeiro" element={<AppFinanceiro />} />
-          <Route path="/plataforma" element={<PlataformaLayout />}>
-            <Route index element={<VisaoGeral />} />
-            <Route path="clientes" element={<Clientes />} />
-            <Route path="faturamento" element={<Faturamento />} />
-          </Route>
-          <Route path="/*" element={<ProtectedRoutes />} />
-        </Routes>
+        <EscolaProvider>
+          <Routes>
+            <Route path="/login" element={<AuthRoute />} />
+            <Route path="/app" element={<AppMobile />} />
+            <Route path="/app/financeiro" element={<AppFinanceiro />} />
+            <Route path="/plataforma" element={<PlataformaLayout />}>
+              <Route index element={<VisaoGeral />} />
+              <Route path="clientes" element={<Clientes />} />
+              <Route path="faturamento" element={<Faturamento />} />
+            </Route>
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </EscolaProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

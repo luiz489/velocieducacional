@@ -23,10 +23,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useAlunos, type Aluno } from "@/hooks/useAlunos";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Alunos() {
   const { alunos, turmas, loading, createAluno, updateAluno, inativarAluno, matricularAluno } = useAlunos();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,8 +56,12 @@ export default function Alunos() {
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!escolaAtivaId) {
+      return;
+    }
     const fd = new FormData(e.currentTarget);
     const ok = await createAluno({
+      escola_id: escolaAtivaId,
       nome: fd.get("nome") as string,
       cpf: limparCPF(fd.get("cpf") as string),
       data_nascimento: fd.get("nascimento") as string,
@@ -64,6 +70,14 @@ export default function Alunos() {
       telefone_responsavel: (fd.get("telefone") as string) || null,
       email_responsavel: (fd.get("email") as string) || null,
       status: fd.get("status") as string || "Ativo",
+      ra_censo: (fd.get("ra_censo") as string) || null,
+      nome_pai: (fd.get("nome_pai") as string) || null,
+      nome_mae: (fd.get("nome_mae") as string) || null,
+      naturalidade_cidade: (fd.get("naturalidade_cidade") as string) || null,
+      naturalidade_uf: (fd.get("naturalidade_uf") as string) || null,
+      cor_raca: (fd.get("cor_raca") as string) || null,
+      hora_entrada: (fd.get("hora_entrada") as string) || null,
+      hora_saida: (fd.get("hora_saida") as string) || null,
     });
     if (ok) setDialogOpen(false);
   };
@@ -81,6 +95,14 @@ export default function Alunos() {
       telefone_responsavel: (fd.get("telefone") as string) || null,
       email_responsavel: (fd.get("email") as string) || null,
       status: fd.get("status") as string,
+      ra_censo: (fd.get("ra_censo") as string) || null,
+      nome_pai: (fd.get("nome_pai") as string) || null,
+      nome_mae: (fd.get("nome_mae") as string) || null,
+      naturalidade_cidade: (fd.get("naturalidade_cidade") as string) || null,
+      naturalidade_uf: (fd.get("naturalidade_uf") as string) || null,
+      cor_raca: (fd.get("cor_raca") as string) || null,
+      hora_entrada: (fd.get("hora_entrada") as string) || null,
+      hora_saida: (fd.get("hora_saida") as string) || null,
     });
     if (ok) {
       setEditOpen(false);
@@ -121,10 +143,15 @@ export default function Alunos() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Alunos</h1>
           <p className="text-sm text-muted-foreground">Gerencie o cadastro de alunos da instituição</p>
+          {!escolaAtivaId && (
+            <p className="text-xs text-destructive mt-1">
+              Nenhuma escola vinculada ao seu usuário — fale com o administrador antes de cadastrar alunos.
+            </p>
+          )}
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Novo Aluno</Button>
+            <Button disabled={!escolaAtivaId}><Plus className="h-4 w-4 mr-2" />Novo Aluno</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -297,6 +324,9 @@ function AlunoForm({
     nome: string; cpf: string; data_nascimento: string; endereco?: string | null;
     responsavel_financeiro: string; telefone_responsavel?: string | null;
     email_responsavel?: string | null; status: string;
+    ra_censo?: string | null; nome_pai?: string | null; nome_mae?: string | null;
+    naturalidade_cidade?: string | null; naturalidade_uf?: string | null;
+    cor_raca?: string | null; hora_entrada?: string | null; hora_saida?: string | null;
   };
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
@@ -304,7 +334,7 @@ function AlunoForm({
 }) {
   const [cpf, setCpf] = useState(defaultValues?.cpf ? mascaraCPF(defaultValues.cpf) : "");
   return (
-    <form className="space-y-4 mt-2" onSubmit={onSubmit}>
+    <form className="space-y-5 mt-2 max-h-[70vh] overflow-y-auto pr-1" onSubmit={onSubmit}>
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <Label htmlFor="nome">Nome Completo</Label>
@@ -323,18 +353,6 @@ function AlunoForm({
           <Input id="endereco" name="endereco" placeholder="Endereço completo" className="mt-1" defaultValue={defaultValues?.endereco || ""} />
         </div>
         <div>
-          <Label htmlFor="responsavel">Responsável Financeiro</Label>
-          <Input id="responsavel" name="responsavel" placeholder="Nome do responsável" className="mt-1" defaultValue={defaultValues?.responsavel_financeiro} required />
-        </div>
-        <div>
-          <Label htmlFor="telefone">Telefone</Label>
-          <Input id="telefone" name="telefone" placeholder="(00) 00000-0000" className="mt-1" defaultValue={defaultValues?.telefone_responsavel || ""} />
-        </div>
-        <div>
-          <Label htmlFor="email">E-mail Responsável</Label>
-          <Input id="email" name="email" type="email" placeholder="email@exemplo.com" className="mt-1" defaultValue={defaultValues?.email_responsavel || ""} />
-        </div>
-        <div>
           <Label htmlFor="status">Status</Label>
           <select name="status" defaultValue={defaultValues?.status || "Ativo"} className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
             <option value="Ativo">Ativo</option>
@@ -342,7 +360,77 @@ function AlunoForm({
           </select>
         </div>
       </div>
-      <div className="flex justify-end gap-3 pt-2">
+
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium text-muted-foreground mb-3">Filiação e naturalidade</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="nome_pai">Nome do Pai</Label>
+            <Input id="nome_pai" name="nome_pai" className="mt-1" defaultValue={defaultValues?.nome_pai || ""} />
+          </div>
+          <div>
+            <Label htmlFor="nome_mae">Nome da Mãe</Label>
+            <Input id="nome_mae" name="nome_mae" className="mt-1" defaultValue={defaultValues?.nome_mae || ""} />
+          </div>
+          <div>
+            <Label htmlFor="naturalidade_cidade">Cidade de Naturalidade</Label>
+            <Input id="naturalidade_cidade" name="naturalidade_cidade" className="mt-1" defaultValue={defaultValues?.naturalidade_cidade || ""} />
+          </div>
+          <div>
+            <Label htmlFor="naturalidade_uf">UF de Naturalidade</Label>
+            <Input id="naturalidade_uf" name="naturalidade_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.naturalidade_uf || ""} />
+          </div>
+          <div>
+            <Label htmlFor="cor_raca">Cor/Raça</Label>
+            <select name="cor_raca" defaultValue={defaultValues?.cor_raca || ""} className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
+              <option value="">Não informado</option>
+              <option value="Branca">Branca</option>
+              <option value="Preta">Preta</option>
+              <option value="Parda">Parda</option>
+              <option value="Amarela">Amarela</option>
+              <option value="Indígena">Indígena</option>
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="ra_censo">RA (Censo Escolar)</Label>
+            <Input id="ra_censo" name="ra_censo" placeholder="Código do INEP/Censo" className="mt-1" defaultValue={defaultValues?.ra_censo || ""} />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium text-muted-foreground mb-3">Horário (entrada/saída)</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="hora_entrada">Hora de Entrada</Label>
+            <Input id="hora_entrada" name="hora_entrada" type="time" className="mt-1" defaultValue={defaultValues?.hora_entrada || ""} />
+          </div>
+          <div>
+            <Label htmlFor="hora_saida">Hora de Saída</Label>
+            <Input id="hora_saida" name="hora_saida" type="time" className="mt-1" defaultValue={defaultValues?.hora_saida || ""} />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium text-muted-foreground mb-3">Responsável financeiro</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <Label htmlFor="responsavel">Nome do Responsável</Label>
+            <Input id="responsavel" name="responsavel" placeholder="Nome do responsável" className="mt-1" defaultValue={defaultValues?.responsavel_financeiro} required />
+          </div>
+          <div>
+            <Label htmlFor="telefone">Telefone</Label>
+            <Input id="telefone" name="telefone" placeholder="(00) 00000-0000" className="mt-1" defaultValue={defaultValues?.telefone_responsavel || ""} />
+          </div>
+          <div>
+            <Label htmlFor="email">E-mail Responsável</Label>
+            <Input id="email" name="email" type="email" placeholder="email@exemplo.com" className="mt-1" defaultValue={defaultValues?.email_responsavel || ""} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2 border-t">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
         <Button type="submit">{submitLabel}</Button>
       </div>
