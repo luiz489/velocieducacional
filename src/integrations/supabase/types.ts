@@ -288,9 +288,9 @@ export type Database = {
         Relationships: []
       }
       profiles: {
-        Row: { created_at: string; full_name: string | null; id: string; updated_at: string }
-        Insert: { created_at?: string; full_name?: string | null; id: string; updated_at?: string }
-        Update: { created_at?: string; full_name?: string | null; id?: string; updated_at?: string }
+        Row: { created_at: string; email: string | null; full_name: string | null; id: string; updated_at: string }
+        Insert: { created_at?: string; email?: string | null; full_name?: string | null; id: string; updated_at?: string }
+        Update: { created_at?: string; email?: string | null; full_name?: string | null; id?: string; updated_at?: string }
         Relationships: []
       }
       recuperacoes_semestrais: {
@@ -401,7 +401,10 @@ export type Database = {
       reativar_cliente_saas: { Args: { p_escola_id: string }; Returns: undefined }
       suspender_cliente_saas: { Args: { p_escola_id: string; p_motivo?: string }; Returns: undefined }
       usuario_tem_acesso_escola: { Args: { p_escola_id: string }; Returns: boolean }
+      provisionar_nova_escola: { Args: { p_cidade?: string; p_cnpj?: string; p_email?: string; p_nome: string; p_telefone?: string; p_uf?: string }; Returns: string }
       usuario_tem_permissao: { Args: { p_acao: string; p_escola_id: string; p_modulo_codigo: string }; Returns: boolean }
+      vincular_administrador_escola: { Args: { p_escola_id: string; p_user_email: string }; Returns: undefined }
+      vincular_usuario_a_escola: { Args: { p_escola_id: string; p_email: string; p_papel_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "staff"

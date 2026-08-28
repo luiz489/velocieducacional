@@ -15,7 +15,7 @@ import Ocorrencias from "@/pages/Ocorrencias";
 import ContasPagar from "@/pages/ContasPagar";
 import Contratos from "@/pages/Contratos";
 import Compras from "@/pages/Compras";
-import Admin from "@/pages/Admin";
+import Configuracoes from "@/pages/Configuracoes";
 import Parceiros from "@/pages/Parceiros";
 import MatrizesCurriculares from "@/pages/MatrizesCurriculares";
 import Disciplinas from "@/pages/Disciplinas";
@@ -86,7 +86,8 @@ function ProtectedRoutes() {
             <Route path="/documentos" element={<Documentos />} />
             <Route path="/documentos/gerar" element={<GerarDocumento />} />
             <Route path="/professores" element={<Professores />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="/admin" element={<Configuracoes />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
