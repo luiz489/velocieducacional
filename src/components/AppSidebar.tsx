@@ -10,7 +10,6 @@ import {
   Settings,
   ShoppingCart,
   LogOut,
-  ShieldCheck,
   MapPin,
   Megaphone,
   Clock,
@@ -159,18 +158,6 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <NavLink
-                to="/admin"
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-              >
-                <ShieldCheck className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>Administração</span>}
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <NavLink
