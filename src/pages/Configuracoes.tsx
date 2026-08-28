@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ShieldCheck, UserPlus, Plus, Settings } from "lucide-react";
+import { ShieldCheck, UserPlus, UserCog, Plus, Settings } from "lucide-react";
 
 type Papel = { id: string; nome: string; descricao: string | null; escola_id: string | null; papel_sistema: boolean };
 type Modulo = { id: string; codigo: string; nome: string; ordem: number | null };
@@ -35,6 +35,11 @@ export default function Configuracoes() {
   const [novoPapelNome, setNovoPapelNome] = useState("");
   const [novoPapelDesc, setNovoPapelDesc] = useState("");
   const [convidarOpen, setConvidarOpen] = useState(false);
+  const [abaCadastro, setAbaCadastro] = useState<"novo" | "existente">("novo");
+  const [novoNome, setNovoNome] = useState("");
+  const [novoEmail, setNovoEmail] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [novoPapelId, setNovoPapelId] = useState("");
   const [convidarEmail, setConvidarEmail] = useState("");
   const [convidarPapelId, setConvidarPapelId] = useState("");
 
@@ -134,6 +139,42 @@ export default function Configuracoes() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const criarUsuarioNovo = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-criar-usuario`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: novoEmail,
+            password: novaSenha,
+            full_name: novoNome,
+            escola_id: escolaAtivaId,
+            papel_id: novoPapelId,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Erro ao criar usuário");
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Usuário criado e vinculado com sucesso");
+      qc.invalidateQueries({ queryKey: ["usuarios-escola"] });
+      setConvidarOpen(false);
+      setNovoNome("");
+      setNovoEmail("");
+      setNovaSenha("");
+      setNovoPapelId("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const convidarUsuario = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.rpc("vincular_usuario_a_escola", {
@@ -187,35 +228,77 @@ export default function Configuracoes() {
           <div className="flex justify-end">
             <Dialog open={convidarOpen} onOpenChange={setConvidarOpen}>
               <DialogTrigger asChild>
-                <Button><UserPlus className="h-4 w-4 mr-2" />Vincular usuário</Button>
+                <Button><UserPlus className="h-4 w-4 mr-2" />Novo usuário</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Vincular usuário à escola</DialogTitle>
-                  <DialogDescription>
-                    A pessoa precisa já ter criado a conta na tela de login antes de você conseguir vinculá-la aqui.
-                  </DialogDescription>
+                  <DialogTitle>Adicionar usuário à escola</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-3">
-                  <div>
-                    <Label>E-mail do usuário</Label>
-                    <Input value={convidarEmail} onChange={(e) => setConvidarEmail(e.target.value)} placeholder="pessoa@exemplo.com" />
-                  </div>
-                  <div>
-                    <Label>Papel</Label>
-                    <Select value={convidarPapelId} onValueChange={setConvidarPapelId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o papel" /></SelectTrigger>
-                      <SelectContent>
-                        {papeis?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => convidarUsuario.mutate()} disabled={!convidarEmail || !convidarPapelId || convidarUsuario.isPending}>
-                    {convidarUsuario.isPending ? "Vinculando..." : "Vincular"}
-                  </Button>
-                </DialogFooter>
+                <Tabs value={abaCadastro} onValueChange={(v) => setAbaCadastro(v as "novo" | "existente")}>
+                  <TabsList className="grid grid-cols-2 w-full">
+                    <TabsTrigger value="novo"><UserPlus className="h-4 w-4 mr-1.5" />Criar novo</TabsTrigger>
+                    <TabsTrigger value="existente"><UserCog className="h-4 w-4 mr-1.5" />Já tem conta</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="novo" className="space-y-3 mt-3">
+                    <DialogDescription>
+                      Cria a conta de login direto por aqui, com uma senha temporária que você repassa pra pessoa.
+                    </DialogDescription>
+                    <div>
+                      <Label>Nome completo</Label>
+                      <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Nome da pessoa" />
+                    </div>
+                    <div>
+                      <Label>E-mail</Label>
+                      <Input type="email" value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} placeholder="pessoa@exemplo.com" />
+                    </div>
+                    <div>
+                      <Label>Senha temporária</Label>
+                      <Input type="text" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                    </div>
+                    <div>
+                      <Label>Papel</Label>
+                      <Select value={novoPapelId} onValueChange={setNovoPapelId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o papel" /></SelectTrigger>
+                        <SelectContent>
+                          {papeis?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={() => criarUsuarioNovo.mutate()}
+                        disabled={!novoNome || !novoEmail || novaSenha.length < 6 || !novoPapelId || criarUsuarioNovo.isPending}
+                      >
+                        {criarUsuarioNovo.isPending ? "Criando..." : "Criar e vincular"}
+                      </Button>
+                    </DialogFooter>
+                  </TabsContent>
+
+                  <TabsContent value="existente" className="space-y-3 mt-3">
+                    <DialogDescription>
+                      Use isso se a pessoa já criou a própria conta na tela de login (ex: já usa em outra escola).
+                    </DialogDescription>
+                    <div>
+                      <Label>E-mail do usuário</Label>
+                      <Input value={convidarEmail} onChange={(e) => setConvidarEmail(e.target.value)} placeholder="pessoa@exemplo.com" />
+                    </div>
+                    <div>
+                      <Label>Papel</Label>
+                      <Select value={convidarPapelId} onValueChange={setConvidarPapelId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o papel" /></SelectTrigger>
+                        <SelectContent>
+                          {papeis?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => convidarUsuario.mutate()} disabled={!convidarEmail || !convidarPapelId || convidarUsuario.isPending}>
+                        {convidarUsuario.isPending ? "Vinculando..." : "Vincular"}
+                      </Button>
+                    </DialogFooter>
+                  </TabsContent>
+                </Tabs>
               </DialogContent>
             </Dialog>
           </div>
