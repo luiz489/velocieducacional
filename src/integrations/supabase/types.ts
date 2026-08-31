@@ -393,6 +393,7 @@ export type Database = {
       gerar_pagamentos_professores_pj: { Args: { p_escola_id: string; p_ano?: number; p_mes?: number }; Returns: { out_conta_id: string; out_professor_id: string; out_professor_nome: string; out_valor: number }[] }
       has_role: { Args: { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      atualizar_status_assinaturas: { Args: Record<string, never>; Returns: { escola_nome: string; status_anterior: string; status_novo: string; motivo: string }[] }
       is_superadmin_erp: { Args: { p_user_id: string }; Returns: boolean }
       mudar_plano_cliente: { Args: { p_escola_id: string; p_novo_plano_id: string; p_valor_negociado?: number }; Returns: undefined }
       plataforma_clientes_resumo: { Args: Record<string, never>; Returns: { alunos_ativos: number | null; cidade: string | null; data_fim_trial: string | null; data_inicio: string | null; dia_vencimento: number | null; escola_ativa: boolean | null; escola_id: string | null; escola_nome: string | null; limite_alunos: number | null; limite_usuarios: number | null; plano_atual: string | null; status_assinatura: string | null; uf: string | null; usuarios_ativos: number | null; valor_mensal: number | null }[] }
