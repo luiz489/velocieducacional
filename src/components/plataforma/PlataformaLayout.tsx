@@ -1,5 +1,5 @@
 import { Navigate, NavLink as RouterNavLink, Outlet } from "react-router-dom";
-import { BarChart3, Building2, LogOut, Receipt, ShieldAlert, ArrowLeftRight } from "lucide-react";
+import { BarChart3, Building2, LogOut, Receipt, ShieldAlert, ArrowLeftRight, Layers } from "lucide-react";
 import { useSuperadmin } from "@/hooks/useSuperadmin";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { title: "Visão Geral", url: "/plataforma", icon: BarChart3, end: true },
   { title: "Clientes", url: "/plataforma/clientes", icon: Building2, end: false },
+  { title: "Planos", url: "/plataforma/planos", icon: Layers, end: false },
   { title: "Faturamento", url: "/plataforma/faturamento", icon: Receipt, end: false },
 ];
 

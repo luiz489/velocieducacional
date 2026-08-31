@@ -39,6 +39,7 @@ import { PlataformaLayout } from "@/components/plataforma/PlataformaLayout";
 import VisaoGeral from "@/pages/plataforma/VisaoGeral";
 import Clientes from "@/pages/plataforma/Clientes";
 import Faturamento from "@/pages/plataforma/Faturamento";
+import Planos from "@/pages/plataforma/Planos";
 import { EscolaProvider } from "@/contexts/EscolaContext";
 
 const queryClient = new QueryClient();
@@ -126,6 +127,7 @@ const App = () => (
             <Route path="/plataforma" element={<PlataformaLayout />}>
               <Route index element={<VisaoGeral />} />
               <Route path="clientes" element={<Clientes />} />
+              <Route path="planos" element={<Planos />} />
               <Route path="faturamento" element={<Faturamento />} />
             </Route>
             <Route path="/*" element={<ProtectedRoutes />} />

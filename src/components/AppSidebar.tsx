@@ -8,6 +8,7 @@ import {
   UserCheck,
   AlertTriangle,
   Settings,
+  ShieldAlert,
   ShoppingCart,
   LogOut,
   MapPin,
@@ -108,7 +109,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
-  const { escolaAtivaId, escolas } = useEscolaAtiva();
+  const { escolaAtivaId, escolas, isSuperadmin } = useEscolaAtiva();
   const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
 
   return (
@@ -158,6 +159,20 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <SidebarMenu>
+          {isSuperadmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <NavLink
+                  to="/plataforma"
+                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
+                  activeClassName="bg-amber-500/10 font-medium"
+                >
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>Modo Administrador</span>}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <NavLink

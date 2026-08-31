@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +43,14 @@ function statusBadge(status: string | null) {
 }
 
 export default function Clientes() {
+  const navigate = useNavigate();
+  const { setEscolaAtivaId } = useEscolaAtiva();
+
+  const entrarComoAdmin = (escolaId: string) => {
+    setEscolaAtivaId(escolaId);
+    navigate("/");
+  };
+
   const queryClient = useQueryClient();
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
   const [trocarPlanoEscolaId, setTrocarPlanoEscolaId] = useState<string | null>(null);
@@ -216,6 +226,9 @@ export default function Clientes() {
                           <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => entrarComoAdmin(c.escola_id!)}>
+                            Entrar como Administrador
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setTrocarPlanoEscolaId(c.escola_id!);
