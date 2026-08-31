@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -17,6 +17,8 @@ type EscolaContextValue = {
   /** true quando a escola ativa não é um vínculo real (você está "entrando como administrador"). */
   emModoAdministrador: boolean;
   setEscolaAtivaId: (id: string) => void;
+  /** Recarrega a lista de escolas (chame depois de criar uma filial, por exemplo). */
+  refetchEscolas: (selecionarId?: string) => Promise<void>;
 };
 
 const EscolaContext = createContext<EscolaContextValue | undefined>(undefined);
@@ -30,8 +32,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
   const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (authLoading) return;
+  const carregarEscolas = useCallback(async (selecionarId?: string) => {
     if (!user) {
       setEscolas([]);
       setEscolaAtivaIdState(null);
@@ -40,55 +41,64 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    (async () => {
-      const { data: vinculos, error: errVinculos } = await supabase
-        .from("usuarios_escolas")
-        .select("escola_id, escolas(id, nome)")
-        .eq("user_id", user.id)
-        .eq("ativo", true);
+    const { data: vinculos, error: errVinculos } = await supabase
+      .from("usuarios_escolas")
+      .select("escola_id, escolas(id, nome)")
+      .eq("user_id", user.id)
+      .eq("ativo", true);
 
-      if (errVinculos) {
-        console.error("Erro ao carregar escolas do usuário:", errVinculos.message);
+    if (errVinculos) {
+      console.error("Erro ao carregar escolas do usuário:", errVinculos.message);
+    }
+
+    const reais: EscolaVinculada[] = (vinculos ?? []).map((r: any) => ({
+      escola_id: r.escola_id,
+      nome: r.escolas?.nome ?? "Escola",
+      membroReal: true,
+    }));
+
+    const { data: souSuperadmin } = await supabase
+      .from("superadmins_erp")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    let listaFinal = reais;
+
+    if (souSuperadmin) {
+      setIsSuperadmin(true);
+      const { data: todasEscolas, error: errTodas } = await supabase
+        .from("escolas")
+        .select("id, nome")
+        .order("nome");
+
+      if (!errTodas) {
+        const idsReais = new Set(reais.map((e) => e.escola_id));
+        const extras: EscolaVinculada[] = (todasEscolas ?? [])
+          .filter((e) => !idsReais.has(e.id))
+          .map((e) => ({ escola_id: e.id, nome: e.nome, membroReal: false }));
+        listaFinal = [...reais, ...extras];
       }
+    }
 
-      const reais: EscolaVinculada[] = (vinculos ?? []).map((r: any) => ({
-        escola_id: r.escola_id,
-        nome: r.escolas?.nome ?? "Escola",
-        membroReal: true,
-      }));
+    setEscolas(listaFinal);
 
-      const { data: souSuperadmin } = await supabase
-        .from("superadmins_erp")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      let listaFinal = reais;
-
-      if (souSuperadmin) {
-        setIsSuperadmin(true);
-        const { data: todasEscolas, error: errTodas } = await supabase
-          .from("escolas")
-          .select("id, nome")
-          .order("nome");
-
-        if (!errTodas) {
-          const idsReais = new Set(reais.map((e) => e.escola_id));
-          const extras: EscolaVinculada[] = (todasEscolas ?? [])
-            .filter((e) => !idsReais.has(e.id))
-            .map((e) => ({ escola_id: e.id, nome: e.nome, membroReal: false }));
-          listaFinal = [...reais, ...extras];
-        }
-      }
-
-      setEscolas(listaFinal);
-
+    if (selecionarId && listaFinal.some((e) => e.escola_id === selecionarId)) {
+      setEscolaAtivaId(selecionarId);
+    } else {
       const salva = localStorage.getItem(STORAGE_KEY);
       const valida = salva && listaFinal.some((e) => e.escola_id === salva);
       const preferida = listaFinal.find((e) => e.membroReal) ?? listaFinal[0];
       setEscolaAtivaIdState(valida ? salva! : preferida?.escola_id ?? null);
-      setLoading(false);
-    })();
+    }
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    carregarEscolas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
   const setEscolaAtivaId = (id: string) => {
@@ -96,11 +106,15 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, id);
   };
 
+  const refetchEscolas = async (selecionarId?: string) => {
+    await carregarEscolas(selecionarId);
+  };
+
   const emModoAdministrador = !!escolas.find((e) => e.escola_id === escolaAtivaId && !e.membroReal);
 
   return (
     <EscolaContext.Provider
-      value={{ escolaAtivaId, escolas, loading, isSuperadmin, emModoAdministrador, setEscolaAtivaId }}
+      value={{ escolaAtivaId, escolas, loading, isSuperadmin, emModoAdministrador, setEscolaAtivaId, refetchEscolas }}
     >
       {children}
     </EscolaContext.Provider>

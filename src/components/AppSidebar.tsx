@@ -8,6 +8,7 @@ import {
   UserCheck,
   AlertTriangle,
   Settings,
+  Building2,
   ShieldAlert,
   ShoppingCart,
   LogOut,
@@ -109,7 +110,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
-  const { escolaAtivaId, escolas, isSuperadmin } = useEscolaAtiva();
+  const { escolaAtivaId, escolas, isSuperadmin, setEscolaAtivaId } = useEscolaAtiva();
   const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
 
   return (
@@ -120,8 +121,22 @@ export function AppSidebar() {
             <GraduationCap className="h-5 w-5 text-sidebar-primary" />
           </div>
           {!collapsed && (
-            <div>
-              <h2 className="text-sm font-bold text-sidebar-primary">{escolaNome}</h2>
+            <div className="min-w-0 flex-1">
+              {escolas.length > 1 ? (
+                <select
+                  value={escolaAtivaId ?? ""}
+                  onChange={(e) => setEscolaAtivaId(e.target.value)}
+                  className="w-full bg-transparent text-sm font-bold text-sidebar-primary border-none outline-none cursor-pointer truncate"
+                >
+                  {escolas.map((e) => (
+                    <option key={e.escola_id} value={e.escola_id} className="text-foreground">
+                      {e.nome}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <h2 className="text-sm font-bold text-sidebar-primary truncate">{escolaNome}</h2>
+              )}
               <p className="text-xs text-sidebar-foreground/60">ERP Escolar</p>
             </div>
           )}
@@ -173,6 +188,18 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink
+                to="/filiais"
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+              >
+                <Building2 className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>Filiais</span>}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <NavLink

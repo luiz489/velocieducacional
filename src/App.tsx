@@ -16,6 +16,7 @@ import ContasPagar from "@/pages/ContasPagar";
 import Contratos from "@/pages/Contratos";
 import Compras from "@/pages/Compras";
 import Configuracoes from "@/pages/Configuracoes";
+import Filiais from "@/pages/Filiais";
 import Parceiros from "@/pages/Parceiros";
 import MatrizesCurriculares from "@/pages/MatrizesCurriculares";
 import Disciplinas from "@/pages/Disciplinas";
@@ -88,6 +89,7 @@ function ProtectedRoutes() {
             <Route path="/documentos/gerar" element={<GerarDocumento />} />
             <Route path="/professores" element={<Professores />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="/filiais" element={<Filiais />} />
             <Route path="/admin" element={<Configuracoes />} />
       </Route>
       <Route path="*" element={<NotFound />} />

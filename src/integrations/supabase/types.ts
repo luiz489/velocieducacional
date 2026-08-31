@@ -381,6 +381,7 @@ export type Database = {
     Functions: {
       bootstrap_admin: { Args: Record<string, never>; Returns: boolean }
       clonar_papeis_modelo_para_escola: { Args: { p_escola_id: string }; Returns: undefined }
+      criar_filial: { Args: { p_escola_origem_id: string; p_nome_filial: string; p_cidade?: string; p_uf?: string; p_endereco?: string; p_telefone?: string }; Returns: string }
       criar_novo_cliente_saas: { Args: { p_dias_trial?: number; p_nome_escola: string; p_plano_id: string }; Returns: string }
       fn_data_por_extenso: { Args: { p_data?: string }; Returns: string }
       fn_numero_por_extenso: { Args: { n: number }; Returns: string }
