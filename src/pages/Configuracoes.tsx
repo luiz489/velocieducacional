@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -427,8 +427,13 @@ export default function Configuracoes() {
 
 function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   const qc = useQueryClient();
+  const { refetchEscolas } = useEscolaAtiva();
   const [salvandoModelo, setSalvandoModelo] = useState(false);
   const [enviandoLogo, setEnviandoLogo] = useState(false);
+  const [salvandoDados, setSalvandoDados] = useState(false);
+  const [dadosForm, setDadosForm] = useState({
+    nome: "", cnpj: "", cidade: "", uf: "", endereco: "", telefone: "", email: "",
+  });
 
   const { data: escola } = useQuery({
     queryKey: ["escola-parametros", escolaId],
@@ -436,13 +441,54 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, modelo_avaliacao, logo_url")
+        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, telefone, email")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
       return data;
     },
   });
+
+  useEffect(() => {
+    if (escola) {
+      setDadosForm({
+        nome: escola.nome ?? "",
+        cnpj: escola.cnpj ?? "",
+        cidade: escola.cidade ?? "",
+        uf: escola.uf ?? "",
+        endereco: escola.endereco ?? "",
+        telefone: escola.telefone ?? "",
+        email: escola.email ?? "",
+      });
+    }
+  }, [escola]);
+
+  const salvarDados = async () => {
+    if (!escolaId) return;
+    if (!dadosForm.nome.trim()) {
+      toast.error("O nome da escola não pode ficar em branco.");
+      return;
+    }
+    setSalvandoDados(true);
+    const { error } = await supabase.from("escolas").update({
+      nome: dadosForm.nome.trim(),
+      cnpj: dadosForm.cnpj || null,
+      cidade: dadosForm.cidade || null,
+      uf: dadosForm.uf || null,
+      endereco: dadosForm.endereco || null,
+      telefone: dadosForm.telefone || null,
+      email: dadosForm.email || null,
+    }).eq("id", escolaId);
+    setSalvandoDados(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    toast.success("Dados da escola atualizados");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+    qc.invalidateQueries({ queryKey: ["escola-logo", escolaId] });
+    await refetchEscolas();
+  };
 
   const salvarModelo = async (novoModelo: string) => {
     if (!escolaId) return;
@@ -492,7 +538,56 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Dados da Escola</CardTitle>
+          <CardDescription>
+            Nome e informações básicas exibidas na sidebar, carteirinhas e documentos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>Nome da Escola</Label>
+            <Input
+              value={dadosForm.nome}
+              onChange={(e) => setDadosForm({ ...dadosForm, nome: e.target.value })}
+              placeholder="Nome da escola"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>CNPJ</Label>
+              <Input value={dadosForm.cnpj} onChange={(e) => setDadosForm({ ...dadosForm, cnpj: e.target.value })} />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input value={dadosForm.telefone} onChange={(e) => setDadosForm({ ...dadosForm, telefone: e.target.value })} />
+            </div>
+            <div>
+              <Label>Cidade</Label>
+              <Input value={dadosForm.cidade} onChange={(e) => setDadosForm({ ...dadosForm, cidade: e.target.value })} />
+            </div>
+            <div>
+              <Label>UF</Label>
+              <Input value={dadosForm.uf} maxLength={2} onChange={(e) => setDadosForm({ ...dadosForm, uf: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <Label>Endereço</Label>
+            <Input value={dadosForm.endereco} onChange={(e) => setDadosForm({ ...dadosForm, endereco: e.target.value })} />
+          </div>
+          <div>
+            <Label>E-mail</Label>
+            <Input type="email" value={dadosForm.email} onChange={(e) => setDadosForm({ ...dadosForm, email: e.target.value })} />
+          </div>
+          <Button onClick={salvarDados} disabled={salvandoDados}>
+            {salvandoDados ? "Salvando…" : "Salvar Dados da Escola"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Modelo de Avaliação</CardTitle>
@@ -557,6 +652,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
