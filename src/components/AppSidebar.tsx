@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
-import { GraduationCap } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -113,12 +114,25 @@ export function AppSidebar() {
   const { escolaAtivaId, escolas, isSuperadmin, setEscolaAtivaId } = useEscolaAtiva();
   const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
 
+  const { data: escolaLogo } = useQuery({
+    queryKey: ["escola-logo", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data } = await supabase.from("escolas").select("logo_url").eq("id", escolaAtivaId!).single();
+      return data?.logo_url ?? null;
+    },
+  });
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full shrink-0 bg-sidebar-primary/10 flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-sidebar-primary" />
+          <div className="h-10 w-10 rounded-full shrink-0 bg-sidebar-primary/10 flex items-center justify-center overflow-hidden">
+            {escolaLogo ? (
+              <img src={escolaLogo} alt="Logo" className="h-full w-full object-cover" />
+            ) : (
+              <GraduationCap className="h-5 w-5 text-sidebar-primary" />
+            )}
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">

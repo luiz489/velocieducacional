@@ -222,6 +222,7 @@ export default function Configuracoes() {
         <TabsList>
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
           <TabsTrigger value="papeis">Papéis e Permissões</TabsTrigger>
+          <TabsTrigger value="parametros">Parâmetros</TabsTrigger>
         </TabsList>
 
         <TabsContent value="usuarios" className="space-y-4 mt-4">
@@ -415,7 +416,147 @@ export default function Configuracoes() {
             </Card>
           </div>
         </TabsContent>
+
+        <TabsContent value="parametros" className="space-y-4 mt-4">
+          <ParametrosTab escolaId={escolaAtivaId} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function ParametrosTab({ escolaId }: { escolaId: string | null }) {
+  const qc = useQueryClient();
+  const [salvandoModelo, setSalvandoModelo] = useState(false);
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
+
+  const { data: escola } = useQuery({
+    queryKey: ["escola-parametros", escolaId],
+    enabled: !!escolaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("escolas")
+        .select("id, nome, modelo_avaliacao, logo_url")
+        .eq("id", escolaId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const salvarModelo = async (novoModelo: string) => {
+    if (!escolaId) return;
+    setSalvandoModelo(true);
+    const { error } = await supabase.from("escolas").update({ modelo_avaliacao: novoModelo }).eq("id", escolaId);
+    setSalvandoModelo(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    toast.success("Modelo de avaliação atualizado");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+  };
+
+  const enviarLogo = async (file: File) => {
+    if (!escolaId) return;
+    setEnviandoLogo(true);
+    const extensao = file.name.split(".").pop();
+    const caminho = `${escolaId}/logo.${extensao}`;
+
+    const { error: erroUpload } = await supabase.storage
+      .from("escola-logos")
+      .upload(caminho, file, { upsert: true });
+
+    if (erroUpload) {
+      setEnviandoLogo(false);
+      toast.error("Erro ao enviar logo: " + erroUpload.message);
+      return;
+    }
+
+    const { data: urlPublica } = supabase.storage.from("escola-logos").getPublicUrl(caminho);
+    // Adiciona um parâmetro pra evitar cache do navegador ao trocar a logo
+    const urlComVersao = `${urlPublica.publicUrl}?v=${Date.now()}`;
+
+    const { error: erroUpdate } = await supabase
+      .from("escolas")
+      .update({ logo_url: urlComVersao })
+      .eq("id", escolaId);
+
+    setEnviandoLogo(false);
+    if (erroUpdate) {
+      toast.error("Logo enviada, mas erro ao salvar: " + erroUpdate.message);
+      return;
+    }
+    toast.success("Logotipo atualizado!");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Modelo de Avaliação</CardTitle>
+          <CardDescription>
+            Define como o boletim e as notas funcionam para esta escola.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <button
+            onClick={() => salvarModelo("simplificado")}
+            disabled={salvandoModelo}
+            className={`w-full text-left px-4 py-3 rounded-md border transition-colors ${
+              escola?.modelo_avaliacao === "simplificado" ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
+            }`}
+          >
+            <p className="font-medium text-sm">Simplificado</p>
+            <p className="text-xs text-muted-foreground mt-0.5">AV1 + AV2 + recuperação única por disciplina.</p>
+          </button>
+          <button
+            onClick={() => salvarModelo("bimestral")}
+            disabled={salvandoModelo}
+            className={`w-full text-left px-4 py-3 rounded-md border transition-colors ${
+              escola?.modelo_avaliacao === "bimestral" ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
+            }`}
+          >
+            <p className="font-medium text-sm">Bimestral</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              4 bimestres + recuperação por semestre: (B1+B2+Rec)/2 e (B3+B4+Rec)/2.
+            </p>
+          </button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Logotipo da Escola</CardTitle>
+          <CardDescription>
+            Aparece na barra lateral, na tela de carteirinhas e em outros documentos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+              {escola?.logo_url ? (
+                <img src={escola.logo_url} alt="Logo" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs text-muted-foreground text-center px-1">Sem logo</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={enviandoLogo}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) enviarLogo(file);
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">PNG, JPG ou WEBP. Ficará melhor com fundo transparente e formato quadrado.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
