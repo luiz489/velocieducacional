@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Upload, User } from "lucide-react";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 type Funcionario = {
@@ -22,6 +22,7 @@ type Funcionario = {
   rg: string | null;
   rg_orgao_emissor: string | null;
   data_nascimento: string | null;
+  foto_url: string | null;
   sexo: string | null;
   estado_civil: string | null;
   nome_mae: string | null;
@@ -63,7 +64,7 @@ type Funcionario = {
 };
 
 const emptyForm = {
-  nome: "", cpf: "", rg: "", rg_orgao_emissor: "", data_nascimento: "", sexo: "",
+  nome: "", cpf: "", rg: "", rg_orgao_emissor: "", data_nascimento: "", foto_url: "", sexo: "",
   estado_civil: "", nome_mae: "", nome_pai: "", naturalidade_cidade: "", naturalidade_uf: "",
   cor_raca: "", grau_instrucao: "", endereco: "", telefone: "", email: "",
   pis_pasep: "", ctps_numero: "", ctps_serie: "", categoria_esocial: "CLT",
@@ -80,6 +81,8 @@ export default function Funcionarios() {
   const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
+  const [novoId, setNovoId] = useState<string>("");
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
   const { data, isLoading } = useQuery({
@@ -94,15 +97,17 @@ export default function Funcionarios() {
 
   const openNew = () => {
     setEditing(null);
+    setNovoId(crypto.randomUUID());
     setForm(emptyForm);
     setOpen(true);
   };
 
   const openEdit = (f: Funcionario) => {
     setEditing(f);
+    setNovoId(f.id);
     setForm({
       nome: f.nome, cpf: f.cpf, rg: f.rg ?? "", rg_orgao_emissor: f.rg_orgao_emissor ?? "",
-      data_nascimento: f.data_nascimento ?? "", sexo: f.sexo ?? "", estado_civil: f.estado_civil ?? "",
+      data_nascimento: f.data_nascimento ?? "", foto_url: f.foto_url ?? "", sexo: f.sexo ?? "", estado_civil: f.estado_civil ?? "",
       nome_mae: f.nome_mae ?? "", nome_pai: f.nome_pai ?? "",
       naturalidade_cidade: f.naturalidade_cidade ?? "", naturalidade_uf: f.naturalidade_uf ?? "",
       cor_raca: f.cor_raca ?? "", grau_instrucao: f.grau_instrucao ?? "",
@@ -124,12 +129,30 @@ export default function Funcionarios() {
     setOpen(true);
   };
 
+  const enviarFoto = async (file: File) => {
+    if (!escolaAtivaId || !novoId) return;
+    setEnviandoFoto(true);
+    const extensao = file.name.split(".").pop();
+    const caminho = `${escolaAtivaId}/funcionarios/${novoId}/foto.${extensao}`;
+    const { error: erroUpload } = await supabase.storage.from("pessoas-fotos").upload(caminho, file, { upsert: true });
+    if (erroUpload) {
+      setEnviandoFoto(false);
+      toast.error("Erro ao enviar foto: " + erroUpload.message);
+      return;
+    }
+    const { data: urlPublica } = supabase.storage.from("pessoas-fotos").getPublicUrl(caminho);
+    setForm((f) => ({ ...f, foto_url: `${urlPublica.publicUrl}?v=${Date.now()}` }));
+    setEnviandoFoto(false);
+    toast.success("Foto enviada! Clique em Salvar para confirmar.");
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
         nome: form.nome,
         cpf: form.cpf,
         rg: form.rg || null,
+        foto_url: form.foto_url || null,
         rg_orgao_emissor: form.rg_orgao_emissor || null,
         data_nascimento: form.data_nascimento || null,
         sexo: form.sexo || null,
@@ -175,7 +198,7 @@ export default function Funcionarios() {
         const { error } = await supabase.from("funcionarios").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("funcionarios").insert({ ...payload, escola_id: escolaAtivaId });
+        const { error } = await supabase.from("funcionarios").insert({ ...payload, id: novoId, escola_id: escolaAtivaId });
         if (error) throw error;
       }
     },
@@ -242,8 +265,19 @@ export default function Funcionarios() {
               {data?.map((f) => (
                 <TableRow key={f.id}>
                   <TableCell className="font-medium">
-                    {f.nome}
-                    <div className="text-xs text-muted-foreground">{f.cpf}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                        {f.foto_url ? (
+                          <img src={f.foto_url} alt={f.nome} className="h-full w-full object-cover" />
+                        ) : (
+                          <User className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        {f.nome}
+                        <div className="text-xs text-muted-foreground">{f.cpf}</div>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm">
                     {f.cargo}
@@ -283,6 +317,33 @@ export default function Funcionarios() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar funcionário" : "Novo funcionário"}</DialogTitle>
           </DialogHeader>
+
+          <div className="flex items-center gap-4 pb-2">
+            <div className="h-20 w-20 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+              {form.foto_url ? (
+                <img src={form.foto_url} alt="Foto" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <Label htmlFor="foto-funcionario" className="cursor-pointer inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md border hover:bg-muted">
+                <Upload className="h-4 w-4" /> {enviandoFoto ? "Enviando..." : "Enviar foto"}
+              </Label>
+              <input
+                id="foto-funcionario"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                disabled={enviandoFoto}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) enviarFoto(file);
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">PNG, JPG ou WEBP</p>
+            </div>
+          </div>
 
           <div className="space-y-4">
             <p className="text-sm font-medium text-muted-foreground">Dados pessoais</p>

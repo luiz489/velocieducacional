@@ -32,6 +32,7 @@ interface Parceiro {
   telefone: string | null;
   email: string | null;
   website: string | null;
+  cnpj_cpf: string | null;
 }
 
 function distKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -66,7 +67,7 @@ export default function Parceiros() {
   const [form, setForm] = useState({
     nome: "", tipo: "Fornecedor" as TipoParceiro, categoria: "",
     descricao: "", estado: "SP", cidade: "", endereco: "",
-    telefone: "", email: "", website: "",
+    telefone: "", email: "", website: "", cnpj_cpf: "",
   });
 
   const formatDist = (km: number) =>
@@ -153,6 +154,7 @@ export default function Parceiros() {
       telefone: form.telefone || null,
       email: form.email || null,
       website: form.website || null,
+      cnpj_cpf: form.cnpj_cpf || null,
       ativo: true,
       escola_id: escolaAtivaId,
     });
@@ -163,7 +165,7 @@ export default function Parceiros() {
     }
     toast({ title: "Parceiro cadastrado!", description: form.nome });
     setOpen(false);
-    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", endereco: "", telefone: "", email: "", website: "" });
+    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", endereco: "", telefone: "", email: "", website: "", cnpj_cpf: "" });
     fetchAll();
   };
 
@@ -218,6 +220,7 @@ export default function Parceiros() {
                 <div><Label>E-mail</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
               </div>
               <div><Label>Website</Label><Input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} placeholder="https://" /></div>
+              <div><Label>CNPJ/CPF</Label><Input value={form.cnpj_cpf} onChange={e => setForm({ ...form, cnpj_cpf: e.target.value })} placeholder="Opcional" /></div>
               <Button onClick={salvar} disabled={saving} className="w-full mt-2">
                 {saving ? "Salvando..." : "Cadastrar"}
               </Button>

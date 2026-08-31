@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, GraduationCap } from "lucide-react";
+import { Plus, Pencil, Trash2, GraduationCap, Upload, User } from "lucide-react";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 type Professor = {
@@ -21,6 +21,10 @@ type Professor = {
   email: string | null;
   telefone: string | null;
   cpf: string | null;
+  rg: string | null;
+  data_nascimento: string | null;
+  endereco: string | null;
+  foto_url: string | null;
   formacao: string | null;
   disciplinas: string[];
   data_admissao: string | null;
@@ -44,6 +48,10 @@ const emptyForm = {
   email: "",
   telefone: "",
   cpf: "",
+  rg: "",
+  data_nascimento: "",
+  endereco: "",
+  foto_url: "",
   formacao: "",
   disciplinas: "",
   data_admissao: "",
@@ -67,6 +75,8 @@ export default function Professores() {
   const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Professor | null>(null);
+  const [novoId, setNovoId] = useState<string>("");
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
   const { data, isLoading } = useQuery({
@@ -81,17 +91,23 @@ export default function Professores() {
 
   const openNew = () => {
     setEditing(null);
+    setNovoId(crypto.randomUUID());
     setForm(emptyForm);
     setOpen(true);
   };
 
   const openEdit = (p: Professor) => {
     setEditing(p);
+    setNovoId(p.id);
     setForm({
       nome: p.nome,
       email: p.email ?? "",
       telefone: p.telefone ?? "",
       cpf: p.cpf ?? "",
+      rg: p.rg ?? "",
+      data_nascimento: p.data_nascimento ?? "",
+      endereco: p.endereco ?? "",
+      foto_url: p.foto_url ?? "",
       formacao: p.formacao ?? "",
       disciplinas: (p.disciplinas ?? []).join(", "),
       data_admissao: p.data_admissao ?? "",
@@ -112,6 +128,24 @@ export default function Professores() {
     setOpen(true);
   };
 
+  const enviarFoto = async (file: File) => {
+    if (!escolaAtivaId || !novoId) return;
+    setEnviandoFoto(true);
+    const extensao = file.name.split(".").pop();
+    const caminho = `${escolaAtivaId}/professores/${novoId}/foto.${extensao}`;
+    const { error: erroUpload } = await supabase.storage.from("pessoas-fotos").upload(caminho, file, { upsert: true });
+    if (erroUpload) {
+      setEnviandoFoto(false);
+      toast.error("Erro ao enviar foto: " + erroUpload.message);
+      return;
+    }
+    const { data: urlPublica } = supabase.storage.from("pessoas-fotos").getPublicUrl(caminho);
+    const urlComVersao = `${urlPublica.publicUrl}?v=${Date.now()}`;
+    setForm((f) => ({ ...f, foto_url: urlComVersao }));
+    setEnviandoFoto(false);
+    toast.success("Foto enviada! Clique em Salvar para confirmar.");
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -119,6 +153,10 @@ export default function Professores() {
         email: form.email || null,
         telefone: form.telefone || null,
         cpf: form.cpf || null,
+        rg: form.rg || null,
+        data_nascimento: form.data_nascimento || null,
+        endereco: form.endereco || null,
+        foto_url: form.foto_url || null,
         formacao: form.formacao || null,
         disciplinas: form.disciplinas
           .split(",")
@@ -143,7 +181,7 @@ export default function Professores() {
         const { error } = await supabase.from("professores").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("professores").insert({ ...payload, escola_id: escolaAtivaId });
+        const { error } = await supabase.from("professores").insert({ ...payload, id: novoId, escola_id: escolaAtivaId });
         if (error) throw error;
       }
     },
@@ -216,7 +254,18 @@ export default function Professores() {
               )}
               {data?.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.nome}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                        {p.foto_url ? (
+                          <img src={p.foto_url} alt={p.nome} className="h-full w-full object-cover" />
+                        ) : (
+                          <User className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      {p.nome}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {p.email && <div>{p.email}</div>}
                     {p.telefone && <div>{p.telefone}</div>}
@@ -271,6 +320,34 @@ export default function Professores() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar professor" : "Novo professor"}</DialogTitle>
           </DialogHeader>
+
+          <div className="flex items-center gap-4 pb-2">
+            <div className="h-20 w-20 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+              {form.foto_url ? (
+                <img src={form.foto_url} alt="Foto" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <Label htmlFor="foto-professor" className="cursor-pointer inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md border hover:bg-muted">
+                <Upload className="h-4 w-4" /> {enviandoFoto ? "Enviando..." : "Enviar foto"}
+              </Label>
+              <input
+                id="foto-professor"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                disabled={enviandoFoto}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) enviarFoto(file);
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">PNG, JPG ou WEBP</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <Label>Nome completo *</Label>
@@ -289,12 +366,24 @@ export default function Professores() {
               <Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} />
             </div>
             <div>
+              <Label>RG</Label>
+              <Input value={form.rg} onChange={(e) => setForm({ ...form, rg: e.target.value })} />
+            </div>
+            <div>
+              <Label>Data de Nascimento</Label>
+              <Input type="date" value={form.data_nascimento} onChange={(e) => setForm({ ...form, data_nascimento: e.target.value })} />
+            </div>
+            <div>
               <Label>Data de admissão</Label>
               <Input
                 type="date"
                 value={form.data_admissao}
                 onChange={(e) => setForm({ ...form, data_admissao: e.target.value })}
               />
+            </div>
+            <div className="col-span-2">
+              <Label>Endereço</Label>
+              <Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
             </div>
             <div className="col-span-2">
               <Label>Formação</Label>

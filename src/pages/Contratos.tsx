@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   FileText,
@@ -62,6 +63,8 @@ type Contrato = {
   dia_vencimento: number;
   status: string;
   observacoes: string | null;
+  numero_contrato: string | null;
+  renovacao_automatica: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -98,6 +101,8 @@ export default function Contratos() {
     data_fim: "",
     dia_vencimento: "10",
     observacoes: "",
+    numero_contrato: "",
+    renovacao_automatica: false,
   });
   const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
@@ -127,6 +132,8 @@ export default function Contratos() {
         data_inicio: form.data_inicio,
         data_fim: form.data_fim || null,
         dia_vencimento: parseInt(form.dia_vencimento),
+        numero_contrato: form.numero_contrato || null,
+        renovacao_automatica: form.renovacao_automatica,
         observacoes: form.observacoes || null,
         escola_id: escolaAtivaId,
       });
@@ -145,6 +152,8 @@ export default function Contratos() {
         data_fim: "",
         dia_vencimento: "10",
         observacoes: "",
+        numero_contrato: "",
+        renovacao_automatica: false,
       });
     },
     onError: () => toast.error("Erro ao cadastrar contrato."),
@@ -271,6 +280,22 @@ export default function Contratos() {
                     onChange={(e) => setForm({ ...form, data_inicio: e.target.value })}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Número do Contrato</Label>
+                  <Input
+                    value={form.numero_contrato}
+                    onChange={(e) => setForm({ ...form, numero_contrato: e.target.value })}
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="renovacao_automatica"
+                  checked={form.renovacao_automatica}
+                  onCheckedChange={(v) => setForm({ ...form, renovacao_automatica: !!v })}
+                />
+                <Label htmlFor="renovacao_automatica" className="cursor-pointer">Renovação automática</Label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -386,7 +411,11 @@ export default function Contratos() {
               ) : (
                 filtrados.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.fornecedor}</TableCell>
+                    <TableCell className="font-medium">
+                      {c.fornecedor}
+                      {c.numero_contrato && <div className="text-xs text-muted-foreground">Nº {c.numero_contrato}</div>}
+                      {c.renovacao_automatica && <Badge variant="outline" className="text-[10px] mt-1">Renovação automática</Badge>}
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">{c.descricao}</TableCell>
                     <TableCell>{c.categoria}</TableCell>
                     <TableCell className="text-right">

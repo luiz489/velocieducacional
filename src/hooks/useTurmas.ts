@@ -11,6 +11,10 @@ export type TurmaRow = {
   sala: string | null;
   vagas_totais: number;
   alunos_matriculados: number;
+  categoria_id: string | null;
+  categoria_nome: string | null;
+  professor_regente_id: string | null;
+  professor_regente_nome: string | null;
 };
 
 export function useTurmas() {
@@ -22,7 +26,7 @@ export function useTurmas() {
     if (!escolaAtivaId) { setTurmas([]); setLoading(false); return; }
     const { data: turmasData, error } = await supabase
       .from("turmas")
-      .select("id, nome, ano_letivo, turno, sala, vagas_totais")
+      .select("id, nome, ano_letivo, turno, sala, vagas_totais, categoria_id, professor_regente_id, categorias(nome), professores(nome)")
       .eq("escola_id", escolaAtivaId)
       .order("nome");
 
@@ -42,8 +46,17 @@ export function useTurmas() {
     });
 
     setTurmas(
-      (turmasData ?? []).map((t) => ({
-        ...t,
+      (turmasData ?? []).map((t: any) => ({
+        id: t.id,
+        nome: t.nome,
+        ano_letivo: t.ano_letivo,
+        turno: t.turno,
+        sala: t.sala,
+        vagas_totais: t.vagas_totais,
+        categoria_id: t.categoria_id,
+        categoria_nome: t.categorias?.nome ?? null,
+        professor_regente_id: t.professor_regente_id,
+        professor_regente_nome: t.professores?.nome ?? null,
         alunos_matriculados: contagem.get(t.id) ?? 0,
       }))
     );
@@ -56,6 +69,7 @@ export function useTurmas() {
 
   const createTurma = async (escolaId: string, turma: {
     nome: string; ano_letivo: number; turno: string; sala?: string | null; vagas_totais: number;
+    categoria_id?: string | null; professor_regente_id?: string | null;
   }) => {
     const { error } = await supabase.from("turmas").insert({ ...turma, escola_id: escolaId });
     if (error) {

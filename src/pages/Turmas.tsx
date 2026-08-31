@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, MoreHorizontal, BookOpen, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,28 @@ export default function Turmas() {
   const [turno, setTurno] = useState("Manhã");
   const [sala, setSala] = useState("");
   const [vagas, setVagas] = useState("30");
+  const [categoriaId, setCategoriaId] = useState("");
+  const [professorRegenteId, setProfessorRegenteId] = useState("");
+
+  const { data: categorias } = useQuery({
+    queryKey: ["categorias", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categorias").select("id, nome").eq("escola_id", escolaAtivaId!).order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: professores } = useQuery({
+    queryKey: ["professores-ativos", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("professores").select("id, nome").eq("escola_id", escolaAtivaId!).eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [turmaAlunos, setTurmaAlunos] = useState<TurmaRow | null>(null);
   const [alunosDaTurma, setAlunosDaTurma] = useState<{ id: string; nome: string; cpf: string; status_pagamento: string }[]>([]);
@@ -73,6 +96,8 @@ export default function Turmas() {
     setTurno("Manhã");
     setSala("");
     setVagas("30");
+    setCategoriaId("");
+    setProfessorRegenteId("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,6 +110,8 @@ export default function Turmas() {
       turno,
       sala: sala || null,
       vagas_totais: Number(vagas),
+      categoria_id: categoriaId || null,
+      professor_regente_id: professorRegenteId || null,
     });
     setSaving(false);
     if (ok) {
@@ -176,6 +203,24 @@ export default function Turmas() {
                   <Label htmlFor="vagas">Vagas Totais</Label>
                   <Input id="vagas" type="number" value={vagas} onChange={(e) => setVagas(e.target.value)} className="mt-1" required />
                 </div>
+                <div>
+                  <Label>Categoria/Segmento</Label>
+                  <Select value={categoriaId} onValueChange={setCategoriaId}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Opcional" /></SelectTrigger>
+                    <SelectContent>
+                      {categorias?.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Professor Regente</Label>
+                  <Select value={professorRegenteId} onValueChange={setProfessorRegenteId}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Opcional" /></SelectTrigger>
+                    <SelectContent>
+                      {professores?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancelar</Button>
@@ -249,6 +294,7 @@ export default function Turmas() {
               <TableHead>Ano Letivo</TableHead>
               <TableHead>Turno</TableHead>
               <TableHead className="hidden md:table-cell">Sala</TableHead>
+              <TableHead className="hidden lg:table-cell">Regente</TableHead>
               <TableHead>Ocupação</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-10" />
@@ -263,6 +309,7 @@ export default function Turmas() {
                   <TableCell className="text-muted-foreground">{turma.ano_letivo}</TableCell>
                   <TableCell>{turma.turno}</TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">{turma.sala ?? "—"}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-muted-foreground">{turma.professor_regente_nome ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3 min-w-[140px]">
                       <Progress value={percent} className="h-2 flex-1" />

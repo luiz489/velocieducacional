@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
@@ -20,15 +21,20 @@ type Disciplina = {
   codigo: string | null;
   carga_horaria: number;
   descricao: string | null;
+  area_conhecimento: string | null;
   ativo: boolean;
 };
+
+const AREAS_CONHECIMENTO = [
+  "Linguagens", "Matemática", "Ciências da Natureza", "Ciências Humanas", "Ensino Religioso",
+];
 
 export default function Disciplinas() {
   const qc = useQueryClient();
   const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Disciplina | null>(null);
-  const [form, setForm] = useState({ nome: "", codigo: "", carga_horaria: 0, descricao: "", ativo: true });
+  const [form, setForm] = useState({ nome: "", codigo: "", carga_horaria: 0, descricao: "", area_conhecimento: "", ativo: true });
 
   const { data, isLoading } = useQuery({
     queryKey: ["disciplinas", escolaAtivaId],
@@ -63,7 +69,7 @@ export default function Disciplinas() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { ...form, codigo: form.codigo || null, descricao: form.descricao || null };
+      const payload = { ...form, codigo: form.codigo || null, descricao: form.descricao || null, area_conhecimento: form.area_conhecimento || null };
       if (editing) {
         const { error } = await supabase.from("disciplinas").update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -95,7 +101,7 @@ export default function Disciplinas() {
 
   function reset() {
     setEditing(null);
-    setForm({ nome: "", codigo: "", carga_horaria: 0, descricao: "", ativo: true });
+    setForm({ nome: "", codigo: "", carga_horaria: 0, descricao: "", area_conhecimento: "", ativo: true });
   }
 
   function openEdit(d: Disciplina) {
@@ -105,6 +111,7 @@ export default function Disciplinas() {
       codigo: d.codigo ?? "",
       carga_horaria: d.carga_horaria,
       descricao: d.descricao ?? "",
+      area_conhecimento: d.area_conhecimento ?? "",
       ativo: d.ativo,
     });
     setOpen(true);
@@ -150,6 +157,15 @@ export default function Disciplinas() {
                   <Label>Descrição</Label>
                   <Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
                 </div>
+                <div>
+                  <Label>Área de Conhecimento</Label>
+                  <Select value={form.area_conhecimento} onValueChange={(v) => setForm({ ...form, area_conhecimento: v })}>
+                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+                    <SelectContent>
+                      {AREAS_CONHECIMENTO.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-center gap-2">
                   <Checkbox checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: !!v })} />
                   <Label>Ativa</Label>
@@ -182,7 +198,10 @@ export default function Disciplinas() {
                   const matrizes = usos?.get(d.id) ?? [];
                   return (
                   <TableRow key={d.id}>
-                    <TableCell className="font-medium">{d.nome}</TableCell>
+                    <TableCell className="font-medium">
+                      {d.nome}
+                      {d.area_conhecimento && <div className="text-xs text-muted-foreground">{d.area_conhecimento}</div>}
+                    </TableCell>
                     <TableCell>{d.codigo || "-"}</TableCell>
                     <TableCell>{d.carga_horaria}</TableCell>
                     <TableCell>
