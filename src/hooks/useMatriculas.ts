@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 export type MatriculaResumo = {
   id: string;
@@ -29,11 +30,13 @@ export type TurmaComVagas = {
 };
 
 export function useMatriculas() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [matriculas, setMatriculas] = useState<MatriculaResumo[]>([]);
   const [turmasComVagas, setTurmasComVagas] = useState<TurmaComVagas[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchMatriculas = useCallback(async () => {
+    if (!escolaAtivaId) { setMatriculas([]); return; }
     const { data, error } = await supabase
       .from("matriculas")
       .select(`
@@ -42,6 +45,7 @@ export function useMatriculas() {
         turmas ( nome, turno, ano_letivo ),
         financeiro ( status, valor )
       `)
+      .eq("escola_id", escolaAtivaId)
       .order("data_ingresso", { ascending: false });
 
     if (error) {
@@ -71,18 +75,21 @@ export function useMatriculas() {
     });
 
     setMatriculas(resumo);
-  }, []);
+  }, [escolaAtivaId]);
 
   const fetchTurmasComVagas = useCallback(async () => {
+    if (!escolaAtivaId) { setTurmasComVagas([]); return; }
     const { data: turmas, error } = await supabase
       .from("turmas")
       .select("id, nome, turno, ano_letivo, vagas_totais")
+      .eq("escola_id", escolaAtivaId)
       .order("nome");
     if (error || !turmas) return;
 
     const { data: contagem } = await supabase
       .from("matriculas")
-      .select("turma_id");
+      .select("turma_id")
+      .eq("escola_id", escolaAtivaId);
 
     const ocupadas = new Map<string, number>();
     (contagem ?? []).forEach((m: any) => {
@@ -95,7 +102,7 @@ export function useMatriculas() {
         vagas_ocupadas: ocupadas.get(t.id) ?? 0,
       }))
     );
-  }, []);
+  }, [escolaAtivaId]);
 
   useEffect(() => {
     Promise.all([fetchMatriculas(), fetchTurmasComVagas()]).finally(() => setLoading(false));

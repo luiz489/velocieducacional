@@ -388,8 +388,8 @@ export type Database = {
       fn_valor_por_extenso: { Args: { p_valor: number }; Returns: string }
       gerar_documento: { Args: { p_aluno_id: string; p_template_id: string; p_valores_manuais?: Json }; Returns: string }
       gerar_faturas_do_mes: { Args: { p_ano?: number; p_mes?: number }; Returns: { escola_id: string; escola_nome: string; fatura_id: string; valor: number }[] }
-      gerar_pagamentos_funcionarios: { Args: { p_ano?: number; p_mes?: number }; Returns: { out_conta_id: string; out_funcionario_id: string; out_funcionario_nome: string; out_valor: number }[] }
-      gerar_pagamentos_professores_pj: { Args: { p_ano?: number; p_mes?: number }; Returns: { out_conta_id: string; out_professor_id: string; out_professor_nome: string; out_valor: number }[] }
+      gerar_pagamentos_funcionarios: { Args: { p_escola_id: string; p_ano?: number; p_mes?: number }; Returns: { out_conta_id: string; out_funcionario_id: string; out_funcionario_nome: string; out_valor: number }[] }
+      gerar_pagamentos_professores_pj: { Args: { p_escola_id: string; p_ano?: number; p_mes?: number }; Returns: { out_conta_id: string; out_professor_id: string; out_professor_nome: string; out_valor: number }[] }
       has_role: { Args: { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin_erp: { Args: { p_user_id: string }; Returns: boolean }

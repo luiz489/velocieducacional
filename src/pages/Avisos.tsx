@@ -61,11 +61,13 @@ export default function Avisos() {
   });
 
   const { data: avisos, isLoading } = useQuery({
-    queryKey: ["avisos", canal],
+    queryKey: ["avisos", canal, escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("avisos")
         .select("*")
+        .eq("escola_id", escolaAtivaId!)
         .eq("canal", canal)
         .order("publicado_em", { ascending: false });
       if (error) throw error;

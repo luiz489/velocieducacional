@@ -159,6 +159,7 @@ export default function Matriculas() {
       .from("financeiro")
       .select("descricao, valor, data_vencimento, status")
       .eq("matricula_id", m.id)
+      .eq("escola_id", escolaAtivaId!)
       .order("data_vencimento");
     setCarneParcelas(data ?? []);
     setCarneDialogOpen(true);

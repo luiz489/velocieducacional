@@ -102,11 +102,13 @@ export default function Contratos() {
   const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
   const { data: contratos = [], isLoading } = useQuery({
-    queryKey: ["contratos"],
+    queryKey: ["contratos", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contratos")
         .select("*")
+        .eq("escola_id", escolaAtivaId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Contrato[];

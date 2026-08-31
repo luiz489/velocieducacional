@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Printer, FileSignature, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 type Campo = {
   chave: string;
@@ -21,6 +22,7 @@ type Campo = {
 };
 
 export default function GerarDocumento() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [templateId, setTemplateId] = useState<string>("");
   const [alunoId, setAlunoId] = useState<string>("");
   const [valoresManuais, setValoresManuais] = useState<Record<string, string>>({});
@@ -40,11 +42,13 @@ export default function GerarDocumento() {
   });
 
   const { data: alunos } = useQuery({
-    queryKey: ["alunos-para-gerar"],
+    queryKey: ["alunos-para-gerar", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("alunos")
         .select("id, nome")
+        .eq("escola_id", escolaAtivaId!)
         .eq("status", "Ativo")
         .order("nome");
       if (error) throw error;

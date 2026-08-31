@@ -37,10 +37,12 @@ const URGENCIA_COLORS: Record<string, string> = {
 // ─── Hooks ──────────────────────────────────────────────────────────
 
 function useAprovadores() {
+  const { escolaAtivaId } = useEscolaAtiva();
   return useQuery({
-    queryKey: ["aprovadores"],
+    queryKey: ["aprovadores", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("aprovadores").select("*").order("nome");
+      const { data, error } = await supabase.from("aprovadores").select("*").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data;
     },
@@ -48,12 +50,15 @@ function useAprovadores() {
 }
 
 function useSolicitacoes() {
+  const { escolaAtivaId } = useEscolaAtiva();
   return useQuery({
-    queryKey: ["solicitacoes_compra"],
+    queryKey: ["solicitacoes_compra", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_compra")
         .select("*, aprovadores(nome, cargo)")
+        .eq("escola_id", escolaAtivaId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -62,18 +67,20 @@ function useSolicitacoes() {
 }
 
 function useCotacoes(solicitacaoId?: string) {
+  const { escolaAtivaId } = useEscolaAtiva();
   return useQuery({
-    queryKey: ["cotacoes", solicitacaoId],
+    queryKey: ["cotacoes", solicitacaoId, escolaAtivaId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cotacoes")
         .select("*")
         .eq("solicitacao_id", solicitacaoId!)
+        .eq("escola_id", escolaAtivaId!)
         .order("valor_total");
       if (error) throw error;
       return data;
     },
-    enabled: !!solicitacaoId,
+    enabled: !!solicitacaoId && !!escolaAtivaId,
   });
 }
 

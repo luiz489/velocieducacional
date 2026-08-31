@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 export type LancamentoRow = {
   id: string;
@@ -15,16 +16,19 @@ export type LancamentoRow = {
 };
 
 export function useFinanceiro() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [lancamentos, setLancamentos] = useState<LancamentoRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchLancamentos = useCallback(async () => {
+    if (!escolaAtivaId) { setLancamentos([]); return; }
     const { data, error } = await supabase
       .from("financeiro")
       .select(`
         id, descricao, valor, data_vencimento, data_pagamento, status, tipo,
         matriculas ( alunos ( nome, responsavel_financeiro ) )
       `)
+      .eq("escola_id", escolaAtivaId)
       .order("data_vencimento", { ascending: false });
 
     if (error) {
@@ -47,7 +51,7 @@ export function useFinanceiro() {
       }))
     );
     setLoading(false);
-  }, []);
+  }, [escolaAtivaId]);
 
   useEffect(() => {
     fetchLancamentos();

@@ -31,20 +31,23 @@ export default function Disciplinas() {
   const [form, setForm] = useState({ nome: "", codigo: "", carga_horaria: 0, descricao: "", ativo: true });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["disciplinas"],
+    queryKey: ["disciplinas", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("disciplinas").select("*").order("nome");
+      const { data, error } = await supabase.from("disciplinas").select("*").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Disciplina[];
     },
   });
 
   const { data: usos } = useQuery({
-    queryKey: ["disciplinas-usos"],
+    queryKey: ["disciplinas-usos", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("matriz_disciplinas")
-        .select("disciplina_id, matrizes_curriculares(id, nome, serie, ano_letivo, turno)");
+        .select("disciplina_id, matrizes_curriculares(id, nome, serie, ano_letivo, turno)")
+        .eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       const map = new Map<string, { id: string; nome: string; serie: string; ano_letivo: number; turno: string }[]>();
       (data as any[])?.forEach((row) => {

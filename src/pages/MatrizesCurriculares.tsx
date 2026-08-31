@@ -54,9 +54,11 @@ export default function MatrizesCurriculares() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["matrizes"],
+    queryKey: ["matrizes", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase.from("matrizes_curriculares").select("*")
+        .eq("escola_id", escolaAtivaId!)
         .order("ano_letivo", { ascending: false }).order("nome");
       if (error) throw error;
       return data as Matriz[];
@@ -235,18 +237,19 @@ function ManageDisciplinasDialog({ matrizId, onClose }: { matrizId: string; onCl
   const { escolaAtivaId } = useEscolaAtiva();
   const qc = useQueryClient();
   const { data: disciplinas } = useQuery({
-    queryKey: ["disciplinas-ativas"],
+    queryKey: ["disciplinas-ativas", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("disciplinas").select("*").eq("ativo", true).order("nome");
+      const { data, error } = await supabase.from("disciplinas").select("*").eq("escola_id", escolaAtivaId!).eq("ativo", true).order("nome");
       if (error) throw error;
       return data as Disciplina[];
     },
   });
 
   const { data: vinculos } = useQuery({
-    queryKey: ["matriz-disciplinas", matrizId],
+    queryKey: ["matriz-disciplinas", matrizId, escolaAtivaId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("matriz_disciplinas").select("*").eq("matriz_id", matrizId);
+      const { data, error } = await supabase.from("matriz_disciplinas").select("*").eq("matriz_id", matrizId).eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       return data as MatrizDisc[];
     },

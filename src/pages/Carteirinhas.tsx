@@ -31,18 +31,20 @@ export default function Carteirinhas() {
   const [preview, setPreview] = useState<{ aluno: Aluno; carteira: Carteirinha } | null>(null);
 
   const { data: alunos } = useQuery({
-    queryKey: ["alunos-cart"],
+    queryKey: ["alunos-cart", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("alunos").select("id, nome, cpf, data_nascimento").order("nome");
+      const { data, error } = await supabase.from("alunos").select("id, nome, cpf, data_nascimento").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Aluno[];
     },
   });
 
   const { data: carteiras } = useQuery({
-    queryKey: ["carteirinhas"],
+    queryKey: ["carteirinhas", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("carteirinhas").select("*");
+      const { data, error } = await supabase.from("carteirinhas").select("*").eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       return data as Carteirinha[];
     },

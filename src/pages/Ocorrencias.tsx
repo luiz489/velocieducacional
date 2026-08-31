@@ -55,11 +55,13 @@ export default function Ocorrencias() {
 
   // Cadastros
   const { data: alunos = [] } = useQuery({
-    queryKey: ["alunos-lista"],
+    queryKey: ["alunos-lista", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("alunos")
         .select("id, nome")
+        .eq("escola_id", escolaAtivaId!)
         .order("nome");
       if (error) throw error;
       return data || [];
@@ -67,11 +69,13 @@ export default function Ocorrencias() {
   });
 
   const { data: professores = [] } = useQuery({
-    queryKey: ["professores-ativos"],
+    queryKey: ["professores-ativos", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("professores")
         .select("id, nome")
+        .eq("escola_id", escolaAtivaId!)
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;
@@ -81,11 +85,13 @@ export default function Ocorrencias() {
 
   // Mapa aluno_id -> turma (via matriculas)
   const { data: matriculas = [] } = useQuery({
-    queryKey: ["matriculas-com-turma"],
+    queryKey: ["matriculas-com-turma", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("matriculas")
-        .select("aluno_id, turmas(nome)");
+        .select("aluno_id, turmas(nome)")
+        .eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       return data || [];
     },
@@ -105,11 +111,13 @@ export default function Ocorrencias() {
   }, [alunos]);
 
   const { data: ocorrencias = [], isLoading } = useQuery({
-    queryKey: ["ocorrencias"],
+    queryKey: ["ocorrencias", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ocorrencias")
         .select("*")
+        .eq("escola_id", escolaAtivaId!)
         .order("data_ocorrencia", { ascending: false });
       if (error) throw error;
       return (data || []) as OcorrenciaRow[];

@@ -70,9 +70,10 @@ export default function Professores() {
   const [form, setForm] = useState(emptyForm);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["professores"],
+    queryKey: ["professores", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("professores").select("*").order("nome");
+      const { data, error } = await supabase.from("professores").select("*").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Professor[];
     },

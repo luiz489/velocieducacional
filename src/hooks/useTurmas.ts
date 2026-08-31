@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 export type TurmaRow = {
   id: string;
@@ -13,13 +14,16 @@ export type TurmaRow = {
 };
 
 export function useTurmas() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [turmas, setTurmas] = useState<TurmaRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTurmas = useCallback(async () => {
+    if (!escolaAtivaId) { setTurmas([]); setLoading(false); return; }
     const { data: turmasData, error } = await supabase
       .from("turmas")
       .select("id, nome, ano_letivo, turno, sala, vagas_totais")
+      .eq("escola_id", escolaAtivaId)
       .order("nome");
 
     if (error) {
@@ -28,7 +32,10 @@ export function useTurmas() {
       return;
     }
 
-    const { data: matriculasData } = await supabase.from("matriculas").select("turma_id");
+    const { data: matriculasData } = await supabase
+      .from("matriculas")
+      .select("turma_id")
+      .eq("escola_id", escolaAtivaId);
     const contagem = new Map<string, number>();
     (matriculasData ?? []).forEach((m) => {
       contagem.set(m.turma_id, (contagem.get(m.turma_id) ?? 0) + 1);
@@ -41,7 +48,7 @@ export function useTurmas() {
       }))
     );
     setLoading(false);
-  }, []);
+  }, [escolaAtivaId]);
 
   useEffect(() => {
     fetchTurmas();

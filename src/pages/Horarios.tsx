@@ -47,22 +47,24 @@ export default function Horarios() {
   });
 
   const { data: turmas } = useQuery({
-    queryKey: ["turmas-all"],
+    queryKey: ["turmas-all", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("turmas").select("*").order("nome");
+      const { data, error } = await supabase.from("turmas").select("*").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Turma[];
     },
   });
 
   const { data: aulas } = useQuery({
-    queryKey: ["horarios", turmaId, ano],
+    queryKey: ["horarios", turmaId, ano, escolaAtivaId],
     enabled: !!turmaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("horarios_aulas")
         .select("*")
         .eq("turma_id", turmaId)
+        .eq("escola_id", escolaAtivaId!)
         .eq("ano_letivo", ano)
         .order("hora_inicio");
       if (error) throw error;
@@ -71,11 +73,13 @@ export default function Horarios() {
   });
 
   const { data: professores } = useQuery({
-    queryKey: ["professores-ativos"],
+    queryKey: ["professores-ativos", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("professores")
         .select("id, nome, ativo")
+        .eq("escola_id", escolaAtivaId!)
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;
@@ -84,11 +88,13 @@ export default function Horarios() {
   });
 
   const { data: disciplinas } = useQuery({
-    queryKey: ["disciplinas-ativas"],
+    queryKey: ["disciplinas-ativas", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("disciplinas")
         .select("id, nome")
+        .eq("escola_id", escolaAtivaId!)
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;

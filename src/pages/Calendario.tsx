@@ -45,11 +45,13 @@ export default function Calendario() {
   });
 
   const { data: eventos, isLoading } = useQuery({
-    queryKey: ["eventos", tipo],
+    queryKey: ["eventos", tipo, escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("eventos_calendario")
         .select("*")
+        .eq("escola_id", escolaAtivaId!)
         .eq("tipo", tipo)
         .order("data_inicio");
       if (error) throw error;

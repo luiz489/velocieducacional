@@ -3,34 +3,40 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { validarCPF } from "@/lib/validations";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 export type Aluno = Tables<"alunos">;
 export type Turma = Tables<"turmas">;
 
 export function useAlunos() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAlunos = useCallback(async () => {
+    if (!escolaAtivaId) { setAlunos([]); return; }
     const { data, error } = await supabase
       .from("alunos")
       .select("*")
+      .eq("escola_id", escolaAtivaId)
       .order("nome");
     if (error) {
       toast.error("Erro ao carregar alunos: " + error.message);
     } else {
       setAlunos(data || []);
     }
-  }, []);
+  }, [escolaAtivaId]);
 
   const fetchTurmas = useCallback(async () => {
+    if (!escolaAtivaId) { setTurmas([]); return; }
     const { data, error } = await supabase
       .from("turmas")
       .select("*")
+      .eq("escola_id", escolaAtivaId)
       .order("nome");
     if (!error) setTurmas(data || []);
-  }, []);
+  }, [escolaAtivaId]);
 
   useEffect(() => {
     Promise.all([fetchAlunos(), fetchTurmas()]).finally(() => setLoading(false));
@@ -45,11 +51,12 @@ export function useAlunos() {
         return false;
       }
     }
-    // Validação client-side de CPF duplicado
+    // Validação client-side de CPF duplicado (dentro da mesma escola)
     const { data: existente } = await supabase
       .from("alunos")
       .select("id, nome")
       .eq("cpf", aluno.cpf)
+      .eq("escola_id", aluno.escola_id)
       .maybeSingle();
     if (existente) {
       toast.error(`CPF já cadastrado para o aluno "${existente.nome}".`);
@@ -80,6 +87,7 @@ export function useAlunos() {
         .from("alunos")
         .select("id, nome")
         .eq("cpf", updates.cpf)
+        .eq("escola_id", escolaAtivaId)
         .neq("id", id)
         .maybeSingle();
       if (existente) {
@@ -117,6 +125,7 @@ export function useAlunos() {
       .select("id, turmas(nome, ano_letivo)")
       .eq("aluno_id", alunoId)
       .eq("turma_id", turmaId)
+      .eq("escola_id", escolaId)
       .maybeSingle();
     if (existente) {
       const t = (existente as any).turmas;

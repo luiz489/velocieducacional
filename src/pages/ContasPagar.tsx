@@ -59,11 +59,13 @@ export default function ContasPagar() {
   const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
   const { data: contas = [], isLoading } = useQuery({
-    queryKey: ["contas-a-pagar"],
+    queryKey: ["contas-a-pagar", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contas_a_pagar")
         .select("id, fornecedor, fornecedor_id, descricao, valor, categoria, data_vencimento, data_pagamento, status")
+        .eq("escola_id", escolaAtivaId!)
         .order("data_vencimento", { ascending: false });
       if (error) throw error;
       return (data ?? []) as ContaPagar[];

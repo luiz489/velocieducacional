@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 export type TurmaComPlano = {
   turma_id: string;
@@ -15,13 +16,16 @@ export type TurmaComPlano = {
 };
 
 export function usePlanosFinanceirosTurma() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [turmas, setTurmas] = useState<TurmaComPlano[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDados = useCallback(async () => {
+    if (!escolaAtivaId) { setTurmas([]); setLoading(false); return; }
     const { data: turmasData, error } = await supabase
       .from("turmas")
       .select("id, nome, turno, ano_letivo")
+      .eq("escola_id", escolaAtivaId)
       .order("nome");
 
     if (error) {
@@ -32,7 +36,8 @@ export function usePlanosFinanceirosTurma() {
 
     const { data: planosData } = await supabase
       .from("planos_financeiros_turma")
-      .select("id, turma_id, valor_mensalidade, numero_parcelas, dia_vencimento, taxa_matricula");
+      .select("id, turma_id, valor_mensalidade, numero_parcelas, dia_vencimento, taxa_matricula")
+      .eq("escola_id", escolaAtivaId);
 
     const planosPorTurma = new Map((planosData ?? []).map((p) => [p.turma_id, p]));
 
@@ -53,7 +58,7 @@ export function usePlanosFinanceirosTurma() {
       })
     );
     setLoading(false);
-  }, []);
+  }, [escolaAtivaId]);
 
   useEffect(() => {
     fetchDados();

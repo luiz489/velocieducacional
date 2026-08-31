@@ -83,9 +83,10 @@ export default function Funcionarios() {
   const [form, setForm] = useState(emptyForm);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["funcionarios"],
+    queryKey: ["funcionarios", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("funcionarios").select("*").order("nome");
+      const { data, error } = await supabase.from("funcionarios").select("*").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Funcionario[];
     },

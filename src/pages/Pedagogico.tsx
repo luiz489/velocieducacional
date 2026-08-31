@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 interface NotaAluno {
   id: string;
@@ -120,15 +121,18 @@ function EditableCell({ value, onChange }: { value: number | null; onChange: (v:
 }
 
 export default function Pedagogico() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const [turmaId, setTurmaId] = useState("t1");
   const [disciplina, setDisciplina] = useState("Matemática");
 
   const { data: disciplinasDB = [] } = useQuery({
-    queryKey: ["disciplinas-ativas"],
+    queryKey: ["disciplinas-ativas", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("disciplinas")
         .select("id, nome")
+        .eq("escola_id", escolaAtivaId!)
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;

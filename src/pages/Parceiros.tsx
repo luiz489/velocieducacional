@@ -77,6 +77,7 @@ export default function Parceiros() {
     const { data, error } = await supabase
       .from("parceiros")
       .select("*")
+      .eq("escola_id", escolaAtivaId)
       .eq("ativo", true)
       .order("nome");
     if (error) toast({ title: "Erro ao carregar parceiros", description: error.message, variant: "destructive" });
@@ -84,7 +85,7 @@ export default function Parceiros() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { if (escolaAtivaId) fetchAll(); }, [escolaAtivaId]);
 
   const usarGPS = () => {
     if (!navigator.geolocation) {

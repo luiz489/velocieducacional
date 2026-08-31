@@ -51,27 +51,30 @@ export default function Rematricula() {
   });
 
   const { data: rematriculas } = useQuery({
-    queryKey: ["rematriculas"],
+    queryKey: ["rematriculas", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("rematriculas").select("*").order("data_abertura", { ascending: false });
+      const { data, error } = await supabase.from("rematriculas").select("*").eq("escola_id", escolaAtivaId!).order("data_abertura", { ascending: false });
       if (error) throw error;
       return data as Rematricula[];
     },
   });
 
   const { data: alunos } = useQuery({
-    queryKey: ["alunos-min"],
+    queryKey: ["alunos-min", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("alunos").select("id, nome").order("nome");
+      const { data, error } = await supabase.from("alunos").select("id, nome").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Aluno[];
     },
   });
 
   const { data: turmas } = useQuery({
-    queryKey: ["turmas-min"],
+    queryKey: ["turmas-min", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("turmas").select("id, nome, ano_letivo").order("nome");
+      const { data, error } = await supabase.from("turmas").select("id, nome, ano_letivo").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Turma[];
     },

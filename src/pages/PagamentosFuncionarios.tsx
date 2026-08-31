@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { RefreshCw, Download, Wallet, AlertCircle } from "lucide-react";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -40,17 +41,20 @@ type PagamentoRow = {
 
 export default function PagamentosFuncionarios() {
   const qc = useQueryClient();
+  const { escolaAtivaId } = useEscolaAtiva();
   const now = new Date();
   const [mes, setMes] = useState(String(now.getMonth() + 1));
   const [ano, setAno] = useState(String(now.getFullYear()));
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
 
   const { data: pagamentos, isLoading } = useQuery({
-    queryKey: ["pagamentos-funcionarios", mes, ano],
+    queryKey: ["pagamentos-funcionarios", mes, ano, escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_pagamentos_funcionarios_export")
         .select("*")
+        .eq("escola_id", escolaAtivaId!)
         .eq("competencia_mes", Number(mes))
         .eq("competencia_ano", Number(ano))
         .order("funcionario_nome");
@@ -62,6 +66,7 @@ export default function PagamentosFuncionarios() {
   const gerar = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc("gerar_pagamentos_funcionarios", {
+        p_escola_id: escolaAtivaId!,
         p_mes: Number(mes),
         p_ano: Number(ano),
       });

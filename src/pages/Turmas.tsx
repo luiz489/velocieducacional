@@ -99,7 +99,8 @@ export default function Turmas() {
     const { data, error } = await supabase
       .from("matriculas")
       .select("status_pagamento, alunos ( id, nome, cpf )")
-      .eq("turma_id", turma.id);
+      .eq("turma_id", turma.id)
+      .eq("escola_id", escolaAtivaId!);
     setLoadingAlunos(false);
     if (error) {
       toast.error("Erro ao carregar alunos: " + error.message);
