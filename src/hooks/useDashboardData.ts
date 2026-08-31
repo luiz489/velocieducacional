@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function useDashboardData(refMonth: number, refYear: number) {
-  const { escolaAtivaId } = useEscolaAtiva();
+export function useDashboardData(refMonth: number, refYear: number, escolaIds: string[]) {
   return useQuery({
-    queryKey: ["dashboard-data", refYear, refMonth, escolaAtivaId],
-    enabled: !!escolaAtivaId,
+    queryKey: ["dashboard-data", refYear, refMonth, escolaIds.join(",")],
+    enabled: escolaIds.length > 0,
     queryFn: async () => {
       const now = new Date();
       const today = now.toISOString().split("T")[0];
@@ -17,11 +15,11 @@ export function useDashboardData(refMonth: number, refYear: number) {
       const endOfMonth = `${refYear}-${mesStr}-31`;
 
       const [alunosRes, turmasRes, matriculasRes, financeiroRes, ocorrenciasRes] = await Promise.all([
-        supabase.from("alunos").select("id, status, data_nascimento").eq("escola_id", escolaAtivaId!),
-        supabase.from("turmas").select("id, turno").eq("escola_id", escolaAtivaId!),
-        supabase.from("matriculas").select("id, data_ingresso, turma_id, aluno_id, status_pagamento").eq("escola_id", escolaAtivaId!),
-        supabase.from("financeiro").select("id, valor, status, data_vencimento, data_pagamento, tipo").eq("escola_id", escolaAtivaId!),
-        supabase.from("ocorrencias").select("id, tipo, data_ocorrencia, aluno_id, descricao, created_at").eq("escola_id", escolaAtivaId!),
+        supabase.from("alunos").select("id, status, data_nascimento").in("escola_id", escolaIds),
+        supabase.from("turmas").select("id, turno").in("escola_id", escolaIds),
+        supabase.from("matriculas").select("id, data_ingresso, turma_id, aluno_id, status_pagamento").in("escola_id", escolaIds),
+        supabase.from("financeiro").select("id, valor, status, data_vencimento, data_pagamento, tipo").in("escola_id", escolaIds),
+        supabase.from("ocorrencias").select("id, tipo, data_ocorrencia, aluno_id, descricao, created_at").in("escola_id", escolaIds),
       ]);
 
       const alunos = alunosRes.data || [];

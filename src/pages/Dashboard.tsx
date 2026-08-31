@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { Users, DollarSign, AlertTriangle, Cake, TrendingUp, BookOpen, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { Users, DollarSign, AlertTriangle, Cake, TrendingUp, BookOpen, ChevronLeft, ChevronRight, FileDown, Building2, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -31,7 +35,34 @@ export default function Dashboard() {
   const now = new Date();
   const [refMonth, setRefMonth] = useState(now.getMonth());
   const [refYear, setRefYear] = useState(now.getFullYear());
-  const { data, isLoading } = useDashboardData(refMonth, refYear);
+  const { escolaAtivaId } = useEscolaAtiva();
+  const [escopo, setEscopo] = useState<"unidade" | "consolidado">("unidade");
+
+  // Descobre as demais unidades do mesmo grupo econômico (pra saber se mostra a opção de consolidado)
+  const { data: unidadesDoGrupo } = useQuery({
+    queryKey: ["unidades-do-grupo", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data: atual, error: errAtual } = await supabase
+        .from("escolas")
+        .select("id, grupo_economico_id")
+        .eq("id", escolaAtivaId!)
+        .single();
+      if (errAtual || !atual?.grupo_economico_id) return [escolaAtivaId!];
+
+      const { data: irmas, error: errIrmas } = await supabase
+        .from("escolas")
+        .select("id")
+        .eq("grupo_economico_id", atual.grupo_economico_id);
+      if (errIrmas) return [escolaAtivaId!];
+      return irmas.map((e) => e.id);
+    },
+  });
+
+  const temMaisDeUmaUnidade = (unidadesDoGrupo?.length ?? 0) > 1;
+  const escolaIds = escopo === "consolidado" && unidadesDoGrupo ? unidadesDoGrupo : (escolaAtivaId ? [escolaAtivaId] : []);
+
+  const { data, isLoading } = useDashboardData(refMonth, refYear, escolaIds);
 
   const isCurrentMonth = refMonth === now.getMonth() && refYear === now.getFullYear();
 
@@ -65,6 +96,18 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">Visão geral do sistema escolar</p>
+          {temMaisDeUmaUnidade && (
+            <Tabs value={escopo} onValueChange={(v) => setEscopo(v as "unidade" | "consolidado")} className="mt-2">
+              <TabsList className="h-8">
+                <TabsTrigger value="unidade" className="text-xs h-6 gap-1.5">
+                  <Building2 className="h-3.5 w-3.5" /> Esta unidade
+                </TabsTrigger>
+                <TabsTrigger value="consolidado" className="text-xs h-6 gap-1.5">
+                  <Layers className="h-3.5 w-3.5" /> Consolidado ({unidadesDoGrupo?.length} unidades)
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={goBack} className="h-8 w-8">
