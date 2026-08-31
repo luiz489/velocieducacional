@@ -20,6 +20,7 @@ import Filiais from "@/pages/Filiais";
 import Parceiros from "@/pages/Parceiros";
 import MatrizesCurriculares from "@/pages/MatrizesCurriculares";
 import Disciplinas from "@/pages/Disciplinas";
+import Categorias from "@/pages/Categorias";
 import Avisos from "@/pages/Avisos";
 import Horarios from "@/pages/Horarios";
 import Professores from "@/pages/Professores";
@@ -80,6 +81,7 @@ function ProtectedRoutes() {
             <Route path="/parceiros" element={<Parceiros />} />
             <Route path="/matrizes-curriculares" element={<MatrizesCurriculares />} />
             <Route path="/disciplinas" element={<Disciplinas />} />
+            <Route path="/categorias" element={<Categorias />} />
             <Route path="/avisos" element={<Avisos />} />
             <Route path="/horarios" element={<Horarios />} />
             <Route path="/calendario" element={<Calendario />} />

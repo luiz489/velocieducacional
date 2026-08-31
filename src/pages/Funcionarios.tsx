@@ -583,6 +583,7 @@ export default function Funcionarios() {
               <Label>Observações</Label>
               <Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
             </div>
+            {editing && <DependentesSection funcionarioId={editing.id} escolaId={escolaAtivaId} />}
             <div className="flex items-center gap-2">
               <Checkbox id="ativo" checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: !!v })} />
               <Label htmlFor="ativo" className="cursor-pointer">Funcionário ativo</Label>
@@ -600,6 +601,101 @@ export default function Funcionarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+type Dependente = { id: string; nome: string; cpf: string | null; data_nascimento: string | null; parentesco: string };
+
+function DependentesSection({ funcionarioId, escolaId }: { funcionarioId: string; escolaId: string | null }) {
+  const qc = useQueryClient();
+  const [novoNome, setNovoNome] = useState("");
+  const [novoCpf, setNovoCpf] = useState("");
+  const [novaData, setNovaData] = useState("");
+  const [novoParentesco, setNovoParentesco] = useState("");
+
+  const { data: dependentes } = useQuery({
+    queryKey: ["funcionario-dependentes", funcionarioId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("funcionario_dependentes").select("*").eq("funcionario_id", funcionarioId).order("nome");
+      if (error) throw error;
+      return data as Dependente[];
+    },
+  });
+
+  const adicionar = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("funcionario_dependentes").insert({
+        funcionario_id: funcionarioId,
+        escola_id: escolaId,
+        nome: novoNome,
+        cpf: novoCpf || null,
+        data_nascimento: novaData || null,
+        parentesco: novoParentesco,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Dependente adicionado");
+      setNovoNome(""); setNovoCpf(""); setNovaData(""); setNovoParentesco("");
+      qc.invalidateQueries({ queryKey: ["funcionario-dependentes", funcionarioId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const remover = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("funcionario_dependentes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Dependente removido");
+      qc.invalidateQueries({ queryKey: ["funcionario-dependentes", funcionarioId] });
+    },
+  });
+
+  return (
+    <div className="border-t pt-4">
+      <p className="text-sm font-medium text-muted-foreground mb-3">
+        Dependentes (para IRRF / salário-família)
+      </p>
+      {dependentes && dependentes.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {dependentes.map((d) => (
+            <div key={d.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-2">
+              <div>
+                <span className="font-medium">{d.nome}</span>
+                <span className="text-muted-foreground ml-2">{d.parentesco}</span>
+                {d.data_nascimento && <span className="text-muted-foreground ml-2">· {new Date(d.data_nascimento + "T12:00:00").toLocaleDateString("pt-BR")}</span>}
+              </div>
+              <Button size="icon" variant="ghost" onClick={() => remover.mutate(d.id)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-4 gap-2 items-end">
+        <div className="col-span-2">
+          <Label className="text-xs">Nome</Label>
+          <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-xs">Parentesco</Label>
+          <Input value={novoParentesco} onChange={(e) => setNovoParentesco(e.target.value)} placeholder="Filho(a)" />
+        </div>
+        <div>
+          <Label className="text-xs">Nascimento</Label>
+          <Input type="date" value={novaData} onChange={(e) => setNovaData(e.target.value)} />
+        </div>
+        <div className="col-span-3">
+          <Label className="text-xs">CPF (opcional)</Label>
+          <Input value={novoCpf} onChange={(e) => setNovoCpf(e.target.value)} />
+        </div>
+        <Button size="sm" onClick={() => adicionar.mutate()} disabled={!novoNome || !novoParentesco || adicionar.isPending}>
+          <Plus className="h-4 w-4 mr-1" /> Adicionar
+        </Button>
+      </div>
     </div>
   );
 }
