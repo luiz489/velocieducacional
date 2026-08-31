@@ -111,7 +111,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
-  const { escolaAtivaId, escolas, isSuperadmin, setEscolaAtivaId } = useEscolaAtiva();
+  const { escolaAtivaId, escolas, filiaisDaEscolaAtiva, isSuperadmin, emModoAdministrador, setEscolaAtivaId } = useEscolaAtiva();
   const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
 
   const { data: escolaLogo } = useQuery({
@@ -136,13 +136,13 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              {escolas.length > 1 ? (
+              {!emModoAdministrador && filiaisDaEscolaAtiva.length > 1 ? (
                 <select
                   value={escolaAtivaId ?? ""}
                   onChange={(e) => setEscolaAtivaId(e.target.value)}
                   className="w-full bg-transparent text-sm font-bold text-sidebar-primary border-none outline-none cursor-pointer truncate"
                 >
-                  {escolas.map((e) => (
+                  {filiaisDaEscolaAtiva.map((e) => (
                     <option key={e.escola_id} value={e.escola_id} className="text-foreground">
                       {e.nome}
                     </option>
@@ -151,7 +151,9 @@ export function AppSidebar() {
               ) : (
                 <h2 className="text-sm font-bold text-sidebar-primary truncate">{escolaNome}</h2>
               )}
-              <p className="text-xs text-sidebar-foreground/60">ERP Escolar</p>
+              <p className="text-xs text-sidebar-foreground/60">
+                {emModoAdministrador ? "Modo Administrador" : "ERP Escolar"}
+              </p>
             </div>
           )}
         </div>

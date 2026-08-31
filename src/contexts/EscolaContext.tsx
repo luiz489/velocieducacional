@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 type EscolaVinculada = {
   escola_id: string;
   nome: string;
+  grupo_economico_id: string | null;
   /** true = vínculo real em usuarios_escolas. false = acesso só por ser superadmin (modo administrador). */
   membroReal: boolean;
 };
@@ -12,6 +13,8 @@ type EscolaVinculada = {
 type EscolaContextValue = {
   escolaAtivaId: string | null;
   escolas: EscolaVinculada[];
+  /** Só as filiais reais (matriz + filiais) do mesmo grupo econômico da escola ativa - para o seletor do topo. */
+  filiaisDaEscolaAtiva: EscolaVinculada[];
   loading: boolean;
   isSuperadmin: boolean;
   /** true quando a escola ativa não é um vínculo real (você está "entrando como administrador"). */
@@ -43,7 +46,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
 
     const { data: vinculos, error: errVinculos } = await supabase
       .from("usuarios_escolas")
-      .select("escola_id, escolas(id, nome)")
+      .select("escola_id, escolas(id, nome, grupo_economico_id)")
       .eq("user_id", user.id)
       .eq("ativo", true);
 
@@ -54,6 +57,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
     const reais: EscolaVinculada[] = (vinculos ?? []).map((r: any) => ({
       escola_id: r.escola_id,
       nome: r.escolas?.nome ?? "Escola",
+      grupo_economico_id: r.escolas?.grupo_economico_id ?? null,
       membroReal: true,
     }));
 
@@ -69,14 +73,14 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
       setIsSuperadmin(true);
       const { data: todasEscolas, error: errTodas } = await supabase
         .from("escolas")
-        .select("id, nome")
+        .select("id, nome, grupo_economico_id")
         .order("nome");
 
       if (!errTodas) {
         const idsReais = new Set(reais.map((e) => e.escola_id));
         const extras: EscolaVinculada[] = (todasEscolas ?? [])
           .filter((e) => !idsReais.has(e.id))
-          .map((e) => ({ escola_id: e.id, nome: e.nome, membroReal: false }));
+          .map((e) => ({ escola_id: e.id, nome: e.nome, grupo_economico_id: e.grupo_economico_id, membroReal: false }));
         listaFinal = [...reais, ...extras];
       }
     }
@@ -110,11 +114,32 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
     await carregarEscolas(selecionarId);
   };
 
-  const emModoAdministrador = !!escolas.find((e) => e.escola_id === escolaAtivaId && !e.membroReal);
+  const escolaAtivaObj = escolas.find((e) => e.escola_id === escolaAtivaId);
+  const emModoAdministrador = !!escolaAtivaObj && !escolaAtivaObj.membroReal;
+
+  // Seletor do topo: só matriz + filiais reais do mesmo grupo econômico da escola ativa.
+  // Nunca mostra outros clientes, mesmo que você tenha acesso de superadmin a eles.
+  const filiaisDaEscolaAtiva = escolaAtivaObj
+    ? escolas.filter(
+        (e) =>
+          e.membroReal &&
+          (e.escola_id === escolaAtivaId ||
+            (escolaAtivaObj.grupo_economico_id !== null && e.grupo_economico_id === escolaAtivaObj.grupo_economico_id))
+      )
+    : [];
 
   return (
     <EscolaContext.Provider
-      value={{ escolaAtivaId, escolas, loading, isSuperadmin, emModoAdministrador, setEscolaAtivaId, refetchEscolas }}
+      value={{
+        escolaAtivaId,
+        escolas,
+        filiaisDaEscolaAtiva,
+        loading,
+        isSuperadmin,
+        emModoAdministrador,
+        setEscolaAtivaId,
+        refetchEscolas,
+      }}
     >
       {children}
     </EscolaContext.Provider>
