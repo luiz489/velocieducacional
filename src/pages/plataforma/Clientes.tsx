@@ -238,6 +238,14 @@ export default function Clientes() {
                           >
                             Trocar de plano
                           </DropdownMenuItem>
+                          {c.status_assinatura === "trial" && (
+                            <DropdownMenuItem
+                              className="text-emerald-600"
+                              onClick={() => reativar.mutate(c.escola_id!)}
+                            >
+                              Confirmar Assinatura (virar Ativa)
+                            </DropdownMenuItem>
+                          )}
                           {c.escola_ativa ? (
                             <DropdownMenuItem
                               className="text-destructive"
