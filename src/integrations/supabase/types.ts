@@ -403,7 +403,9 @@ export type Database = {
           nome_mae: string | null
           nome_pai: string | null
           ra_censo: string | null
+          responsavel_cpf: string | null
           responsavel_financeiro: string
+          responsavel_rg: string | null
           status: string
           telefone_responsavel: string | null
           updated_at: string
@@ -426,7 +428,9 @@ export type Database = {
           nome_mae?: string | null
           nome_pai?: string | null
           ra_censo?: string | null
+          responsavel_cpf?: string | null
           responsavel_financeiro: string
+          responsavel_rg?: string | null
           status?: string
           telefone_responsavel?: string | null
           updated_at?: string
@@ -449,7 +453,9 @@ export type Database = {
           nome_mae?: string | null
           nome_pai?: string | null
           ra_censo?: string | null
+          responsavel_cpf?: string | null
           responsavel_financeiro?: string
+          responsavel_rg?: string | null
           status?: string
           telefone_responsavel?: string | null
           updated_at?: string

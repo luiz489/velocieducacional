@@ -116,6 +116,7 @@ export default function Matriculas() {
             escola_id: escolaAtivaId,
             ...campos,
             cpf: cpfLimpo,
+            responsavel_cpf: campos.responsavel_cpf ? limparCPF(campos.responsavel_cpf) : null,
           })
           .select("id")
           .single();

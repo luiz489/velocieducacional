@@ -9,6 +9,8 @@ export type AlunoCamposDefaultValues = {
   data_nascimento?: string;
   endereco?: string | null;
   responsavel_financeiro?: string;
+  responsavel_cpf?: string | null;
+  responsavel_rg?: string | null;
   telefone_responsavel?: string | null;
   email_responsavel?: string | null;
   status?: string;
@@ -30,6 +32,9 @@ export type AlunoCamposDefaultValues = {
  */
 export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCamposDefaultValues }) {
   const [cpf, setCpf] = useState(defaultValues?.cpf ? mascaraCPF(defaultValues.cpf) : "");
+  const [responsavelCpf, setResponsavelCpf] = useState(
+    defaultValues?.responsavel_cpf ? mascaraCPF(defaultValues.responsavel_cpf) : ""
+  );
 
   return (
     <div className="space-y-5">
@@ -112,10 +117,24 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
 
       <div className="border-t pt-4">
         <p className="text-sm font-medium text-muted-foreground mb-3">Responsável financeiro</p>
+        <p className="text-xs text-muted-foreground -mt-2 mb-3">
+          CPF e RG são usados para gerar contratos e declarações automaticamente.
+        </p>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <Label htmlFor="responsavel">Nome do Responsável</Label>
             <Input id="responsavel" name="responsavel" placeholder="Nome do responsável" className="mt-1" defaultValue={defaultValues?.responsavel_financeiro} required />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_cpf">CPF do Responsável</Label>
+            <Input
+              id="responsavel_cpf" name="responsavel_cpf" placeholder="000.000.000-00" className="mt-1"
+              value={responsavelCpf} onChange={(e) => setResponsavelCpf(mascaraCPF(e.target.value))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_rg">RG do Responsável</Label>
+            <Input id="responsavel_rg" name="responsavel_rg" className="mt-1" defaultValue={defaultValues?.responsavel_rg || ""} />
           </div>
           <div>
             <Label htmlFor="telefone">Telefone</Label>
@@ -139,6 +158,8 @@ export function lerAlunoCamposDeFormData(fd: FormData) {
     data_nascimento: fd.get("nascimento") as string,
     endereco: (fd.get("endereco") as string) || null,
     responsavel_financeiro: fd.get("responsavel") as string,
+    responsavel_cpf: (fd.get("responsavel_cpf") as string) || null,
+    responsavel_rg: (fd.get("responsavel_rg") as string) || null,
     telefone_responsavel: (fd.get("telefone") as string) || null,
     email_responsavel: (fd.get("email") as string) || null,
     status: (fd.get("status") as string) || "Ativo",

@@ -66,6 +66,7 @@ export default function Alunos() {
       escola_id: escolaAtivaId,
       ...campos,
       cpf: limparCPF(campos.cpf),
+      responsavel_cpf: campos.responsavel_cpf ? limparCPF(campos.responsavel_cpf) : null,
     });
     if (ok) setDialogOpen(false);
   };
@@ -78,6 +79,7 @@ export default function Alunos() {
     const ok = await updateAluno(editAluno.id, {
       ...campos,
       cpf: limparCPF(campos.cpf),
+      responsavel_cpf: campos.responsavel_cpf ? limparCPF(campos.responsavel_cpf) : null,
     });
     if (ok) {
       setEditOpen(false);
