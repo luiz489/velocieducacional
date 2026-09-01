@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Wallet, AlertCircle } from "lucide-react";
+import { Pencil, Plus, Wallet, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,7 +97,7 @@ export default function PlanosFinanceirosTurma() {
                 <TableHead>Parcelas</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="w-32" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,9 +119,15 @@ export default function PlanosFinanceirosTurma() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => abrirEdicao(t)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    {t.plano_id ? (
+                      <Button variant="ghost" size="icon" onClick={() => abrirEdicao(t)} title="Editar plano">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => abrirEdicao(t)}>
+                        <Plus className="h-4 w-4 mr-1" /> Configurar
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
