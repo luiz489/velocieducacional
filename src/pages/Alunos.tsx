@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Search, Plus, MoreHorizontal, Filter, FileText, BookOpen, Pencil, GraduationCap, UserX } from "lucide-react";
 import { gerarFichaAluno, gerarBoletim } from "@/lib/relatorios";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { limparCPF, mascaraCPF } from "@/lib/masks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -45,6 +47,52 @@ export default function Alunos() {
 
   // Inativar state
   const [inativarTarget, setInativarTarget] = useState<Aluno | null>(null);
+  const [gerandoFichaId, setGerandoFichaId] = useState<string | null>(null);
+
+  const handleGerarFicha = async (aluno: Aluno) => {
+    setGerandoFichaId(aluno.id);
+    try {
+      // Busca a matrícula mais recente do aluno (turma + ano letivo)
+      const { data: matricula } = await supabase
+        .from("matriculas")
+        .select("id, turmas(nome, ano_letivo)")
+        .eq("aluno_id", aluno.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Busca as parcelas financeiras reais dessa matrícula
+      let parcelas: { descricao: string; valor: number; data_vencimento: string; status: string }[] = [];
+      if (matricula) {
+        const { data: financeiroData } = await supabase
+          .from("financeiro")
+          .select("descricao, valor, data_vencimento, status")
+          .eq("matricula_id", matricula.id)
+          .order("data_vencimento");
+        parcelas = financeiroData ?? [];
+      }
+
+      const turmaInfo = (matricula as any)?.turmas;
+
+      gerarFichaAluno({
+        nome: aluno.nome,
+        cpf: aluno.cpf,
+        data_nascimento: aluno.data_nascimento,
+        endereco: aluno.endereco || "Não informado",
+        responsavel: aluno.responsavel_financeiro,
+        telefone_responsavel: aluno.telefone_responsavel ?? undefined,
+        email_responsavel: aluno.email_responsavel ?? undefined,
+        turma: turmaInfo?.nome ?? "",
+        ano_letivo: turmaInfo?.ano_letivo,
+        status: aluno.status,
+        parcelas,
+      });
+    } catch (e: any) {
+      toast.error("Erro ao gerar ficha: " + e.message);
+    } finally {
+      setGerandoFichaId(null);
+    }
+  };
 
   const filtered = alunos.filter((a) => {
     const matchSearch =
@@ -189,12 +237,9 @@ export default function Alunos() {
                       <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => gerarFichaAluno({
-                        nome: aluno.nome, cpf: aluno.cpf, data_nascimento: aluno.data_nascimento,
-                        endereco: aluno.endereco || "Não informado", responsavel: aluno.responsavel_financeiro,
-                        turma: "", status: aluno.status,
-                      })}>
-                        <FileText className="h-4 w-4 mr-2" />Gerar Ficha (PDF)
+                      <DropdownMenuItem disabled={gerandoFichaId === aluno.id} onClick={() => handleGerarFicha(aluno)}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        {gerandoFichaId === aluno.id ? "Gerando..." : "Gerar Ficha (PDF)"}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => { setEditAluno(aluno); setEditOpen(true); }}>

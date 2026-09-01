@@ -1,6 +1,23 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+/** Formata uma data no formato YYYY-MM-DD sem sofrer deslocamento de fuso
+ * horário (o bug clássico de "um dia a menos" ao usar `new Date(...)` direto
+ * com string de data pura, que o JS interpreta como UTC). */
+function formatarDataBR(dataISO: string | null | undefined): string {
+  if (!dataISO) return "—";
+  const [ano, mes, dia] = dataISO.split("-");
+  if (!ano || !mes || !dia) return dataISO;
+  return `${dia}/${mes}/${ano}`;
+}
+
+interface ParcelaFinanceiro {
+  descricao: string;
+  valor: number;
+  data_vencimento: string;
+  status: string;
+}
+
 interface AlunoData {
   nome: string;
   cpf: string;
@@ -10,7 +27,9 @@ interface AlunoData {
   telefone_responsavel?: string;
   email_responsavel?: string;
   turma: string;
+  ano_letivo?: number;
   status: string;
+  parcelas?: ParcelaFinanceiro[];
 }
 
 interface NotaBoletim {
@@ -119,7 +138,7 @@ export function gerarFichaAluno(aluno: AlunoData) {
     { label: "CPF", value: aluno.cpf },
   ], y);
   y = addFieldRow(doc, [
-    { label: "Data de Nascimento", value: new Date(aluno.data_nascimento).toLocaleDateString("pt-BR") },
+    { label: "Data de Nascimento", value: formatarDataBR(aluno.data_nascimento) },
     { label: "Status", value: aluno.status },
   ], y);
   y = addFieldRow(doc, [
@@ -131,8 +150,8 @@ export function gerarFichaAluno(aluno: AlunoData) {
   // Academic data
   y = addSectionTitle(doc, "Dados Acadêmicos", y);
   y = addFieldRow(doc, [
-    { label: "Turma Atual", value: aluno.turma },
-    { label: "Ano Letivo", value: "2026" },
+    { label: "Turma Atual", value: aluno.turma || "Sem matrícula ativa" },
+    { label: "Ano Letivo", value: aluno.ano_letivo ? String(aluno.ano_letivo) : "—" },
   ], y);
 
   y += 4;
@@ -151,16 +170,19 @@ export function gerarFichaAluno(aluno: AlunoData) {
 
   // Financial summary
   y = addSectionTitle(doc, "Situação Financeira", y);
+  const parcelas = aluno.parcelas ?? [];
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [["Mês", "Valor", "Vencimento", "Status"]],
-    body: [
-      ["Fevereiro/2026", "R$ 850,00", "10/02/2026", "Pago"],
-      ["Março/2026", "R$ 850,00", "10/03/2026", "Pago"],
-      ["Abril/2026", "R$ 850,00", "10/04/2026", "Pendente"],
-      ["Maio/2026", "R$ 850,00", "10/05/2026", "Pendente"],
-    ],
+    head: [["Descrição", "Valor", "Vencimento", "Status"]],
+    body: parcelas.length > 0
+      ? parcelas.map((p) => [
+          p.descricao,
+          `R$ ${Number(p.valor).toFixed(2)}`,
+          formatarDataBR(p.data_vencimento),
+          p.status,
+        ])
+      : [["Nenhuma parcela lançada para este aluno", "—", "—", "—"]],
     styles: { fontSize: 8, cellPadding: 3, font: "helvetica" },
     headStyles: { fillColor: [26, 54, 93], textColor: 255, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [245, 247, 250] },
