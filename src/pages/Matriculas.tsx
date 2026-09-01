@@ -80,7 +80,7 @@ export default function Matriculas() {
     setFormBolsa(false);
   };
 
-  const handleSubmitMatricula = async (e: React.FormEvent) => {
+  const handleSubmitMatricula = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!escolaAtivaId) {
       toast.error("Nenhuma escola vinculada ao seu usuário.");
