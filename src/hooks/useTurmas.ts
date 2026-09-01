@@ -79,9 +79,38 @@ export function useTurmas() {
     return true;
   };
 
+  const updateTurma = async (id: string, turma: {
+    nome: string; ano_letivo: number; turno: string; sala?: string | null; vagas_totais: number;
+    categoria_id?: string | null; professor_regente_id?: string | null;
+  }) => {
+    const { error } = await supabase.from("turmas").update(turma).eq("id", id);
+    if (error) {
+      toast.error("Erro ao atualizar turma: " + error.message);
+      return false;
+    }
+    toast.success("Turma atualizada com sucesso!");
+    await qc.invalidateQueries({ queryKey: turmasQueryKey(escolaAtivaId) });
+    return true;
+  };
+
+  const deleteTurma = async (id: string) => {
+    const { error } = await supabase.from("turmas").delete().eq("id", id);
+    if (error) {
+      if (error.code === "23503") {
+        toast.error("Não é possível excluir: existem alunos matriculados nesta turma.");
+      } else {
+        toast.error("Erro ao excluir turma: " + error.message);
+      }
+      return false;
+    }
+    toast.success("Turma excluída com sucesso!");
+    await qc.invalidateQueries({ queryKey: turmasQueryKey(escolaAtivaId) });
+    return true;
+  };
+
   const refetch = async () => {
     await qc.invalidateQueries({ queryKey: turmasQueryKey(escolaAtivaId) });
   };
 
-  return { turmas, loading, createTurma, refetch };
+  return { turmas, loading, createTurma, updateTurma, deleteTurma, refetch };
 }

@@ -39,12 +39,13 @@ function getOcupacaoLabel(percent: number) {
 }
 
 export default function Turmas() {
-  const { turmas, loading, createTurma } = useTurmas();
+  const { turmas, loading, createTurma, updateTurma, deleteTurma } = useTurmas();
   const { escolaAtivaId } = useEscolaAtiva();
   const [search, setSearch] = useState("");
   const [turnoFilter, setTurnoFilter] = useState("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<TurmaRow | null>(null);
 
   const [nome, setNome] = useState("");
   const [anoLetivo, setAnoLetivo] = useState(String(new Date().getFullYear()));
@@ -91,6 +92,7 @@ export default function Turmas() {
   const vagasDisponiveis = totalVagas - totalMatriculados;
 
   const resetForm = () => {
+    setEditing(null);
     setNome("");
     setAnoLetivo(String(new Date().getFullYear()));
     setTurno("Manhã");
@@ -100,11 +102,23 @@ export default function Turmas() {
     setProfessorRegenteId("");
   };
 
+  const openEdit = (t: TurmaRow) => {
+    setEditing(t);
+    setNome(t.nome);
+    setAnoLetivo(String(t.ano_letivo));
+    setTurno(t.turno);
+    setSala(t.sala ?? "");
+    setVagas(String(t.vagas_totais));
+    setCategoriaId(t.categoria_id ?? "");
+    setProfessorRegenteId(t.professor_regente_id ?? "");
+    setDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!escolaAtivaId || !nome) return;
     setSaving(true);
-    const ok = await createTurma(escolaAtivaId, {
+    const payload = {
       nome,
       ano_letivo: Number(anoLetivo),
       turno,
@@ -112,12 +126,18 @@ export default function Turmas() {
       vagas_totais: Number(vagas),
       categoria_id: categoriaId || null,
       professor_regente_id: professorRegenteId || null,
-    });
+    };
+    const ok = editing ? await updateTurma(editing.id, payload) : await createTurma(escolaAtivaId, payload);
     setSaving(false);
     if (ok) {
       setDialogOpen(false);
       resetForm();
     }
+  };
+
+  const handleDelete = async (t: TurmaRow) => {
+    if (!confirm(`Excluir a turma "${t.nome}"? Isso só é possível se não houver alunos matriculados nela.`)) return;
+    await deleteTurma(t.id);
   };
 
   const handleVerAlunos = async (turma: TurmaRow) => {
@@ -165,11 +185,11 @@ export default function Turmas() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button disabled={!escolaAtivaId}><Plus className="h-4 w-4 mr-2" />Nova Turma</Button>
+            <Button disabled={!escolaAtivaId} onClick={() => resetForm()}><Plus className="h-4 w-4 mr-2" />Nova Turma</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Cadastrar Nova Turma</DialogTitle>
+              <DialogTitle>{editing ? "Editar Turma" : "Cadastrar Nova Turma"}</DialogTitle>
             </DialogHeader>
             <form className="space-y-4 mt-2" onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-4">
@@ -224,7 +244,7 @@ export default function Turmas() {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancelar</Button>
-                <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Salvando..." : editing ? "Salvar Alterações" : "Salvar"}</Button>
               </div>
             </form>
           </DialogContent>
@@ -332,6 +352,8 @@ export default function Turmas() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleVerAlunos(turma)}>Ver Alunos</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEdit(turma)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(turma)}>Excluir</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

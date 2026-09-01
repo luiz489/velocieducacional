@@ -90,6 +90,7 @@ export default function Contratos() {
   const queryClient = useQueryClient();
   const { escolaAtivaId } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Contrato | null>(null);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [form, setForm] = useState({
@@ -120,12 +121,45 @@ export default function Contratos() {
     },
   });
 
-  const createMutation = useMutation({
+  const emptyForm = {
+    fornecedor_id: "",
+    descricao: "",
+    valor_mensal: "",
+    categoria: "Outros",
+    data_inicio: "",
+    data_fim: "",
+    dia_vencimento: "10",
+    observacoes: "",
+    numero_contrato: "",
+    renovacao_automatica: false,
+  };
+
+  const abrirNovo = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const abrirEdicao = (c: Contrato) => {
+    setEditing(c);
+    setForm({
+      fornecedor_id: "",
+      descricao: c.descricao,
+      valor_mensal: String(c.valor_mensal),
+      categoria: c.categoria,
+      data_inicio: c.data_inicio,
+      data_fim: c.data_fim ?? "",
+      dia_vencimento: String(c.dia_vencimento),
+      observacoes: c.observacoes ?? "",
+      numero_contrato: c.numero_contrato ?? "",
+      renovacao_automatica: c.renovacao_automatica,
+    });
+    setOpen(true);
+  };
+
+  const salvarMutation = useMutation({
     mutationFn: async () => {
-      const forn = fornecedores.find(f => f.id === form.fornecedor_id);
-      const { error } = await supabase.from("contratos").insert({
-        fornecedor: forn?.nome || "",
-        fornecedor_id: form.fornecedor_id || null,
+      const payload = {
         descricao: form.descricao,
         valor_mensal: parseFloat(form.valor_mensal),
         categoria: form.categoria,
@@ -135,28 +169,41 @@ export default function Contratos() {
         numero_contrato: form.numero_contrato || null,
         renovacao_automatica: form.renovacao_automatica,
         observacoes: form.observacoes || null,
-        escola_id: escolaAtivaId,
-      });
+      };
+      if (editing) {
+        const { error } = await supabase.from("contratos").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const forn = fornecedores.find(f => f.id === form.fornecedor_id);
+        const { error } = await supabase.from("contratos").insert({
+          ...payload,
+          fornecedor: forn?.nome || "",
+          fornecedor_id: form.fornecedor_id || null,
+          escola_id: escolaAtivaId,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contratos"] });
+      toast.success(editing ? "Contrato atualizado!" : "Contrato cadastrado com sucesso!");
+      setOpen(false);
+      setEditing(null);
+      setForm(emptyForm);
+    },
+    onError: () => toast.error("Erro ao salvar contrato."),
+  });
+
+  const excluirMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("contratos").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contratos"] });
-      toast.success("Contrato cadastrado com sucesso!");
-      setOpen(false);
-      setForm({
-        fornecedor_id: "",
-        descricao: "",
-        valor_mensal: "",
-        categoria: "Outros",
-        data_inicio: "",
-        data_fim: "",
-        dia_vencimento: "10",
-        observacoes: "",
-        numero_contrato: "",
-        renovacao_automatica: false,
-      });
+      toast.success("Contrato excluído.");
     },
-    onError: () => toast.error("Erro ao cadastrar contrato."),
+    onError: (e: any) => toast.error("Erro ao excluir: " + e.message),
   });
 
   const updateStatusMutation = useMutation({
@@ -195,25 +242,27 @@ export default function Contratos() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={abrirNovo}>
               <Plus className="mr-2 h-4 w-4" /> Novo Contrato
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Cadastrar Contrato</DialogTitle>
+              <DialogTitle>{editing ? "Editar Contrato" : "Cadastrar Contrato"}</DialogTitle>
             </DialogHeader>
             <form
               className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                createMutation.mutate();
+                salvarMutation.mutate();
               }}
             >
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Fornecedor *</Label>
-                  {fornecedores.length === 0 && !loadingForn ? (
+                  {editing ? (
+                    <p className="text-sm py-2 text-muted-foreground">{editing.fornecedor} (não editável aqui)</p>
+                  ) : fornecedores.length === 0 && !loadingForn ? (
                     <p className="text-xs text-muted-foreground py-2">
                       Nenhum fornecedor. <Link to="/parceiros" className="text-primary underline">Cadastrar →</Link>
                     </p>
@@ -314,8 +363,8 @@ export default function Contratos() {
                   onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                Cadastrar
+              <Button type="submit" className="w-full" disabled={salvarMutation.isPending}>
+                {salvarMutation.isPending ? "Salvando..." : editing ? "Salvar Alterações" : "Cadastrar"}
               </Button>
             </form>
           </DialogContent>
@@ -441,6 +490,7 @@ export default function Contratos() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => abrirEdicao(c)}>Editar</DropdownMenuItem>
                           {c.status !== "Ativo" && (
                             <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: c.id, status: "Ativo" })}>
                               <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Ativar
@@ -456,6 +506,12 @@ export default function Contratos() {
                               <FileText className="mr-2 h-4 w-4 text-muted-foreground" /> Encerrar
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => { if (confirm(`Excluir o contrato de "${c.fornecedor}"?`)) excluirMutation.mutate(c.id); }}
+                          >
+                            Excluir
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

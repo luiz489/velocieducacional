@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Phone, Globe, Mail, Navigation, Search, Plus } from "lucide-react";
+import { MapPin, Phone, Globe, Mail, Navigation, Search, Plus, Pencil, Ban } from "lucide-react";
 import { ESTADOS, CIDADES_SP } from "@/lib/cidadesSP";
 
 type TipoParceiro = "Fornecedor" | "Cliente" | "Outro";
@@ -64,6 +64,7 @@ export default function Parceiros() {
   const [raio, setRaio] = useState<string>("todos");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<Parceiro | null>(null);
   const [form, setForm] = useState({
     nome: "", tipo: "Fornecedor" as TipoParceiro, categoria: "",
     descricao: "", estado: "SP", cidade: "", endereco: "",
@@ -137,13 +138,40 @@ export default function Parceiros() {
     return arr;
   }, [parceiros, estado, cidade, tipo, busca, coords, raio]);
 
+  const abrirNovo = () => {
+    setEditing(null);
+    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", endereco: "", telefone: "", email: "", website: "", cnpj_cpf: "" });
+    setOpen(true);
+  };
+
+  const abrirEdicao = (p: Parceiro) => {
+    setEditing(p);
+    setForm({
+      nome: p.nome, tipo: p.tipo, categoria: p.categoria, descricao: p.descricao ?? "",
+      estado: p.estado, cidade: p.cidade, endereco: p.endereco ?? "",
+      telefone: p.telefone ?? "", email: p.email ?? "", website: p.website ?? "", cnpj_cpf: p.cnpj_cpf ?? "",
+    });
+    setOpen(true);
+  };
+
+  const desativar = async (p: Parceiro) => {
+    if (!confirm(`Desativar o parceiro "${p.nome}"? Ele deixa de aparecer na lista, mas o histórico é mantido.`)) return;
+    const { error } = await supabase.from("parceiros").update({ ativo: false }).eq("id", p.id);
+    if (error) {
+      toast({ title: "Erro ao desativar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Parceiro desativado" });
+    fetchAll();
+  };
+
   const salvar = async () => {
     if (!form.nome || !form.categoria || !form.cidade) {
       toast({ title: "Campos obrigatórios", description: "Nome, categoria e cidade são obrigatórios.", variant: "destructive" });
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("parceiros").insert({
+    const payload = {
       nome: form.nome,
       tipo: form.tipo,
       categoria: form.categoria,
@@ -155,16 +183,18 @@ export default function Parceiros() {
       email: form.email || null,
       website: form.website || null,
       cnpj_cpf: form.cnpj_cpf || null,
-      ativo: true,
-      escola_id: escolaAtivaId,
-    });
+    };
+    const { error } = editing
+      ? await supabase.from("parceiros").update(payload).eq("id", editing.id)
+      : await supabase.from("parceiros").insert({ ...payload, ativo: true, escola_id: escolaAtivaId });
     setSaving(false);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Parceiro cadastrado!", description: form.nome });
+    toast({ title: editing ? "Parceiro atualizado!" : "Parceiro cadastrado!", description: form.nome });
     setOpen(false);
+    setEditing(null);
     setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", endereco: "", telefone: "", email: "", website: "", cnpj_cpf: "" });
     fetchAll();
   };
@@ -178,11 +208,11 @@ export default function Parceiros() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Parceiro</Button>
+            <Button className="gap-2" onClick={abrirNovo}><Plus className="h-4 w-4" /> Novo Parceiro</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Cadastrar Parceiro</DialogTitle>
+              <DialogTitle>{editing ? "Editar Parceiro" : "Cadastrar Parceiro"}</DialogTitle>
               <DialogDescription>Use o tipo "Fornecedor" para amarrar em Contas a Pagar, Compras e Contratos.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto pr-1">
@@ -222,7 +252,7 @@ export default function Parceiros() {
               <div><Label>Website</Label><Input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} placeholder="https://" /></div>
               <div><Label>CNPJ/CPF</Label><Input value={form.cnpj_cpf} onChange={e => setForm({ ...form, cnpj_cpf: e.target.value })} placeholder="Opcional" /></div>
               <Button onClick={salvar} disabled={saving} className="w-full mt-2">
-                {saving ? "Salvando..." : "Cadastrar"}
+                {saving ? "Salvando..." : editing ? "Salvar Alterações" : "Cadastrar"}
               </Button>
             </div>
           </DialogContent>
@@ -358,6 +388,14 @@ export default function Parceiros() {
                     <a href={p.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">{p.website}</a>
                   </div>
                 )}
+                <div className="flex justify-end gap-1 pt-2 border-t mt-2">
+                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => abrirEdicao(p)}>
+                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  </Button>
+                  <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:text-destructive" onClick={() => desativar(p)}>
+                    <Ban className="h-3.5 w-3.5" /> Desativar
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

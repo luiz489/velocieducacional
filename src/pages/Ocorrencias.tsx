@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Plus, Filter, AlertTriangle, ThumbsUp, Eye, Calendar } from "lucide-react";
+import { Search, Plus, Filter, AlertTriangle, ThumbsUp, Eye, Calendar, MoreHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Label } from "@/components/ui/label";
 import {
@@ -45,6 +48,7 @@ export default function Ocorrencias() {
   const [search, setSearch] = useState("");
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<OcorrenciaRow | null>(null);
   const [form, setForm] = useState({
     aluno_id: "",
     tipo: "Observação" as TipoOcorrencia,
@@ -124,27 +128,63 @@ export default function Ocorrencias() {
     },
   });
 
-  const criar = useMutation({
+  const abrirNovo = () => {
+    setEditing(null);
+    setForm({ aluno_id: "", tipo: "Observação", descricao: "", data: new Date().toISOString().split("T")[0], professor_id: "" });
+    setDialogOpen(true);
+  };
+
+  const abrirEdicao = (o: OcorrenciaRow) => {
+    setEditing(o);
+    setForm({
+      aluno_id: o.aluno_id,
+      tipo: o.tipo as TipoOcorrencia,
+      descricao: o.descricao,
+      data: o.data_ocorrencia,
+      professor_id: o.professor_id ?? "",
+    });
+    setDialogOpen(true);
+  };
+
+  const salvar = useMutation({
     mutationFn: async () => {
       const prof = professores.find(p => p.id === form.professor_id);
-      const { error } = await supabase.from("ocorrencias").insert({
+      const payload = {
         aluno_id: form.aluno_id,
         tipo: form.tipo,
         descricao: form.descricao,
         data_ocorrencia: form.data,
         registrado_por: prof?.nome || "—",
         professor_id: form.professor_id || null,
-        escola_id: escolaAtivaId,
-      } as any);
+      };
+      if (editing) {
+        const { error } = await supabase.from("ocorrencias").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("ocorrencias").insert({ ...payload, escola_id: escolaAtivaId } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ocorrencias"] });
+      toast.success(editing ? "Ocorrência atualizada!" : "Ocorrência registrada!");
+      setDialogOpen(false);
+      setEditing(null);
+      setForm({ aluno_id: "", tipo: "Observação", descricao: "", data: new Date().toISOString().split("T")[0], professor_id: "" });
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao salvar"),
+  });
+
+  const excluir = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("ocorrencias").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ocorrencias"] });
-      toast.success("Ocorrência registrada!");
-      setDialogOpen(false);
-      setForm({ aluno_id: "", tipo: "Observação", descricao: "", data: new Date().toISOString().split("T")[0], professor_id: "" });
+      toast.success("Ocorrência excluída.");
     },
-    onError: (e: any) => toast.error(e.message || "Erro ao registrar"),
+    onError: (e: any) => toast.error(e.message || "Erro ao excluir"),
   });
 
   const filtered = useMemo(() => ocorrencias.filter((o) => {
@@ -170,13 +210,13 @@ export default function Ocorrencias() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Nova Ocorrência</Button>
+            <Button onClick={abrirNovo}><Plus className="h-4 w-4 mr-2" />Nova Ocorrência</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Registrar Nova Ocorrência</DialogTitle>
+              <DialogTitle>{editing ? "Editar Ocorrência" : "Registrar Nova Ocorrência"}</DialogTitle>
             </DialogHeader>
-            <form className="space-y-4 mt-2" onSubmit={(e) => { e.preventDefault(); criar.mutate(); }}>
+            <form className="space-y-4 mt-2" onSubmit={(e) => { e.preventDefault(); salvar.mutate(); }}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Label>Aluno *</Label>
@@ -243,8 +283,8 @@ export default function Ocorrencias() {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={!form.aluno_id || !form.professor_id || !form.descricao || criar.isPending}>
-                  {criar.isPending ? "Salvando..." : "Registrar"}
+                <Button type="submit" disabled={!form.aluno_id || !form.professor_id || !form.descricao || salvar.isPending}>
+                  {salvar.isPending ? "Salvando..." : editing ? "Salvar Alterações" : "Registrar"}
                 </Button>
               </div>
             </form>
@@ -319,12 +359,13 @@ export default function Ocorrencias() {
               <TableHead className="w-[130px]">Tipo</TableHead>
               <TableHead className="hidden lg:table-cell">Descrição</TableHead>
               <TableHead className="hidden md:table-cell">Registrado por</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
               </TableRow>
             ) : filtered.map((oc) => {
               const cfg = tipoConfig[oc.tipo as TipoOcorrencia] || tipoConfig["Observação"];
@@ -349,12 +390,30 @@ export default function Ocorrencias() {
                     {oc.descricao}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{oc.registrado_por}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => abrirEdicao(oc)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => { if (confirm("Excluir esta ocorrência?")) excluir.mutate(oc.id); }}
+                        >
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               );
             })}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Nenhuma ocorrência encontrada.
                 </TableCell>
               </TableRow>
