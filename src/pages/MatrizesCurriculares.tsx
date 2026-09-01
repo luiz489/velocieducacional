@@ -32,7 +32,11 @@ type Matriz = {
   turno: string;
   descricao: string | null;
   ativo: boolean;
+  categoria_id: string | null;
+  categorias?: { nome: string } | null;
 };
+
+type Categoria = { id: string; nome: string };
 
 type MatrizDisc = {
   id: string;
@@ -50,14 +54,24 @@ export default function MatrizesCurriculares() {
   const [manageId, setManageId] = useState<string | null>(null);
   const [form, setForm] = useState({
     nome: "", serie: "", ano_letivo: new Date().getFullYear(),
-    turno: "Manhã", descricao: "", ativo: true,
+    turno: "Manhã", descricao: "", ativo: true, categoria_id: "",
+  });
+
+  const { data: categorias } = useQuery({
+    queryKey: ["categorias-matriz", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categorias").select("id, nome").eq("escola_id", escolaAtivaId!).order("ordem");
+      if (error) throw error;
+      return data as Categoria[];
+    },
   });
 
   const { data, isLoading } = useQuery({
     queryKey: ["matrizes", escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("matrizes_curriculares").select("*")
+      const { data, error } = await supabase.from("matrizes_curriculares").select("*, categorias(nome)")
         .eq("escola_id", escolaAtivaId!)
         .order("ano_letivo", { ascending: false }).order("nome");
       if (error) throw error;
@@ -67,7 +81,7 @@ export default function MatrizesCurriculares() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { ...form, descricao: form.descricao || null };
+      const payload = { ...form, descricao: form.descricao || null, categoria_id: form.categoria_id || null };
       if (editing) {
         const { error } = await supabase.from("matrizes_curriculares").update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -99,7 +113,7 @@ export default function MatrizesCurriculares() {
 
   function reset() {
     setEditing(null);
-    setForm({ nome: "", serie: "", ano_letivo: new Date().getFullYear(), turno: "Manhã", descricao: "", ativo: true });
+    setForm({ nome: "", serie: "", ano_letivo: new Date().getFullYear(), turno: "Manhã", descricao: "", ativo: true, categoria_id: "" });
   }
 
   function openEdit(m: Matriz) {
@@ -107,6 +121,7 @@ export default function MatrizesCurriculares() {
     setForm({
       nome: m.nome, serie: m.serie, ano_letivo: m.ano_letivo,
       turno: m.turno, descricao: m.descricao ?? "", ativo: m.ativo,
+      categoria_id: m.categoria_id ?? "",
     });
     setOpen(true);
   }
@@ -165,6 +180,15 @@ export default function MatrizesCurriculares() {
                   <Label>Descrição</Label>
                   <Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
                 </div>
+                <div>
+                  <Label>Categoria/Segmento</Label>
+                  <Select value={form.categoria_id} onValueChange={(v) => setForm({ ...form, categoria_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+                    <SelectContent>
+                      {categorias?.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-center gap-2">
                   <Checkbox checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: !!v })} />
                   <Label>Ativa</Label>
@@ -187,6 +211,7 @@ export default function MatrizesCurriculares() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Série</TableHead>
+                  <TableHead>Categoria</TableHead>
                   <TableHead>Ano</TableHead>
                   <TableHead>Turno</TableHead>
                   <TableHead>Status</TableHead>
@@ -198,6 +223,7 @@ export default function MatrizesCurriculares() {
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.nome}</TableCell>
                     <TableCell>{m.serie}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.categorias?.nome ?? "—"}</TableCell>
                     <TableCell>{m.ano_letivo}</TableCell>
                     <TableCell>{m.turno}</TableCell>
                     <TableCell>
@@ -218,7 +244,7 @@ export default function MatrizesCurriculares() {
                   </TableRow>
                 ))}
                 {!data?.length && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Nenhuma matriz.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nenhuma matriz.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

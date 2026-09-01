@@ -2675,6 +2675,7 @@ export type Database = {
         Row: {
           ano_letivo: number
           ativo: boolean
+          categoria_id: string | null
           created_at: string
           descricao: string | null
           escola_id: string
@@ -2687,6 +2688,7 @@ export type Database = {
         Insert: {
           ano_letivo: number
           ativo?: boolean
+          categoria_id?: string | null
           created_at?: string
           descricao?: string | null
           escola_id: string
@@ -2699,6 +2701,7 @@ export type Database = {
         Update: {
           ano_letivo?: number
           ativo?: boolean
+          categoria_id?: string | null
           created_at?: string
           descricao?: string | null
           escola_id?: string
