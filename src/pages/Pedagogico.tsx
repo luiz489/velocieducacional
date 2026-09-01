@@ -168,7 +168,7 @@ export default function Pedagogico() {
         escola_id: escolaAtivaId ?? "",
         disciplina: disciplinas?.find((d) => d.id === disciplinaId)?.nome ?? "",
       };
-      (registro as Record<string, number | null>)[vars.campo] = vars.valor;
+      (registro as unknown as Record<string, number | null>)[vars.campo] = vars.valor;
       const { error } = await supabase.from("pedagogico").upsert(registro, { onConflict: "matricula_id,disciplina_id" });
       if (error) throw error;
     },
