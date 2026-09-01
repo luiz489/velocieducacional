@@ -403,9 +403,20 @@ export type Database = {
           nome_mae: string | null
           nome_pai: string | null
           ra_censo: string | null
+          responsavel_bairro: string | null
+          responsavel_cep: string | null
+          responsavel_cidade: string | null
+          responsavel_conjuge: string | null
           responsavel_cpf: string | null
+          responsavel_data_nascimento: string | null
+          responsavel_estado_civil: string | null
           responsavel_financeiro: string
+          responsavel_naturalidade_cidade: string | null
+          responsavel_naturalidade_uf: string | null
           responsavel_rg: string | null
+          responsavel_rg_data_emissao: string | null
+          responsavel_rg_orgao_emissor: string | null
+          responsavel_uf: string | null
           status: string
           telefone_responsavel: string | null
           updated_at: string
@@ -428,9 +439,20 @@ export type Database = {
           nome_mae?: string | null
           nome_pai?: string | null
           ra_censo?: string | null
+          responsavel_bairro?: string | null
+          responsavel_cep?: string | null
+          responsavel_cidade?: string | null
+          responsavel_conjuge?: string | null
           responsavel_cpf?: string | null
+          responsavel_data_nascimento?: string | null
+          responsavel_estado_civil?: string | null
           responsavel_financeiro: string
+          responsavel_naturalidade_cidade?: string | null
+          responsavel_naturalidade_uf?: string | null
           responsavel_rg?: string | null
+          responsavel_rg_data_emissao?: string | null
+          responsavel_rg_orgao_emissor?: string | null
+          responsavel_uf?: string | null
           status?: string
           telefone_responsavel?: string | null
           updated_at?: string
@@ -453,9 +475,20 @@ export type Database = {
           nome_mae?: string | null
           nome_pai?: string | null
           ra_censo?: string | null
+          responsavel_bairro?: string | null
+          responsavel_cep?: string | null
+          responsavel_cidade?: string | null
+          responsavel_conjuge?: string | null
           responsavel_cpf?: string | null
+          responsavel_data_nascimento?: string | null
+          responsavel_estado_civil?: string | null
           responsavel_financeiro?: string
+          responsavel_naturalidade_cidade?: string | null
+          responsavel_naturalidade_uf?: string | null
           responsavel_rg?: string | null
+          responsavel_rg_data_emissao?: string | null
+          responsavel_rg_orgao_emissor?: string | null
+          responsavel_uf?: string | null
           status?: string
           telefone_responsavel?: string | null
           updated_at?: string
@@ -3899,13 +3932,24 @@ export type Database = {
           aluno_id: string | null
           ano: number | null
           bolsa_100: boolean | null
+          contratante_bairro: string | null
+          contratante_cep: string | null
+          contratante_cidade: string | null
+          contratante_conjuge: string | null
           contratante_cpf: string | null
+          contratante_data_nascimento: string | null
           contratante_email: string | null
           contratante_endereco: string | null
+          contratante_estado_civil: string | null
           contratante_id: string | null
+          contratante_naturalidade_cidade: string | null
+          contratante_naturalidade_uf: string | null
           contratante_nome: string | null
           contratante_rg: string | null
+          contratante_rg_data_emissao: string | null
+          contratante_rg_orgao: string | null
           contratante_telefone: string | null
+          contratante_uf: string | null
           data_nascimento: string | null
           dia_vencimento: number | null
           diretor_cargo: string | null
@@ -3913,8 +3957,10 @@ export type Database = {
           ensino_padrao: string | null
           escola_cidade: string | null
           escola_cnpj: string | null
+          escola_endereco: string | null
           escola_id: string | null
           escola_nome: string | null
+          escola_telefone: string | null
           escola_uf: string | null
           matricula_id: string | null
           naturalidade_cidade: string | null
@@ -3927,6 +3973,7 @@ export type Database = {
           ra_censo: string | null
           serie: string | null
           taxa_matricula: number | null
+          turno: string | null
           valor_mensalidade: number | null
           valor_mensalidade_com_desconto: number | null
           valor_mensalidade_com_desconto_extenso: string | null

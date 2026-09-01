@@ -11,6 +11,17 @@ export type AlunoCamposDefaultValues = {
   responsavel_financeiro?: string;
   responsavel_cpf?: string | null;
   responsavel_rg?: string | null;
+  responsavel_rg_orgao_emissor?: string | null;
+  responsavel_rg_data_emissao?: string | null;
+  responsavel_data_nascimento?: string | null;
+  responsavel_estado_civil?: string | null;
+  responsavel_conjuge?: string | null;
+  responsavel_bairro?: string | null;
+  responsavel_cidade?: string | null;
+  responsavel_uf?: string | null;
+  responsavel_cep?: string | null;
+  responsavel_naturalidade_cidade?: string | null;
+  responsavel_naturalidade_uf?: string | null;
   telefone_responsavel?: string | null;
   email_responsavel?: string | null;
   status?: string;
@@ -117,14 +128,28 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
 
       <div className="border-t pt-4">
         <p className="text-sm font-medium text-muted-foreground mb-3">Responsável financeiro</p>
-        <p className="text-xs text-muted-foreground -mt-2 mb-3">
-          CPF e RG são usados para gerar contratos e declarações automaticamente.
-        </p>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <Label htmlFor="responsavel">Nome do Responsável</Label>
             <Input id="responsavel" name="responsavel" placeholder="Nome do responsável" className="mt-1" defaultValue={defaultValues?.responsavel_financeiro} required />
           </div>
+          <div>
+            <Label htmlFor="telefone">Telefone</Label>
+            <Input id="telefone" name="telefone" placeholder="(00) 00000-0000" className="mt-1" defaultValue={defaultValues?.telefone_responsavel || ""} />
+          </div>
+          <div>
+            <Label htmlFor="email">E-mail Responsável</Label>
+            <Input id="email" name="email" type="email" placeholder="email@exemplo.com" className="mt-1" defaultValue={defaultValues?.email_responsavel || ""} />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium text-muted-foreground mb-3">Dados completos do responsável (para contratos)</p>
+        <p className="text-xs text-muted-foreground -mt-2 mb-3">
+          Usados para gerar contratos e declarações completos automaticamente. Opcionais, mas recomendados.
+        </p>
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="responsavel_cpf">CPF do Responsável</Label>
             <Input
@@ -137,12 +162,55 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
             <Input id="responsavel_rg" name="responsavel_rg" className="mt-1" defaultValue={defaultValues?.responsavel_rg || ""} />
           </div>
           <div>
-            <Label htmlFor="telefone">Telefone</Label>
-            <Input id="telefone" name="telefone" placeholder="(00) 00000-0000" className="mt-1" defaultValue={defaultValues?.telefone_responsavel || ""} />
+            <Label htmlFor="responsavel_rg_orgao_emissor">Órgão Emissor do RG</Label>
+            <Input id="responsavel_rg_orgao_emissor" name="responsavel_rg_orgao_emissor" placeholder="Ex: SSP-SP" className="mt-1" defaultValue={defaultValues?.responsavel_rg_orgao_emissor || ""} />
           </div>
           <div>
-            <Label htmlFor="email">E-mail Responsável</Label>
-            <Input id="email" name="email" type="email" placeholder="email@exemplo.com" className="mt-1" defaultValue={defaultValues?.email_responsavel || ""} />
+            <Label htmlFor="responsavel_rg_data_emissao">Data de Emissão do RG</Label>
+            <Input id="responsavel_rg_data_emissao" name="responsavel_rg_data_emissao" type="date" className="mt-1" defaultValue={defaultValues?.responsavel_rg_data_emissao || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_data_nascimento">Data de Nascimento</Label>
+            <Input id="responsavel_data_nascimento" name="responsavel_data_nascimento" type="date" className="mt-1" defaultValue={defaultValues?.responsavel_data_nascimento || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_estado_civil">Estado Civil</Label>
+            <select name="responsavel_estado_civil" defaultValue={defaultValues?.responsavel_estado_civil || ""} className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
+              <option value="">Não informado</option>
+              <option value="Solteiro(a)">Solteiro(a)</option>
+              <option value="Casado(a)">Casado(a)</option>
+              <option value="Divorciado(a)">Divorciado(a)</option>
+              <option value="Viúvo(a)">Viúvo(a)</option>
+              <option value="União Estável">União Estável</option>
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="responsavel_conjuge">Nome do Cônjuge</Label>
+            <Input id="responsavel_conjuge" name="responsavel_conjuge" className="mt-1" defaultValue={defaultValues?.responsavel_conjuge || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_bairro">Bairro</Label>
+            <Input id="responsavel_bairro" name="responsavel_bairro" className="mt-1" defaultValue={defaultValues?.responsavel_bairro || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_cidade">Cidade</Label>
+            <Input id="responsavel_cidade" name="responsavel_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_cidade || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_uf">UF</Label>
+            <Input id="responsavel_uf" name="responsavel_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.responsavel_uf || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_cep">CEP</Label>
+            <Input id="responsavel_cep" name="responsavel_cep" placeholder="00000-000" className="mt-1" defaultValue={defaultValues?.responsavel_cep || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_naturalidade_cidade">Naturalidade (Cidade)</Label>
+            <Input id="responsavel_naturalidade_cidade" name="responsavel_naturalidade_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_naturalidade_cidade || ""} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_naturalidade_uf">Naturalidade (UF)</Label>
+            <Input id="responsavel_naturalidade_uf" name="responsavel_naturalidade_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.responsavel_naturalidade_uf || ""} />
           </div>
         </div>
       </div>
@@ -160,6 +228,17 @@ export function lerAlunoCamposDeFormData(fd: FormData) {
     responsavel_financeiro: fd.get("responsavel") as string,
     responsavel_cpf: (fd.get("responsavel_cpf") as string) || null,
     responsavel_rg: (fd.get("responsavel_rg") as string) || null,
+    responsavel_rg_orgao_emissor: (fd.get("responsavel_rg_orgao_emissor") as string) || null,
+    responsavel_rg_data_emissao: (fd.get("responsavel_rg_data_emissao") as string) || null,
+    responsavel_data_nascimento: (fd.get("responsavel_data_nascimento") as string) || null,
+    responsavel_estado_civil: (fd.get("responsavel_estado_civil") as string) || null,
+    responsavel_conjuge: (fd.get("responsavel_conjuge") as string) || null,
+    responsavel_bairro: (fd.get("responsavel_bairro") as string) || null,
+    responsavel_cidade: (fd.get("responsavel_cidade") as string) || null,
+    responsavel_uf: (fd.get("responsavel_uf") as string) || null,
+    responsavel_cep: (fd.get("responsavel_cep") as string) || null,
+    responsavel_naturalidade_cidade: (fd.get("responsavel_naturalidade_cidade") as string) || null,
+    responsavel_naturalidade_uf: (fd.get("responsavel_naturalidade_uf") as string) || null,
     telefone_responsavel: (fd.get("telefone") as string) || null,
     email_responsavel: (fd.get("email") as string) || null,
     status: (fd.get("status") as string) || "Ativo",
