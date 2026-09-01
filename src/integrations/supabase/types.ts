@@ -4121,7 +4121,6 @@ export type Database = {
           status_novo: string
         }[]
       }
-      bootstrap_admin: { Args: never; Returns: boolean }
       clonar_papeis_modelo_para_escola: {
         Args: { p_escola_id: string }
         Returns: undefined
