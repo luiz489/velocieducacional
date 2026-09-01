@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { turmasQueryKey } from "@/hooks/useTurmas";
 
 export type MatriculaResumo = {
   id: string;
@@ -31,9 +33,9 @@ export type TurmaComVagas = {
 
 export function useMatriculas() {
   const { escolaAtivaId } = useEscolaAtiva();
+  const qc = useQueryClient();
   const [matriculas, setMatriculas] = useState<MatriculaResumo[]>([]);
-  const [turmasComVagas, setTurmasComVagas] = useState<TurmaComVagas[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingMatriculas, setLoadingMatriculas] = useState(true);
 
   const fetchMatriculas = useCallback(async () => {
     if (!escolaAtivaId) { setMatriculas([]); return; }
@@ -50,7 +52,7 @@ export function useMatriculas() {
 
     if (error) {
       toast.error("Erro ao carregar matrículas: " + error.message);
-      setLoading(false);
+      setLoadingMatriculas(false);
       return;
     }
 
@@ -77,40 +79,65 @@ export function useMatriculas() {
     setMatriculas(resumo);
   }, [escolaAtivaId]);
 
-  const fetchTurmasComVagas = useCallback(async () => {
-    if (!escolaAtivaId) { setTurmasComVagas([]); return; }
-    const { data: turmas, error } = await supabase
-      .from("turmas")
-      .select("id, nome, turno, ano_letivo, vagas_totais")
-      .eq("escola_id", escolaAtivaId)
-      .order("nome");
-    if (error || !turmas) return;
-
-    const { data: contagem } = await supabase
-      .from("matriculas")
-      .select("turma_id")
-      .eq("escola_id", escolaAtivaId);
-
-    const ocupadas = new Map<string, number>();
-    (contagem ?? []).forEach((m: any) => {
-      ocupadas.set(m.turma_id, (ocupadas.get(m.turma_id) ?? 0) + 1);
-    });
-
-    setTurmasComVagas(
-      turmas.map((t) => ({
-        ...t,
-        vagas_ocupadas: ocupadas.get(t.id) ?? 0,
-      }))
-    );
-  }, [escolaAtivaId]);
-
   useEffect(() => {
-    Promise.all([fetchMatriculas(), fetchTurmasComVagas()]).finally(() => setLoading(false));
-  }, [fetchMatriculas, fetchTurmasComVagas]);
+    fetchMatriculas().finally(() => setLoadingMatriculas(false));
+  }, [fetchMatriculas]);
+
+  // Turmas com vagas: usa a MESMA chave de cache que a tela de Turmas (useTurmas.ts).
+  // Assim, criar uma turma nova em qualquer lugar do app já atualiza essa lista aqui também.
+  const { data: turmasBase = [], isLoading: loadingTurmas } = useQuery({
+    queryKey: turmasQueryKey(escolaAtivaId),
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data: turmasData, error } = await supabase
+        .from("turmas")
+        .select("id, nome, ano_letivo, turno, sala, vagas_totais, categoria_id, professor_regente_id, categorias(nome), professores(nome)")
+        .eq("escola_id", escolaAtivaId!)
+        .order("nome");
+      if (error) throw error;
+
+      const { data: matriculasData } = await supabase
+        .from("matriculas")
+        .select("turma_id")
+        .eq("escola_id", escolaAtivaId!);
+      const contagem = new Map<string, number>();
+      (matriculasData ?? []).forEach((m) => {
+        contagem.set(m.turma_id, (contagem.get(m.turma_id) ?? 0) + 1);
+      });
+
+      return (turmasData ?? []).map((t: any) => ({
+        id: t.id,
+        nome: t.nome,
+        ano_letivo: t.ano_letivo,
+        turno: t.turno,
+        sala: t.sala,
+        vagas_totais: t.vagas_totais,
+        categoria_id: t.categoria_id,
+        categoria_nome: t.categorias?.nome ?? null,
+        professor_regente_id: t.professor_regente_id,
+        professor_regente_nome: t.professores?.nome ?? null,
+        alunos_matriculados: contagem.get(t.id) ?? 0,
+      }));
+    },
+  });
+
+  const turmasComVagas: TurmaComVagas[] = turmasBase.map((t: any) => ({
+    id: t.id,
+    nome: t.nome,
+    turno: t.turno,
+    ano_letivo: t.ano_letivo,
+    vagas_totais: t.vagas_totais,
+    vagas_ocupadas: t.alunos_matriculados,
+  }));
+
+  const loading = loadingMatriculas || loadingTurmas;
 
   const refetch = useCallback(async () => {
-    await Promise.all([fetchMatriculas(), fetchTurmasComVagas()]);
-  }, [fetchMatriculas, fetchTurmasComVagas]);
+    await Promise.all([
+      fetchMatriculas(),
+      qc.invalidateQueries({ queryKey: turmasQueryKey(escolaAtivaId) }),
+    ]);
+  }, [fetchMatriculas, qc, escolaAtivaId]);
 
   return { matriculas, turmasComVagas, loading, refetch };
 }

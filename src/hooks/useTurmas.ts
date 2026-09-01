@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -17,36 +17,39 @@ export type TurmaRow = {
   professor_regente_nome: string | null;
 };
 
+// Chave compartilhada com useMatriculas.ts - criar/editar uma turma aqui
+// atualiza automaticamente a lista de turmas na tela de Nova Matrícula também.
+export const turmasQueryKey = (escolaId: string | null) => ["turmas-lista", escolaId];
+
 export function useTurmas() {
   const { escolaAtivaId } = useEscolaAtiva();
-  const [turmas, setTurmas] = useState<TurmaRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
 
-  const fetchTurmas = useCallback(async () => {
-    if (!escolaAtivaId) { setTurmas([]); setLoading(false); return; }
-    const { data: turmasData, error } = await supabase
-      .from("turmas")
-      .select("id, nome, ano_letivo, turno, sala, vagas_totais, categoria_id, professor_regente_id, categorias(nome), professores(nome)")
-      .eq("escola_id", escolaAtivaId)
-      .order("nome");
+  const { data: turmas = [], isLoading: loading } = useQuery({
+    queryKey: turmasQueryKey(escolaAtivaId),
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data: turmasData, error } = await supabase
+        .from("turmas")
+        .select("id, nome, ano_letivo, turno, sala, vagas_totais, categoria_id, professor_regente_id, categorias(nome), professores(nome)")
+        .eq("escola_id", escolaAtivaId!)
+        .order("nome");
 
-    if (error) {
-      toast.error("Erro ao carregar turmas: " + error.message);
-      setLoading(false);
-      return;
-    }
+      if (error) {
+        toast.error("Erro ao carregar turmas: " + error.message);
+        throw error;
+      }
 
-    const { data: matriculasData } = await supabase
-      .from("matriculas")
-      .select("turma_id")
-      .eq("escola_id", escolaAtivaId);
-    const contagem = new Map<string, number>();
-    (matriculasData ?? []).forEach((m) => {
-      contagem.set(m.turma_id, (contagem.get(m.turma_id) ?? 0) + 1);
-    });
+      const { data: matriculasData } = await supabase
+        .from("matriculas")
+        .select("turma_id")
+        .eq("escola_id", escolaAtivaId!);
+      const contagem = new Map<string, number>();
+      (matriculasData ?? []).forEach((m) => {
+        contagem.set(m.turma_id, (contagem.get(m.turma_id) ?? 0) + 1);
+      });
 
-    setTurmas(
-      (turmasData ?? []).map((t: any) => ({
+      return (turmasData ?? []).map((t: any): TurmaRow => ({
         id: t.id,
         nome: t.nome,
         ano_letivo: t.ano_letivo,
@@ -58,14 +61,9 @@ export function useTurmas() {
         professor_regente_id: t.professor_regente_id,
         professor_regente_nome: t.professores?.nome ?? null,
         alunos_matriculados: contagem.get(t.id) ?? 0,
-      }))
-    );
-    setLoading(false);
-  }, [escolaAtivaId]);
-
-  useEffect(() => {
-    fetchTurmas();
-  }, [fetchTurmas]);
+      }));
+    },
+  });
 
   const createTurma = async (escolaId: string, turma: {
     nome: string; ano_letivo: number; turno: string; sala?: string | null; vagas_totais: number;
@@ -77,9 +75,13 @@ export function useTurmas() {
       return false;
     }
     toast.success("Turma cadastrada com sucesso!");
-    await fetchTurmas();
+    await qc.invalidateQueries({ queryKey: turmasQueryKey(escolaAtivaId) });
     return true;
   };
 
-  return { turmas, loading, createTurma, refetch: fetchTurmas };
+  const refetch = async () => {
+    await qc.invalidateQueries({ queryKey: turmasQueryKey(escolaAtivaId) });
+  };
+
+  return { turmas, loading, createTurma, refetch };
 }
