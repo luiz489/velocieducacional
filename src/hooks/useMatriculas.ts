@@ -156,7 +156,17 @@ export function useMatriculas() {
       toast.error("Erro ao atualizar matrícula: " + error.message);
       return false;
     }
-    toast.success("Matrícula atualizada. Parcelas já geradas não são recalculadas automaticamente - ajuste em Financeiro se necessário.");
+    await refetch();
+    return true;
+  }, [refetch]);
+
+  const recalcularFinanceiro = useCallback(async (matriculaId: string) => {
+    const { error } = await supabase.rpc("recalcular_financeiro_matricula", { p_matricula_id: matriculaId });
+    if (error) {
+      toast.error("Erro ao recalcular parcelas: " + error.message);
+      return false;
+    }
+    toast.success("Parcelas recalculadas! As já pagas foram mantidas.");
     await refetch();
     return true;
   }, [refetch]);
@@ -181,5 +191,5 @@ export function useMatriculas() {
     return true;
   }, [refetch]);
 
-  return { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula };
+  return { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro };
 }

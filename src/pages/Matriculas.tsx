@@ -41,7 +41,7 @@ function getStatusBadge(status: string) {
 
 export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
-  const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula } = useMatriculas();
+  const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro } = useMatriculas();
   const { escolaAtivaId } = useEscolaAtiva();
 
   const { data: camposVisiveis } = useQuery({
@@ -214,6 +214,12 @@ export default function Matriculas() {
   const handleSaveEdit = async () => {
     if (!editingMatricula) return;
     setSavingEdit(true);
+    const dadosAlteraramFinanceiro =
+      editDataIngresso !== editingMatricula.data_ingresso ||
+      editTurmaId !== editingMatricula.turma_id ||
+      Number(editDesconto || 0) !== (editingMatricula.percentual_desconto ?? 0) ||
+      editBolsa !== editingMatricula.bolsa_100;
+
     const ok = await updateMatricula(editingMatricula.id, {
       turma_id: editTurmaId,
       data_ingresso: editDataIngresso,
@@ -224,6 +230,18 @@ export default function Matriculas() {
     setSavingEdit(false);
     if (ok) {
       setEditOpen(false);
+      toast.success("Matrícula atualizada!");
+
+      if (dadosAlteraramFinanceiro) {
+        const quer = confirm(
+          "Você alterou dados que afetam o valor/vencimento das parcelas (turma, data de ingresso, desconto ou bolsa).\n\n" +
+          "Quer recalcular as parcelas financeiras com os dados novos agora?\n\n" +
+          "Parcelas já pagas serão mantidas como estão - só as pendentes/atrasadas são recriadas."
+        );
+        if (quer) {
+          await recalcularFinanceiro(editingMatricula.id);
+        }
+      }
       setEditingMatricula(null);
     }
   };
@@ -500,8 +518,8 @@ export default function Matriculas() {
           <DialogHeader>
             <DialogTitle>Editar Matrícula</DialogTitle>
             <DialogDescription>
-              {editingMatricula && `${editingMatricula.aluno_nome}`}. Alterar aqui não recalcula parcelas já
-              geradas — ajuste manualmente em Financeiro se necessário.
+              {editingMatricula && `${editingMatricula.aluno_nome}`}. Se você mudar turma, data de ingresso,
+              desconto ou bolsa, vamos perguntar se quer recalcular as parcelas ao salvar.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
