@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
-import { GraduationCap } from "lucide-react";
 import {
   GraduationCap,
   DollarSign,

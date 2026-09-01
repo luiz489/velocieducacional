@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { GraduationCap, BookOpen, Users, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -161,16 +162,14 @@ export default function Pedagogico() {
 
   const salvarCampo = useMutation({
     mutationFn: async (vars: { matriculaId: string; campo: "av1" | "av2" | "recuperacao" | "frequencia_percentual"; valor: number | null }) => {
-      const { error } = await supabase.from("pedagogico").upsert(
-        {
-          matricula_id: vars.matriculaId,
-          disciplina_id: disciplinaId,
-          escola_id: escolaAtivaId,
-          disciplina: disciplinas?.find((d) => d.id === disciplinaId)?.nome ?? "",
-          [vars.campo]: vars.valor,
-        },
-        { onConflict: "matricula_id,disciplina_id" }
-      );
+      const registro: Database["public"]["Tables"]["pedagogico"]["Insert"] = {
+        matricula_id: vars.matriculaId,
+        disciplina_id: disciplinaId,
+        escola_id: escolaAtivaId ?? "",
+        disciplina: disciplinas?.find((d) => d.id === disciplinaId)?.nome ?? "",
+      };
+      (registro as unknown as Record<string, number | null>)[vars.campo] = vars.valor;
+      const { error } = await supabase.from("pedagogico").upsert(registro, { onConflict: "matricula_id,disciplina_id" });
       if (error) throw error;
     },
     onSuccess: () => {
