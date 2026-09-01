@@ -1708,6 +1708,7 @@ export type Database = {
           ativo: boolean
           atualizado_em: string
           bairro: string | null
+          campos_matricula_visiveis: Json
           cep: string | null
           cidade: string | null
           cnpj: string | null
@@ -1727,6 +1728,7 @@ export type Database = {
           ativo?: boolean
           atualizado_em?: string
           bairro?: string | null
+          campos_matricula_visiveis?: Json
           cep?: string | null
           cidade?: string | null
           cnpj?: string | null
@@ -1746,6 +1748,7 @@ export type Database = {
           ativo?: boolean
           atualizado_em?: string
           bairro?: string | null
+          campos_matricula_visiveis?: Json
           cep?: string | null
           cidade?: string | null
           cnpj?: string | null

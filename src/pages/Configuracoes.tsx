@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { ShieldCheck, UserPlus, UserCog, Plus, Settings } from "lucide-react";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
+import { CAMPOS_MATRICULA_CONFIGURAVEIS } from "@/components/AlunoCamposFieldset";
 
 type Papel = { id: string; nome: string; descricao: string | null; escola_id: string | null; papel_sistema: boolean };
 type Modulo = { id: string; codigo: string; nome: string; ordem: number | null };
@@ -455,7 +456,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email")
+        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
@@ -464,6 +465,36 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   });
 
   const { data: logoUrlAssinada } = useSignedUrl("escola-logos", escola?.logo_url);
+  const [camposMatricula, setCamposMatricula] = useState<Record<string, boolean>>({});
+  const [salvandoCampos, setSalvandoCampos] = useState(false);
+
+  useEffect(() => {
+    if (escola) {
+      setCamposMatricula((escola as any).campos_matricula_visiveis ?? {});
+    }
+  }, [escola]);
+
+  const alternarCampoMatricula = (chave: string) => {
+    setCamposMatricula((atual) => ({ ...atual, [chave]: atual[chave] === false ? true : false }));
+  };
+
+  const salvarCamposMatricula = async () => {
+    if (!escolaId) return;
+    setSalvandoCampos(true);
+    const { error } = await supabase
+      .from("escolas")
+      .update({ campos_matricula_visiveis: camposMatricula })
+      .eq("id", escolaId);
+    setSalvandoCampos(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    toast.success("Campos da matrícula atualizados");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+    qc.invalidateQueries({ queryKey: ["campos-matricula-visiveis", escolaId] });
+  };
+
 
   useEffect(() => {
     if (escola) {
@@ -678,6 +709,30 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
               <p className="text-xs text-muted-foreground mt-1">PNG, JPG ou WEBP. Ficará melhor com fundo transparente e formato quadrado.</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Campos da Matrícula</CardTitle>
+          <CardDescription>
+            Marque só os campos que devem aparecer no formulário de "novo aluno" ao criar uma Nova Matrícula.
+            Nome, CPF, data de nascimento e nome do responsável são sempre obrigatórios.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {CAMPOS_MATRICULA_CONFIGURAVEIS.map((c) => (
+            <label key={c.chave} className="flex items-center gap-3 text-sm cursor-pointer py-1">
+              <Checkbox
+                checked={camposMatricula[c.chave] !== false}
+                onCheckedChange={() => alternarCampoMatricula(c.chave)}
+              />
+              {c.rotulo}
+            </label>
+          ))}
+          <Button onClick={salvarCamposMatricula} disabled={salvandoCampos} className="mt-2">
+            {salvandoCampos ? "Salvando…" : "Salvar Campos da Matrícula"}
+          </Button>
         </CardContent>
       </Card>
       </div>

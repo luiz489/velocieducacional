@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { useAlunos } from "@/hooks/useAlunos";
 import { useMatriculas } from "@/hooks/useMatriculas";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -42,6 +43,20 @@ export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
   const { matriculas, turmasComVagas, loading, refetch } = useMatriculas();
   const { escolaAtivaId } = useEscolaAtiva();
+
+  const { data: camposVisiveis } = useQuery({
+    queryKey: ["campos-matricula-visiveis", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("escolas")
+        .select("campos_matricula_visiveis")
+        .eq("id", escolaAtivaId!)
+        .single();
+      if (error) throw error;
+      return (data?.campos_matricula_visiveis ?? {}) as Record<string, boolean>;
+    },
+  });
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
@@ -215,7 +230,7 @@ export default function Matriculas() {
                 </TabsContent>
 
                 <TabsContent value="novo" className="mt-3">
-                  <AlunoCamposFieldset />
+                  <AlunoCamposFieldset camposVisiveis={camposVisiveis} />
                 </TabsContent>
               </Tabs>
 
