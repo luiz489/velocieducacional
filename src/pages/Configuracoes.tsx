@@ -51,7 +51,7 @@ export default function Configuracoes() {
       const { data, error } = await supabase
         .from("papeis")
         .select("id, nome, descricao, escola_id, papel_sistema")
-        .or(`escola_id.eq.${escolaAtivaId},escola_id.is.null`)
+        .eq("escola_id", escolaAtivaId!)
         .order("nome");
       if (error) throw error;
       return data as Papel[];
