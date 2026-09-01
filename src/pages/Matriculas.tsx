@@ -41,7 +41,7 @@ function getStatusBadge(status: string) {
 
 export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
-  const { matriculas, turmasComVagas, loading, refetch } = useMatriculas();
+  const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula } = useMatriculas();
   const { escolaAtivaId } = useEscolaAtiva();
 
   const { data: camposVisiveis } = useQuery({
@@ -71,8 +71,18 @@ export default function Matriculas() {
 
   const [formTurmaId, setFormTurmaId] = useState("");
   const [formDataIngresso, setFormDataIngresso] = useState(new Date().toISOString().split("T")[0]);
+  const [formDataVencimentoMatricula, setFormDataVencimentoMatricula] = useState("");
   const [formDesconto, setFormDesconto] = useState("0");
   const [formBolsa, setFormBolsa] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingMatricula, setEditingMatricula] = useState<typeof matriculas[number] | null>(null);
+  const [editTurmaId, setEditTurmaId] = useState("");
+  const [editDataIngresso, setEditDataIngresso] = useState("");
+  const [editDataVencimentoMatricula, setEditDataVencimentoMatricula] = useState("");
+  const [editDesconto, setEditDesconto] = useState("0");
+  const [editBolsa, setEditBolsa] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const { data: planoTurma } = useQuery({
     queryKey: ["plano-financeiro-turma", formTurmaId],
@@ -111,6 +121,7 @@ export default function Matriculas() {
     setFormAlunoId("");
     setFormTurmaId("");
     setFormDataIngresso(new Date().toISOString().split("T")[0]);
+    setFormDataVencimentoMatricula("");
     setFormDesconto("0");
     setFormBolsa(false);
   };
@@ -174,6 +185,7 @@ export default function Matriculas() {
 
       const ok = await matricularAluno(alunoId, formTurmaId, escolaAtivaId, {
         data_ingresso: formDataIngresso,
+        data_vencimento_matricula: formDataVencimentoMatricula || undefined,
         percentual_desconto: formBolsa ? 0 : Number(formDesconto || 0),
         bolsa_100: formBolsa,
       });
@@ -187,6 +199,38 @@ export default function Matriculas() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openEditMatricula = (m: typeof matriculas[number]) => {
+    setEditingMatricula(m);
+    setEditTurmaId(m.turma_id);
+    setEditDataIngresso(m.data_ingresso);
+    setEditDataVencimentoMatricula(m.data_vencimento_matricula ?? "");
+    setEditDesconto(String(m.percentual_desconto ?? 0));
+    setEditBolsa(m.bolsa_100);
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMatricula) return;
+    setSavingEdit(true);
+    const ok = await updateMatricula(editingMatricula.id, {
+      turma_id: editTurmaId,
+      data_ingresso: editDataIngresso,
+      data_vencimento_matricula: editDataVencimentoMatricula || null,
+      percentual_desconto: Number(editDesconto || 0),
+      bolsa_100: editBolsa,
+    });
+    setSavingEdit(false);
+    if (ok) {
+      setEditOpen(false);
+      setEditingMatricula(null);
+    }
+  };
+
+  const handleDeleteMatricula = async (m: typeof matriculas[number]) => {
+    if (!confirm(`Excluir a matrícula de "${m.aluno_nome}" na turma "${m.turma_nome}"? As parcelas pendentes também serão removidas.`)) return;
+    await deleteMatricula(m.id);
   };
 
   const handleOpenCarne = async (m: typeof matriculas[number]) => {
@@ -274,6 +318,16 @@ export default function Matriculas() {
                 <div>
                   <Label>Data de Ingresso</Label>
                   <Input type="date" value={formDataIngresso} onChange={(e) => setFormDataIngresso(e.target.value)} className="mt-1" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pode ser no ano letivo seguinte - a matrícula pode ser paga antes do ingresso de fato.
+                  </p>
+                </div>
+                <div>
+                  <Label>Vencimento da Taxa de Matrícula (opcional)</Label>
+                  <Input type="date" value={formDataVencimentoMatricula} onChange={(e) => setFormDataVencimentoMatricula(e.target.value)} className="mt-1" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Se não preencher, usa a mesma data de ingresso.
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 items-end">
                   <div>
@@ -419,6 +473,8 @@ export default function Matriculas() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleOpenCarne(m)}>Ver Carnê</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openEditMatricula(m)}>Editar</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteMatricula(m)}>Excluir</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -438,6 +494,59 @@ export default function Matriculas() {
       <div className="text-sm text-muted-foreground">
         Mostrando {filtered.length} de {matriculas.length} matrículas
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Matrícula</DialogTitle>
+            <DialogDescription>
+              {editingMatricula && `${editingMatricula.aluno_nome}`}. Alterar aqui não recalcula parcelas já
+              geradas — ajuste manualmente em Financeiro se necessário.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Turma</Label>
+              <Select value={editTurmaId} onValueChange={setEditTurmaId}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {turmasComVagas.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.nome} - {t.turno} ({t.ano_letivo})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Data de Ingresso</Label>
+              <Input type="date" value={editDataIngresso} onChange={(e) => setEditDataIngresso(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Vencimento da Taxa de Matrícula (opcional)</Label>
+              <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 items-end">
+              <div>
+                <Label>Desconto (%)</Label>
+                <Input
+                  type="number" min="0" max="100" step="0.01"
+                  value={editDesconto} onChange={(e) => setEditDesconto(e.target.value)}
+                  disabled={editBolsa} className="mt-1"
+                />
+              </div>
+              <div className="flex items-center gap-2 pb-2">
+                <Checkbox id="edit-bolsa" checked={editBolsa} onCheckedChange={(v) => setEditBolsa(!!v)} />
+                <Label htmlFor="edit-bolsa" className="cursor-pointer">Bolsa 100%</Label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2 border-t">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit} disabled={savingEdit}>
+                {savingEdit ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={carneDialogOpen} onOpenChange={setCarneDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">

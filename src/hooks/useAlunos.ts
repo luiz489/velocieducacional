@@ -117,7 +117,7 @@ export function useAlunos() {
     alunoId: string,
     turmaId: string,
     escolaId: string,
-    opcoes?: { data_ingresso?: string; percentual_desconto?: number; bolsa_100?: boolean }
+    opcoes?: { data_ingresso?: string; data_vencimento_matricula?: string; percentual_desconto?: number; bolsa_100?: boolean }
   ) => {
     // Validação client-side de matrícula duplicada (mesmo aluno + mesma turma/período)
     const { data: existente } = await supabase
@@ -141,6 +141,7 @@ export function useAlunos() {
       turma_id: turmaId,
       escola_id: escolaId,
       data_ingresso: opcoes?.data_ingresso,
+      data_vencimento_matricula: opcoes?.data_vencimento_matricula || null,
       percentual_desconto: opcoes?.percentual_desconto ?? 0,
       bolsa_100: opcoes?.bolsa_100 ?? false,
     });

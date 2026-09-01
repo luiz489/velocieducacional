@@ -2529,6 +2529,7 @@ export type Database = {
           bolsa_100: boolean
           created_at: string
           data_ingresso: string
+          data_vencimento_matricula: string | null
           escola_id: string
           id: string
           percentual_desconto: number | null
@@ -2541,6 +2542,7 @@ export type Database = {
           bolsa_100?: boolean
           created_at?: string
           data_ingresso?: string
+          data_vencimento_matricula?: string | null
           escola_id: string
           id?: string
           percentual_desconto?: number | null
@@ -2553,6 +2555,7 @@ export type Database = {
           bolsa_100?: boolean
           created_at?: string
           data_ingresso?: string
+          data_vencimento_matricula?: string | null
           escola_id?: string
           id?: string
           percentual_desconto?: number | null

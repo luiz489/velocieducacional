@@ -14,6 +14,7 @@ export type MatriculaResumo = {
   turno: string;
   ano_letivo: number;
   data_ingresso: string;
+  data_vencimento_matricula: string | null;
   status_pagamento: string;
   percentual_desconto: number | null;
   bolsa_100: boolean;
@@ -42,7 +43,7 @@ export function useMatriculas() {
     const { data, error } = await supabase
       .from("matriculas")
       .select(`
-        id, aluno_id, turma_id, data_ingresso, status_pagamento, percentual_desconto, bolsa_100,
+        id, aluno_id, turma_id, data_ingresso, data_vencimento_matricula, status_pagamento, percentual_desconto, bolsa_100,
         alunos ( nome ),
         turmas ( nome, turno, ano_letivo ),
         financeiro ( status, valor )
@@ -67,6 +68,7 @@ export function useMatriculas() {
         turno: m.turmas?.turno ?? "",
         ano_letivo: m.turmas?.ano_letivo ?? 0,
         data_ingresso: m.data_ingresso,
+        data_vencimento_matricula: m.data_vencimento_matricula,
         status_pagamento: m.status_pagamento,
         percentual_desconto: m.percentual_desconto,
         bolsa_100: m.bolsa_100,
@@ -139,5 +141,45 @@ export function useMatriculas() {
     ]);
   }, [fetchMatriculas, qc, escolaAtivaId]);
 
-  return { matriculas, turmasComVagas, loading, refetch };
+  const updateMatricula = useCallback(async (
+    id: string,
+    dados: { turma_id: string; data_ingresso: string; data_vencimento_matricula?: string | null; percentual_desconto: number; bolsa_100: boolean }
+  ) => {
+    const { error } = await supabase.from("matriculas").update({
+      turma_id: dados.turma_id,
+      data_ingresso: dados.data_ingresso,
+      data_vencimento_matricula: dados.data_vencimento_matricula || null,
+      percentual_desconto: dados.bolsa_100 ? 0 : dados.percentual_desconto,
+      bolsa_100: dados.bolsa_100,
+    }).eq("id", id);
+    if (error) {
+      toast.error("Erro ao atualizar matrícula: " + error.message);
+      return false;
+    }
+    toast.success("Matrícula atualizada. Parcelas já geradas não são recalculadas automaticamente - ajuste em Financeiro se necessário.");
+    await refetch();
+    return true;
+  }, [refetch]);
+
+  const deleteMatricula = useCallback(async (id: string) => {
+    const { count } = await supabase
+      .from("financeiro")
+      .select("id", { count: "exact", head: true })
+      .eq("matricula_id", id)
+      .eq("status", "Pago");
+    if (count && count > 0) {
+      toast.error("Não é possível excluir: já existem parcelas pagas para esta matrícula.");
+      return false;
+    }
+    const { error } = await supabase.from("matriculas").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir matrícula: " + error.message);
+      return false;
+    }
+    toast.success("Matrícula excluída (e as parcelas pendentes junto).");
+    await refetch();
+    return true;
+  }, [refetch]);
+
+  return { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula };
 }
