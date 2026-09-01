@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Users, Upload } from "lucide-react";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { AvatarFoto } from "@/components/AvatarFoto";
+import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 
 type Funcionario = {
   id: string;
@@ -33,6 +34,10 @@ type Funcionario = {
   cor_raca: string | null;
   grau_instrucao: string | null;
   endereco: string | null;
+  cep: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
   telefone: string | null;
   email: string | null;
   pis_pasep: string | null;
@@ -67,7 +72,7 @@ type Funcionario = {
 const emptyForm = {
   nome: "", cpf: "", rg: "", rg_orgao_emissor: "", data_nascimento: "", foto_url: "", sexo: "",
   estado_civil: "", nome_mae: "", nome_pai: "", naturalidade_cidade: "", naturalidade_uf: "",
-  cor_raca: "", grau_instrucao: "", endereco: "", telefone: "", email: "",
+  cor_raca: "", grau_instrucao: "", endereco: "", cep: "", bairro: "", cidade: "", uf: "", telefone: "", email: "",
   pis_pasep: "", ctps_numero: "", ctps_serie: "", categoria_esocial: "CLT",
   cargo: "", funcao: "", codigo_cbo: "", departamento: "", data_inicio_funcao: "",
   tipo_contrato: "Indeterminado", data_admissao: "", jornada_semanal_horas: "44",
@@ -85,6 +90,19 @@ export default function Funcionarios() {
   const [novoId, setNovoId] = useState<string>("");
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const { buscarCep, buscando: buscandoCep } = useCepLookup();
+
+  const handleCepBlur = async () => {
+    const resultado = await buscarCep(form.cep);
+    if (!resultado) return;
+    setForm((f) => ({
+      ...f,
+      endereco: f.endereco || resultado.logradouro,
+      bairro: resultado.bairro,
+      cidade: resultado.cidade,
+      uf: resultado.uf,
+    }));
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["funcionarios", escolaAtivaId],
@@ -112,7 +130,7 @@ export default function Funcionarios() {
       nome_mae: f.nome_mae ?? "", nome_pai: f.nome_pai ?? "",
       naturalidade_cidade: f.naturalidade_cidade ?? "", naturalidade_uf: f.naturalidade_uf ?? "",
       cor_raca: f.cor_raca ?? "", grau_instrucao: f.grau_instrucao ?? "",
-      endereco: f.endereco ?? "", telefone: f.telefone ?? "", email: f.email ?? "",
+      endereco: f.endereco ?? "", cep: f.cep ?? "", bairro: f.bairro ?? "", cidade: f.cidade ?? "", uf: f.uf ?? "", telefone: f.telefone ?? "", email: f.email ?? "",
       pis_pasep: f.pis_pasep ?? "", ctps_numero: f.ctps_numero ?? "", ctps_serie: f.ctps_serie ?? "",
       categoria_esocial: f.categoria_esocial, cargo: f.cargo, funcao: f.funcao ?? "",
       codigo_cbo: f.codigo_cbo ?? "", departamento: f.departamento ?? "",
@@ -165,6 +183,10 @@ export default function Funcionarios() {
         cor_raca: form.cor_raca || null,
         grau_instrucao: form.grau_instrucao || null,
         endereco: form.endereco || null,
+        cep: form.cep || null,
+        bairro: form.bairro || null,
+        cidade: form.cidade || null,
+        uf: form.uf || null,
         telefone: form.telefone || null,
         email: form.email || null,
         pis_pasep: form.pis_pasep || null,
@@ -404,6 +426,28 @@ export default function Funcionarios() {
               <div>
                 <Label>Grau de Instrução</Label>
                 <Input value={form.grau_instrucao} onChange={(e) => setForm({ ...form, grau_instrucao: e.target.value })} placeholder="Ex: Superior completo" />
+              </div>
+              <div>
+                <Label>CEP</Label>
+                <Input
+                  value={form.cep}
+                  placeholder="00000-000"
+                  onChange={(e) => setForm({ ...form, cep: mascaraCEP(e.target.value) })}
+                  onBlur={handleCepBlur}
+                />
+                {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
+              </div>
+              <div>
+                <Label>Bairro</Label>
+                <Input value={form.bairro} onChange={(e) => setForm({ ...form, bairro: e.target.value })} />
+              </div>
+              <div>
+                <Label>Cidade</Label>
+                <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
+              </div>
+              <div>
+                <Label>UF</Label>
+                <Input value={form.uf} maxLength={2} onChange={(e) => setForm({ ...form, uf: e.target.value })} />
               </div>
               <div className="col-span-2">
                 <Label>Endereço</Label>

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, GraduationCap, Upload } from "lucide-react";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { AvatarFoto } from "@/components/AvatarFoto";
+import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 
 type Professor = {
   id: string;
@@ -25,6 +26,10 @@ type Professor = {
   rg: string | null;
   data_nascimento: string | null;
   endereco: string | null;
+  cep: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
   foto_url: string | null;
   formacao: string | null;
   disciplinas: string[];
@@ -52,6 +57,10 @@ const emptyForm = {
   rg: "",
   data_nascimento: "",
   endereco: "",
+  cep: "",
+  bairro: "",
+  cidade: "",
+  uf: "",
   foto_url: "",
   formacao: "",
   disciplinas: "",
@@ -79,6 +88,19 @@ export default function Professores() {
   const [novoId, setNovoId] = useState<string>("");
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const { buscarCep, buscando: buscandoCep } = useCepLookup();
+
+  const handleCepBlur = async () => {
+    const resultado = await buscarCep(form.cep);
+    if (!resultado) return;
+    setForm((f) => ({
+      ...f,
+      endereco: f.endereco || resultado.logradouro,
+      bairro: resultado.bairro,
+      cidade: resultado.cidade,
+      uf: resultado.uf,
+    }));
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["professores", escolaAtivaId],
@@ -108,6 +130,10 @@ export default function Professores() {
       rg: p.rg ?? "",
       data_nascimento: p.data_nascimento ?? "",
       endereco: p.endereco ?? "",
+      cep: p.cep ?? "",
+      bairro: p.bairro ?? "",
+      cidade: p.cidade ?? "",
+      uf: p.uf ?? "",
       foto_url: p.foto_url ?? "",
       formacao: p.formacao ?? "",
       disciplinas: (p.disciplinas ?? []).join(", "),
@@ -156,6 +182,10 @@ export default function Professores() {
         rg: form.rg || null,
         data_nascimento: form.data_nascimento || null,
         endereco: form.endereco || null,
+        cep: form.cep || null,
+        bairro: form.bairro || null,
+        cidade: form.cidade || null,
+        uf: form.uf || null,
         foto_url: form.foto_url || null,
         formacao: form.formacao || null,
         disciplinas: form.disciplinas
@@ -368,6 +398,28 @@ export default function Professores() {
                 value={form.data_admissao}
                 onChange={(e) => setForm({ ...form, data_admissao: e.target.value })}
               />
+            </div>
+            <div>
+              <Label>CEP</Label>
+              <Input
+                value={form.cep}
+                placeholder="00000-000"
+                onChange={(e) => setForm({ ...form, cep: mascaraCEP(e.target.value) })}
+                onBlur={handleCepBlur}
+              />
+              {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
+            </div>
+            <div>
+              <Label>Bairro</Label>
+              <Input value={form.bairro} onChange={(e) => setForm({ ...form, bairro: e.target.value })} />
+            </div>
+            <div>
+              <Label>Cidade</Label>
+              <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
+            </div>
+            <div>
+              <Label>UF</Label>
+              <Input value={form.uf} maxLength={2} onChange={(e) => setForm({ ...form, uf: e.target.value })} />
             </div>
             <div className="col-span-2">
               <Label>Endereço</Label>

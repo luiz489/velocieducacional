@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { mascaraCPF } from "@/lib/masks";
+import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 
 export type AlunoCamposDefaultValues = {
   nome?: string;
@@ -46,6 +47,21 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
   const [responsavelCpf, setResponsavelCpf] = useState(
     defaultValues?.responsavel_cpf ? mascaraCPF(defaultValues.responsavel_cpf) : ""
   );
+  const [responsavelCep, setResponsavelCep] = useState(defaultValues?.responsavel_cep || "");
+  const { buscarCep, buscando: buscandoCep } = useCepLookup();
+  const enderecoRef = useRef<HTMLInputElement>(null);
+  const bairroRef = useRef<HTMLInputElement>(null);
+  const cidadeRef = useRef<HTMLInputElement>(null);
+  const ufRef = useRef<HTMLInputElement>(null);
+
+  const handleCepBlur = async () => {
+    const resultado = await buscarCep(responsavelCep);
+    if (!resultado) return;
+    if (enderecoRef.current && !enderecoRef.current.value) enderecoRef.current.value = resultado.logradouro;
+    if (bairroRef.current) bairroRef.current.value = resultado.bairro;
+    if (cidadeRef.current) cidadeRef.current.value = resultado.cidade;
+    if (ufRef.current) ufRef.current.value = resultado.uf;
+  };
 
   return (
     <div className="space-y-5">
@@ -64,7 +80,7 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
         </div>
         <div className="col-span-2">
           <Label htmlFor="endereco">Endereço</Label>
-          <Input id="endereco" name="endereco" placeholder="Endereço completo" className="mt-1" defaultValue={defaultValues?.endereco || ""} />
+          <Input id="endereco" name="endereco" placeholder="Endereço completo" className="mt-1" defaultValue={defaultValues?.endereco || ""} ref={enderecoRef} />
         </div>
         <div>
           <Label htmlFor="status">Status</Label>
@@ -189,20 +205,26 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
             <Input id="responsavel_conjuge" name="responsavel_conjuge" className="mt-1" defaultValue={defaultValues?.responsavel_conjuge || ""} />
           </div>
           <div>
+            <Label htmlFor="responsavel_cep">CEP</Label>
+            <Input
+              id="responsavel_cep" name="responsavel_cep" placeholder="00000-000" className="mt-1"
+              value={responsavelCep}
+              onChange={(e) => setResponsavelCep(mascaraCEP(e.target.value))}
+              onBlur={handleCepBlur}
+            />
+            {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
+          </div>
+          <div>
             <Label htmlFor="responsavel_bairro">Bairro</Label>
-            <Input id="responsavel_bairro" name="responsavel_bairro" className="mt-1" defaultValue={defaultValues?.responsavel_bairro || ""} />
+            <Input id="responsavel_bairro" name="responsavel_bairro" className="mt-1" defaultValue={defaultValues?.responsavel_bairro || ""} ref={bairroRef} />
           </div>
           <div>
             <Label htmlFor="responsavel_cidade">Cidade</Label>
-            <Input id="responsavel_cidade" name="responsavel_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_cidade || ""} />
+            <Input id="responsavel_cidade" name="responsavel_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_cidade || ""} ref={cidadeRef} />
           </div>
           <div>
             <Label htmlFor="responsavel_uf">UF</Label>
-            <Input id="responsavel_uf" name="responsavel_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.responsavel_uf || ""} />
-          </div>
-          <div>
-            <Label htmlFor="responsavel_cep">CEP</Label>
-            <Input id="responsavel_cep" name="responsavel_cep" placeholder="00000-000" className="mt-1" defaultValue={defaultValues?.responsavel_cep || ""} />
+            <Input id="responsavel_uf" name="responsavel_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.responsavel_uf || ""} ref={ufRef} />
           </div>
           <div>
             <Label htmlFor="responsavel_naturalidade_cidade">Naturalidade (Cidade)</Label>

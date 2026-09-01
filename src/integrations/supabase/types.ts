@@ -2915,7 +2915,9 @@ export type Database = {
       parceiros: {
         Row: {
           ativo: boolean
+          bairro: string | null
           categoria: string
+          cep: string | null
           cidade: string
           cnpj_cpf: string | null
           created_at: string
@@ -2935,7 +2937,9 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          bairro?: string | null
           categoria?: string
+          cep?: string | null
           cidade: string
           cnpj_cpf?: string | null
           created_at?: string
@@ -2955,7 +2959,9 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          bairro?: string | null
           categoria?: string
+          cep?: string | null
           cidade?: string
           cnpj_cpf?: string | null
           created_at?: string
@@ -3274,9 +3280,12 @@ export type Database = {
         Row: {
           agencia: string | null
           ativo: boolean
+          bairro: string | null
           banco_codigo: string | null
           banco_nome: string | null
+          cep: string | null
           chave_pix: string | null
+          cidade: string | null
           cnpj: string | null
           conta: string | null
           cpf: string | null
@@ -3298,15 +3307,19 @@ export type Database = {
           telefone: string | null
           tipo_conta: string | null
           tipo_contratacao: string
+          uf: string | null
           updated_at: string
           valor_mensal: number | null
         }
         Insert: {
           agencia?: string | null
           ativo?: boolean
+          bairro?: string | null
           banco_codigo?: string | null
           banco_nome?: string | null
+          cep?: string | null
           chave_pix?: string | null
+          cidade?: string | null
           cnpj?: string | null
           conta?: string | null
           cpf?: string | null
@@ -3328,15 +3341,19 @@ export type Database = {
           telefone?: string | null
           tipo_conta?: string | null
           tipo_contratacao?: string
+          uf?: string | null
           updated_at?: string
           valor_mensal?: number | null
         }
         Update: {
           agencia?: string | null
           ativo?: boolean
+          bairro?: string | null
           banco_codigo?: string | null
           banco_nome?: string | null
+          cep?: string | null
           chave_pix?: string | null
+          cidade?: string | null
           cnpj?: string | null
           conta?: string | null
           cpf?: string | null
@@ -3358,6 +3375,7 @@ export type Database = {
           telefone?: string | null
           tipo_conta?: string | null
           tipo_contratacao?: string
+          uf?: string | null
           updated_at?: string
           valor_mensal?: number | null
         }

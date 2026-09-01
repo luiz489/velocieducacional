@@ -14,6 +14,7 @@ import {
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { toast } from "@/hooks/use-toast";
 import { MapPin, Phone, Globe, Mail, Navigation, Search, Plus, Pencil, Ban } from "lucide-react";
+import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 import { ESTADOS, CIDADES_SP } from "@/lib/cidadesSP";
 
 type TipoParceiro = "Fornecedor" | "Cliente" | "Outro";
@@ -26,6 +27,8 @@ interface Parceiro {
   descricao: string | null;
   estado: string;
   cidade: string;
+  bairro: string | null;
+  cep: string | null;
   endereco: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -67,9 +70,22 @@ export default function Parceiros() {
   const [editing, setEditing] = useState<Parceiro | null>(null);
   const [form, setForm] = useState({
     nome: "", tipo: "Fornecedor" as TipoParceiro, categoria: "",
-    descricao: "", estado: "SP", cidade: "", endereco: "",
+    descricao: "", estado: "SP", cidade: "", bairro: "", cep: "", endereco: "",
     telefone: "", email: "", website: "", cnpj_cpf: "",
   });
+  const { buscarCep, buscando: buscandoCep } = useCepLookup();
+
+  const handleCepBlur = async () => {
+    const resultado = await buscarCep(form.cep);
+    if (!resultado) return;
+    setForm((f) => ({
+      ...f,
+      endereco: f.endereco || resultado.logradouro,
+      bairro: resultado.bairro,
+      cidade: resultado.cidade,
+      estado: resultado.uf,
+    }));
+  };
 
   const formatDist = (km: number) =>
     km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
@@ -140,7 +156,7 @@ export default function Parceiros() {
 
   const abrirNovo = () => {
     setEditing(null);
-    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", endereco: "", telefone: "", email: "", website: "", cnpj_cpf: "" });
+    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", bairro: "", cep: "", endereco: "", telefone: "", email: "", website: "", cnpj_cpf: "" });
     setOpen(true);
   };
 
@@ -148,7 +164,7 @@ export default function Parceiros() {
     setEditing(p);
     setForm({
       nome: p.nome, tipo: p.tipo, categoria: p.categoria, descricao: p.descricao ?? "",
-      estado: p.estado, cidade: p.cidade, endereco: p.endereco ?? "",
+      estado: p.estado, cidade: p.cidade, bairro: p.bairro ?? "", cep: p.cep ?? "", endereco: p.endereco ?? "",
       telefone: p.telefone ?? "", email: p.email ?? "", website: p.website ?? "", cnpj_cpf: p.cnpj_cpf ?? "",
     });
     setOpen(true);
@@ -178,6 +194,8 @@ export default function Parceiros() {
       descricao: form.descricao || null,
       estado: form.estado,
       cidade: form.cidade,
+      bairro: form.bairro || null,
+      cep: form.cep || null,
       endereco: form.endereco || null,
       telefone: form.telefone || null,
       email: form.email || null,
@@ -195,7 +213,7 @@ export default function Parceiros() {
     toast({ title: editing ? "Parceiro atualizado!" : "Parceiro cadastrado!", description: form.nome });
     setOpen(false);
     setEditing(null);
-    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", endereco: "", telefone: "", email: "", website: "", cnpj_cpf: "" });
+    setForm({ nome: "", tipo: "Fornecedor", categoria: "", descricao: "", estado: "SP", cidade: "", bairro: "", cep: "", endereco: "", telefone: "", email: "", website: "", cnpj_cpf: "" });
     fetchAll();
   };
 
@@ -232,6 +250,19 @@ export default function Parceiros() {
               </div>
               <div><Label>Categoria *</Label><Input value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })} placeholder="Ex: Material, Limpeza, Tecnologia" /></div>
               <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>CEP</Label>
+                  <Input
+                    value={form.cep}
+                    placeholder="00000-000"
+                    onChange={(e) => setForm({ ...form, cep: mascaraCEP(e.target.value) })}
+                    onBlur={handleCepBlur}
+                  />
+                  {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
+                </div>
+                <div><Label>Bairro</Label><Input value={form.bairro} onChange={e => setForm({ ...form, bairro: e.target.value })} /></div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Estado *</Label>

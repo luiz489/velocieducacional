@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ShieldCheck, UserPlus, UserCog, Plus, Settings } from "lucide-react";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
+import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 
 type Papel = { id: string; nome: string; descricao: string | null; escola_id: string | null; papel_sistema: boolean };
 type Modulo = { id: string; codigo: string; nome: string; ordem: number | null };
@@ -433,8 +434,20 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   const [enviandoLogo, setEnviandoLogo] = useState(false);
   const [salvandoDados, setSalvandoDados] = useState(false);
   const [dadosForm, setDadosForm] = useState({
-    nome: "", cnpj: "", cidade: "", uf: "", endereco: "", telefone: "", email: "",
+    nome: "", cnpj: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "", email: "",
   });
+  const { buscarCep, buscando: buscandoCep } = useCepLookup();
+
+  const handleCepBlur = async () => {
+    const resultado = await buscarCep(dadosForm.cep);
+    if (!resultado) return;
+    setDadosForm((f) => ({
+      ...f,
+      endereco: f.endereco || resultado.logradouro,
+      cidade: resultado.cidade,
+      uf: resultado.uf,
+    }));
+  };
 
   const { data: escola } = useQuery({
     queryKey: ["escola-parametros", escolaId],
@@ -442,7 +455,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, telefone, email")
+        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
@@ -460,6 +473,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
         cidade: escola.cidade ?? "",
         uf: escola.uf ?? "",
         endereco: escola.endereco ?? "",
+        cep: (escola as any).cep ?? "",
         telefone: escola.telefone ?? "",
         email: escola.email ?? "",
       });
@@ -479,6 +493,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
       cidade: dadosForm.cidade || null,
       uf: dadosForm.uf || null,
       endereco: dadosForm.endereco || null,
+      cep: dadosForm.cep || null,
       telefone: dadosForm.telefone || null,
       email: dadosForm.email || null,
     }).eq("id", escolaId);
@@ -566,6 +581,16 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
             <div>
               <Label>Telefone</Label>
               <Input value={dadosForm.telefone} onChange={(e) => setDadosForm({ ...dadosForm, telefone: e.target.value })} />
+            </div>
+            <div>
+              <Label>CEP</Label>
+              <Input
+                value={dadosForm.cep}
+                placeholder="00000-000"
+                onChange={(e) => setDadosForm({ ...dadosForm, cep: mascaraCEP(e.target.value) })}
+                onBlur={handleCepBlur}
+              />
+              {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
             </div>
             <div>
               <Label>Cidade</Label>

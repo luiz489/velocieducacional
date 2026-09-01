@@ -11,6 +11,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Building2, MapPin } from "lucide-react";
+import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 
 type Filial = {
   id: string;
@@ -24,7 +25,19 @@ export default function Filiais() {
   const qc = useQueryClient();
   const { escolaAtivaId, refetchEscolas } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ nome: "", cidade: "", uf: "", endereco: "", telefone: "" });
+  const [form, setForm] = useState({ nome: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "" });
+  const { buscarCep, buscando: buscandoCep } = useCepLookup();
+
+  const handleCepBlur = async () => {
+    const resultado = await buscarCep(form.cep);
+    if (!resultado) return;
+    setForm((f) => ({
+      ...f,
+      endereco: f.endereco || resultado.logradouro,
+      cidade: resultado.cidade,
+      uf: resultado.uf,
+    }));
+  };
 
   const { data: escolaAtual } = useQuery({
     queryKey: ["escola-atual-grupo", escolaAtivaId],
@@ -72,6 +85,7 @@ export default function Filiais() {
         p_uf: form.uf || null,
         p_endereco: form.endereco || null,
         p_telefone: form.telefone || null,
+        p_cep: form.cep || null,
       });
       if (error) throw error;
       return data as string;
@@ -81,7 +95,7 @@ export default function Filiais() {
       qc.invalidateQueries({ queryKey: ["filiais"] });
       await refetchEscolas(novaEscolaId);
       setOpen(false);
-      setForm({ nome: "", cidade: "", uf: "", endereco: "", telefone: "" });
+      setForm({ nome: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "" });
     },
     onError: (e: any) => toast.error("Erro ao criar filial: " + e.message),
   });
@@ -115,13 +129,23 @@ export default function Filiais() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Cidade</Label>
-                  <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
+                  <Label>CEP</Label>
+                  <Input
+                    value={form.cep}
+                    placeholder="00000-000"
+                    onChange={(e) => setForm({ ...form, cep: mascaraCEP(e.target.value) })}
+                    onBlur={handleCepBlur}
+                  />
+                  {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
                 </div>
                 <div>
                   <Label>UF</Label>
                   <Input value={form.uf} maxLength={2} onChange={(e) => setForm({ ...form, uf: e.target.value })} />
                 </div>
+              </div>
+              <div>
+                <Label>Cidade</Label>
+                <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
               </div>
               <div>
                 <Label>Endereço</Label>
