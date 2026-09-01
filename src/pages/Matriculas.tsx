@@ -74,6 +74,26 @@ export default function Matriculas() {
   const [formDesconto, setFormDesconto] = useState("0");
   const [formBolsa, setFormBolsa] = useState(false);
 
+  const { data: planoTurma } = useQuery({
+    queryKey: ["plano-financeiro-turma", formTurmaId],
+    enabled: !!formTurmaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("planos_financeiros_turma")
+        .select("valor_mensalidade, numero_parcelas, dia_vencimento, taxa_matricula")
+        .eq("turma_id", formTurmaId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const valorBase = planoTurma?.valor_mensalidade ?? null;
+  const valorDesconto = valorBase != null
+    ? (formBolsa ? valorBase : valorBase * (Number(formDesconto || 0) / 100))
+    : null;
+  const valorFinal = valorBase != null && valorDesconto != null ? valorBase - valorDesconto : null;
+
   const filtered = matriculas.filter((m) => {
     const matchSearch =
       m.aluno_nome.toLowerCase().includes(search.toLowerCase()) ||
@@ -269,6 +289,31 @@ export default function Matriculas() {
                     <Label htmlFor="bolsa" className="cursor-pointer">Bolsa 100%</Label>
                   </div>
                 </div>
+
+                {formTurmaId && (
+                  <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+                    {valorBase == null ? (
+                      <p className="text-muted-foreground">
+                        Esta turma ainda não tem um plano financeiro configurado — nenhuma parcela será gerada automaticamente.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Mensalidade da turma</span>
+                          <span className="font-medium">R$ {valorBase.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Valor do desconto</span>
+                          <span className="font-medium text-destructive">- R$ {(valorDesconto ?? 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-1 mt-1">
+                          <span className="font-medium">Mensalidade após desconto</span>
+                          <span className="font-bold text-success">R$ {(valorFinal ?? 0).toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-2 border-t">

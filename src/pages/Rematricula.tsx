@@ -11,6 +11,7 @@ import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, ClipboardEdit } from "lucide-react";
 import { format } from "date-fns";
 
@@ -48,7 +49,29 @@ export default function Rematricula() {
     turma_destino_id: "",
     status: "Aberta" as Status,
     observacoes: "",
+    percentual_desconto: "0",
+    bolsa_100: false,
   });
+
+  const { data: planoTurma } = useQuery({
+    queryKey: ["plano-financeiro-turma", form.turma_destino_id],
+    enabled: !!form.turma_destino_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("planos_financeiros_turma")
+        .select("valor_mensalidade")
+        .eq("turma_id", form.turma_destino_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const valorBase = planoTurma?.valor_mensalidade ?? null;
+  const valorDesconto = valorBase != null
+    ? (form.bolsa_100 ? valorBase : valorBase * (Number(form.percentual_desconto || 0) / 100))
+    : null;
+  const valorFinal = valorBase != null && valorDesconto != null ? valorBase - valorDesconto : null;
 
   const { data: rematriculas } = useQuery({
     queryKey: ["rematriculas", escolaAtivaId],
@@ -91,6 +114,8 @@ export default function Rematricula() {
         turma_destino_id: form.turma_destino_id || null,
         status: form.status,
         observacoes: form.observacoes || null,
+        percentual_desconto: form.bolsa_100 ? 0 : Number(form.percentual_desconto || 0),
+        bolsa_100: form.bolsa_100,
         escola_id: escolaAtivaId,
       });
       if (error) throw error;
@@ -99,7 +124,7 @@ export default function Rematricula() {
       toast.success("Rematrícula registrada");
       qc.invalidateQueries({ queryKey: ["rematriculas"] });
       setOpen(false);
-      setForm({ aluno_id: "", ano_letivo_destino: new Date().getFullYear() + 1, turma_destino_id: "", status: "Aberta", observacoes: "" });
+      setForm({ aluno_id: "", ano_letivo_destino: new Date().getFullYear() + 1, turma_destino_id: "", status: "Aberta", observacoes: "", percentual_desconto: "0", bolsa_100: false });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -194,6 +219,45 @@ export default function Rematricula() {
                 <SelectContent>{turmas?.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome} ({t.ano_letivo})</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-2 gap-3 items-end">
+              <div>
+                <Label>Desconto (%)</Label>
+                <Input
+                  type="number" min="0" max="100" step="0.01"
+                  value={form.percentual_desconto}
+                  onChange={(e) => setForm({ ...form, percentual_desconto: e.target.value })}
+                  disabled={form.bolsa_100}
+                />
+              </div>
+              <div className="flex items-center gap-2 pb-2">
+                <Checkbox id="bolsa_rematricula" checked={form.bolsa_100} onCheckedChange={(v) => setForm({ ...form, bolsa_100: !!v })} />
+                <Label htmlFor="bolsa_rematricula" className="cursor-pointer">Bolsa 100%</Label>
+              </div>
+            </div>
+            {form.turma_destino_id && (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+                {valorBase == null ? (
+                  <p className="text-muted-foreground">
+                    Esta turma ainda não tem um plano financeiro configurado — nenhuma parcela será gerada automaticamente.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Mensalidade da turma</span>
+                      <span className="font-medium">R$ {valorBase.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Valor do desconto</span>
+                      <span className="font-medium text-destructive">- R$ {(valorDesconto ?? 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1 mt-1">
+                      <span className="font-medium">Mensalidade após desconto</span>
+                      <span className="font-bold text-success">R$ {(valorFinal ?? 0).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <div>
               <Label>Observações</Label>
               <Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />

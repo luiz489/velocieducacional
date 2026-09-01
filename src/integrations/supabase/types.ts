@@ -3507,12 +3507,14 @@ export type Database = {
         Row: {
           aluno_id: string
           ano_letivo_destino: number
+          bolsa_100: boolean
           created_at: string
           data_abertura: string
           data_conclusao: string | null
           escola_id: string
           id: string
           observacoes: string | null
+          percentual_desconto: number | null
           status: string
           turma_destino_id: string | null
           updated_at: string
@@ -3520,12 +3522,14 @@ export type Database = {
         Insert: {
           aluno_id: string
           ano_letivo_destino: number
+          bolsa_100?: boolean
           created_at?: string
           data_abertura?: string
           data_conclusao?: string | null
           escola_id: string
           id?: string
           observacoes?: string | null
+          percentual_desconto?: number | null
           status?: string
           turma_destino_id?: string | null
           updated_at?: string
@@ -3533,12 +3537,14 @@ export type Database = {
         Update: {
           aluno_id?: string
           ano_letivo_destino?: number
+          bolsa_100?: boolean
           created_at?: string
           data_abertura?: string
           data_conclusao?: string | null
           escola_id?: string
           id?: string
           observacoes?: string | null
+          percentual_desconto?: number | null
           status?: string
           turma_destino_id?: string | null
           updated_at?: string
