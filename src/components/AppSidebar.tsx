@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { useQuery } from "@tanstack/react-query";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -116,7 +117,7 @@ export function AppSidebar() {
   const { escolaAtivaId, escolas, filiaisDaEscolaAtiva, isSuperadmin, emModoAdministrador, setEscolaAtivaId } = useEscolaAtiva();
   const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
 
-  const { data: escolaLogo } = useQuery({
+  const { data: escolaLogoPath } = useQuery({
     queryKey: ["escola-logo", escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
@@ -124,6 +125,7 @@ export function AppSidebar() {
       return data?.logo_url ?? null;
     },
   });
+  const { data: escolaLogo } = useSignedUrl("escola-logos", escolaLogoPath);
 
   return (
     <Sidebar collapsible="icon">

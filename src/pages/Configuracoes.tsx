@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ShieldCheck, UserPlus, UserCog, Plus, Settings } from "lucide-react";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 
 type Papel = { id: string; nome: string; descricao: string | null; escola_id: string | null; papel_sistema: boolean };
 type Modulo = { id: string; codigo: string; nome: string; ordem: number | null };
@@ -449,6 +450,8 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     },
   });
 
+  const { data: logoUrlAssinada } = useSignedUrl("escola-logos", escola?.logo_url);
+
   useEffect(() => {
     if (escola) {
       setDadosForm({
@@ -519,13 +522,11 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
       return;
     }
 
-    const { data: urlPublica } = supabase.storage.from("escola-logos").getPublicUrl(caminho);
-    // Adiciona um parâmetro pra evitar cache do navegador ao trocar a logo
-    const urlComVersao = `${urlPublica.publicUrl}?v=${Date.now()}`;
-
+    // Guarda só o caminho no banco - a URL de exibição é assinada (temporária)
+    // e gerada na hora de mostrar, não fica exposta publicamente.
     const { error: erroUpdate } = await supabase
       .from("escolas")
-      .update({ logo_url: urlComVersao })
+      .update({ logo_url: caminho })
       .eq("id", escolaId);
 
     setEnviandoLogo(false);
@@ -535,6 +536,8 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     }
     toast.success("Logotipo atualizado!");
     qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+    qc.invalidateQueries({ queryKey: ["signed-url", "escola-logos", caminho] });
+    qc.invalidateQueries({ queryKey: ["escola-logo", escolaId] });
   };
 
   return (
@@ -631,8 +634,8 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
-              {escola?.logo_url ? (
-                <img src={escola.logo_url} alt="Logo" className="h-full w-full object-cover" />
+              {logoUrlAssinada ? (
+                <img src={logoUrlAssinada} alt="Logo" className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xs text-muted-foreground text-center px-1">Sem logo</span>
               )}

@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Users, Upload, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Upload } from "lucide-react";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { AvatarFoto } from "@/components/AvatarFoto";
 
 type Funcionario = {
   id: string;
@@ -140,8 +141,8 @@ export default function Funcionarios() {
       toast.error("Erro ao enviar foto: " + erroUpload.message);
       return;
     }
-    const { data: urlPublica } = supabase.storage.from("pessoas-fotos").getPublicUrl(caminho);
-    setForm((f) => ({ ...f, foto_url: `${urlPublica.publicUrl}?v=${Date.now()}` }));
+    // Guarda só o caminho - a exibição usa URL assinada (temporária), não pública
+    setForm((f) => ({ ...f, foto_url: caminho }));
     setEnviandoFoto(false);
     toast.success("Foto enviada! Clique em Salvar para confirmar.");
   };
@@ -266,13 +267,7 @@ export default function Funcionarios() {
                 <TableRow key={f.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
-                        {f.foto_url ? (
-                          <img src={f.foto_url} alt={f.nome} className="h-full w-full object-cover" />
-                        ) : (
-                          <User className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
+                      <AvatarFoto path={f.foto_url} alt={f.nome} />
                       <div>
                         {f.nome}
                         <div className="text-xs text-muted-foreground">{f.cpf}</div>
@@ -319,13 +314,7 @@ export default function Funcionarios() {
           </DialogHeader>
 
           <div className="flex items-center gap-4 pb-2">
-            <div className="h-20 w-20 rounded-full border bg-muted flex items-center justify-center overflow-hidden shrink-0">
-              {form.foto_url ? (
-                <img src={form.foto_url} alt="Foto" className="h-full w-full object-cover" />
-              ) : (
-                <User className="h-8 w-8 text-muted-foreground" />
-              )}
-            </div>
+            <AvatarFoto path={form.foto_url} className="h-20 w-20" iconSize="h-8 w-8" />
             <div>
               <Label htmlFor="foto-funcionario" className="cursor-pointer inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md border hover:bg-muted">
                 <Upload className="h-4 w-4" /> {enviandoFoto ? "Enviando..." : "Enviar foto"}
