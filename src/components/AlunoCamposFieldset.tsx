@@ -144,6 +144,9 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
 
       <div className="border-t pt-4">
         <p className="text-sm font-medium text-muted-foreground mb-3">Responsável financeiro</p>
+        <p className="text-xs text-muted-foreground -mt-2 mb-3">
+          Digite o CEP para preencher o endereço automaticamente. Os dados completos (CPF, RG etc.) são usados para gerar contratos e declarações.
+        </p>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <Label htmlFor="responsavel">Nome do Responsável</Label>
@@ -157,16 +160,29 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
             <Label htmlFor="email">E-mail Responsável</Label>
             <Input id="email" name="email" type="email" placeholder="email@exemplo.com" className="mt-1" defaultValue={defaultValues?.email_responsavel || ""} />
           </div>
-        </div>
-      </div>
-
-      <div className="border-t pt-4">
-        <p className="text-sm font-medium text-muted-foreground mb-3">Dados completos do responsável (para contratos)</p>
-        <p className="text-xs text-muted-foreground -mt-2 mb-3">
-          Usados para gerar contratos e declarações completos automaticamente. Opcionais, mas recomendados.
-        </p>
-        <div className="grid grid-cols-2 gap-4">
           <div>
+            <Label htmlFor="responsavel_cep">CEP</Label>
+            <Input
+              id="responsavel_cep" name="responsavel_cep" placeholder="00000-000" className="mt-1"
+              value={responsavelCep}
+              onChange={(e) => setResponsavelCep(mascaraCEP(e.target.value))}
+              onBlur={handleCepBlur}
+            />
+            {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
+          </div>
+          <div>
+            <Label htmlFor="responsavel_bairro">Bairro</Label>
+            <Input id="responsavel_bairro" name="responsavel_bairro" className="mt-1" defaultValue={defaultValues?.responsavel_bairro || ""} ref={bairroRef} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_cidade">Cidade</Label>
+            <Input id="responsavel_cidade" name="responsavel_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_cidade || ""} ref={cidadeRef} />
+          </div>
+          <div>
+            <Label htmlFor="responsavel_uf">UF</Label>
+            <Input id="responsavel_uf" name="responsavel_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.responsavel_uf || ""} ref={ufRef} />
+          </div>
+          <div className="col-span-2">
             <Label htmlFor="responsavel_cpf">CPF do Responsável</Label>
             <Input
               id="responsavel_cpf" name="responsavel_cpf" placeholder="000.000.000-00" className="mt-1"
@@ -203,28 +219,6 @@ export function AlunoCamposFieldset({ defaultValues }: { defaultValues?: AlunoCa
           <div>
             <Label htmlFor="responsavel_conjuge">Nome do Cônjuge</Label>
             <Input id="responsavel_conjuge" name="responsavel_conjuge" className="mt-1" defaultValue={defaultValues?.responsavel_conjuge || ""} />
-          </div>
-          <div>
-            <Label htmlFor="responsavel_cep">CEP</Label>
-            <Input
-              id="responsavel_cep" name="responsavel_cep" placeholder="00000-000" className="mt-1"
-              value={responsavelCep}
-              onChange={(e) => setResponsavelCep(mascaraCEP(e.target.value))}
-              onBlur={handleCepBlur}
-            />
-            {buscandoCep && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
-          </div>
-          <div>
-            <Label htmlFor="responsavel_bairro">Bairro</Label>
-            <Input id="responsavel_bairro" name="responsavel_bairro" className="mt-1" defaultValue={defaultValues?.responsavel_bairro || ""} ref={bairroRef} />
-          </div>
-          <div>
-            <Label htmlFor="responsavel_cidade">Cidade</Label>
-            <Input id="responsavel_cidade" name="responsavel_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_cidade || ""} ref={cidadeRef} />
-          </div>
-          <div>
-            <Label htmlFor="responsavel_uf">UF</Label>
-            <Input id="responsavel_uf" name="responsavel_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.responsavel_uf || ""} ref={ufRef} />
           </div>
           <div>
             <Label htmlFor="responsavel_naturalidade_cidade">Naturalidade (Cidade)</Label>
