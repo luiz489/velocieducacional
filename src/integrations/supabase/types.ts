@@ -1995,6 +1995,7 @@ export type Database = {
           tipo: string
           updated_at: string
           valor: number
+          valor_integral: number | null
         }
         Insert: {
           created_at?: string
@@ -2008,6 +2009,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           valor: number
+          valor_integral?: number | null
         }
         Update: {
           created_at?: string
@@ -2021,6 +2023,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           valor?: number
+          valor_integral?: number | null
         }
         Relationships: [
           {

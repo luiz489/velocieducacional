@@ -193,7 +193,7 @@ export default function Matriculas() {
     setSelectedMatricula(m);
     const { data } = await supabase
       .from("financeiro")
-      .select("descricao, valor, data_vencimento, status")
+      .select("descricao, valor, valor_integral, data_vencimento, status")
       .eq("matricula_id", m.id)
       .eq("escola_id", escolaAtivaId!)
       .order("data_vencimento");
@@ -466,7 +466,14 @@ export default function Matriculas() {
                   <TableRow key={i}>
                     <TableCell className="text-muted-foreground">{p.descricao}</TableCell>
                     <TableCell>{new Date(p.data_vencimento).toLocaleDateString("pt-BR")}</TableCell>
-                    <TableCell>R$ {Number(p.valor).toFixed(2)}</TableCell>
+                    <TableCell>
+                      R$ {Number(p.valor).toFixed(2)}
+                      {p.valor_integral != null && Number(p.valor_integral) > Number(p.valor) && (
+                        <div className="text-xs text-muted-foreground">
+                          R$ {Number(p.valor_integral).toFixed(2)} se pago após o vencimento
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>{getStatusBadge(p.status)}</TableCell>
                   </TableRow>
                 ))}
