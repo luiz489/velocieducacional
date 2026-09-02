@@ -1720,6 +1720,7 @@ export type Database = {
           campos_matricula_visiveis: Json
           cep: string | null
           cidade: string | null
+          dia_faturamento_automatico: number | null
           cnpj: string | null
           criado_em: string
           email: string | null
@@ -1740,6 +1741,7 @@ export type Database = {
           campos_matricula_visiveis?: Json
           cep?: string | null
           cidade?: string | null
+          dia_faturamento_automatico?: number | null
           cnpj?: string | null
           criado_em?: string
           email?: string | null
@@ -1760,6 +1762,7 @@ export type Database = {
           campos_matricula_visiveis?: Json
           cep?: string | null
           cidade?: string | null
+          dia_faturamento_automatico?: number | null
           cnpj?: string | null
           criado_em?: string
           email?: string | null
@@ -1998,6 +2001,8 @@ export type Database = {
           data_vencimento: string
           descricao: string
           escola_id: string
+          faturado: boolean
+          faturado_em: string | null
           id: string
           matricula_id: string
           status: string
@@ -2012,6 +2017,8 @@ export type Database = {
           data_vencimento: string
           descricao: string
           escola_id: string
+          faturado?: boolean
+          faturado_em?: string | null
           id?: string
           matricula_id: string
           status?: string
@@ -2026,6 +2033,8 @@ export type Database = {
           data_vencimento?: string
           descricao?: string
           escola_id?: string
+          faturado?: boolean
+          faturado_em?: string | null
           id?: string
           matricula_id?: string
           status?: string
@@ -4260,6 +4269,14 @@ export type Database = {
           p_valores_manuais?: Json
         }
         Returns: string
+      }
+      faturar_titulos: {
+        Args: { p_ids: string[] }
+        Returns: number
+      }
+      processar_faturamento_automatico: {
+        Args: Record<PropertyKey, never>
+        Returns: { escola_nome: string; titulos_faturados: number }[]
       }
       gerar_faturas_do_mes: {
         Args: { p_ano?: number; p_mes?: number }

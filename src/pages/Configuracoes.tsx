@@ -456,7 +456,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis")
+        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
@@ -467,12 +467,31 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   const { data: logoUrlAssinada } = useSignedUrl("escola-logos", escola?.logo_url);
   const [camposMatricula, setCamposMatricula] = useState<Record<string, boolean>>({});
   const [salvandoCampos, setSalvandoCampos] = useState(false);
+  const [diaFaturamento, setDiaFaturamento] = useState("");
+  const [salvandoFaturamento, setSalvandoFaturamento] = useState(false);
 
   useEffect(() => {
     if (escola) {
       setCamposMatricula((escola as any).campos_matricula_visiveis ?? {});
+      setDiaFaturamento((escola as any).dia_faturamento_automatico ? String((escola as any).dia_faturamento_automatico) : "");
     }
   }, [escola]);
+
+  const salvarDiaFaturamento = async () => {
+    if (!escolaId) return;
+    setSalvandoFaturamento(true);
+    const { error } = await supabase
+      .from("escolas")
+      .update({ dia_faturamento_automatico: diaFaturamento ? Number(diaFaturamento) : null })
+      .eq("id", escolaId);
+    setSalvandoFaturamento(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    toast.success(diaFaturamento ? "Faturamento automático configurado!" : "Faturamento automático desativado.");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+  };
 
   const alternarCampoMatricula = (chave: string) => {
     setCamposMatricula((atual) => ({ ...atual, [chave]: atual[chave] === false ? true : false }));
@@ -732,6 +751,31 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
           ))}
           <Button onClick={salvarCamposMatricula} disabled={salvandoCampos} className="mt-2">
             {salvandoCampos ? "Salvando…" : "Salvar Campos da Matrícula"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Faturamento Automático</CardTitle>
+          <CardDescription>
+            Escolha um dia do mês para que as mensalidades do mês seguinte sejam faturadas sozinhas
+            (viram Contas a Receber automaticamente). Deixe em branco para faturar só manualmente,
+            pela Central de Faturamento.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="max-w-[200px]">
+            <Label>Dia do mês (1 a 28)</Label>
+            <Input
+              type="number" min="1" max="28"
+              value={diaFaturamento}
+              onChange={(e) => setDiaFaturamento(e.target.value)}
+              placeholder="Ex: 25"
+            />
+          </div>
+          <Button onClick={salvarDiaFaturamento} disabled={salvandoFaturamento}>
+            {salvandoFaturamento ? "Salvando…" : "Salvar"}
           </Button>
         </CardContent>
       </Card>

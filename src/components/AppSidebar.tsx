@@ -3,6 +3,7 @@ import {
   Users,
   BookOpen,
   DollarSign,
+  Receipt,
   GraduationCap,
   ClipboardList,
   UserCheck,
@@ -63,6 +64,7 @@ const menuGroups = [
     label: "Financeiro",
     items: [
       { title: "Contas a Receber", url: "/financeiro", icon: DollarSign },
+      { title: "Central de Faturamento", url: "/faturamento", icon: Receipt },
       { title: "Contas a Pagar", url: "/contas-a-pagar", icon: ClipboardList },
       { title: "Planos por Turma", url: "/planos-financeiros", icon: Wallet },
       { title: "Pagamentos Professores", url: "/pagamentos-professores", icon: Wallet },

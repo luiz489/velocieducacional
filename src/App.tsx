@@ -10,6 +10,7 @@ import Alunos from "@/pages/Alunos";
 import Turmas from "@/pages/Turmas";
 import Matriculas from "@/pages/Matriculas";
 import FinanceiroPage from "@/pages/Financeiro";
+import CentralFaturamento from "@/pages/CentralFaturamento";
 import Pedagogico from "@/pages/Pedagogico";
 import Ocorrencias from "@/pages/Ocorrencias";
 import ContasPagar from "@/pages/ContasPagar";
@@ -69,6 +70,7 @@ function ProtectedRoutes() {
         <Route path="/turmas" element={<Turmas />} />
         <Route path="/matriculas" element={<Matriculas />} />
         <Route path="/financeiro" element={<FinanceiroPage />} />
+        <Route path="/faturamento" element={<CentralFaturamento />} />
         <Route path="/contas-a-pagar" element={<ContasPagar />} />
         <Route path="/planos-financeiros" element={<PlanosFinanceirosTurma />} />
         <Route path="/pagamentos-professores" element={<PagamentosProfessores />} />
