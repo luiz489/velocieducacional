@@ -23,6 +23,9 @@ export type AlunoCamposDefaultValues = {
   responsavel_cep?: string | null;
   responsavel_naturalidade_cidade?: string | null;
   responsavel_naturalidade_uf?: string | null;
+  responsavel_nacionalidade?: string | null;
+  responsavel_nome_pai?: string | null;
+  responsavel_nome_mae?: string | null;
   telefone_responsavel?: string | null;
   email_responsavel?: string | null;
   status?: string;
@@ -114,7 +117,10 @@ export function AlunoCamposFieldset({
   const mostrarRespNaturalidade = visivel(camposVisiveis, "responsavel_naturalidade");
 
   const mostraSecaoFiliacaoNaturalidade = mostrarFiliacao || mostrarNaturalidade || mostrarCorRaca || mostrarRaCenso;
-  const mostraSecaoRespDetalhes = mostrarRespDocumentos || mostrarRespEstadoCivil || mostrarRespNaturalidade;
+  // Nacionalidade e pais do responsável sempre aparecem nesta seção, então ela
+  // nunca fica completamente escondida, mesmo se documentos/estado civil/
+  // naturalidade estiverem todos desativados.
+  const mostraSecaoRespDetalhes = true;
 
   return (
     <div className="space-y-5">
@@ -325,6 +331,18 @@ export function AlunoCamposFieldset({
                 </div>
               </>
             )}
+            <div>
+              <Label htmlFor="responsavel_nacionalidade">Nacionalidade</Label>
+              <Input id="responsavel_nacionalidade" name="responsavel_nacionalidade" className="mt-1" defaultValue={defaultValues?.responsavel_nacionalidade ?? "Brasileira"} />
+            </div>
+            <div>
+              <Label htmlFor="responsavel_nome_pai">Nome do Pai (do responsável)</Label>
+              <Input id="responsavel_nome_pai" name="responsavel_nome_pai" className="mt-1" defaultValue={defaultValues?.responsavel_nome_pai || ""} />
+            </div>
+            <div>
+              <Label htmlFor="responsavel_nome_mae">Nome da Mãe (do responsável)</Label>
+              <Input id="responsavel_nome_mae" name="responsavel_nome_mae" className="mt-1" defaultValue={defaultValues?.responsavel_nome_mae || ""} />
+            </div>
           </div>
         </div>
       )}
@@ -353,6 +371,9 @@ export function lerAlunoCamposDeFormData(fd: FormData) {
     responsavel_cep: (fd.get("responsavel_cep") as string) || null,
     responsavel_naturalidade_cidade: (fd.get("responsavel_naturalidade_cidade") as string) || null,
     responsavel_naturalidade_uf: (fd.get("responsavel_naturalidade_uf") as string) || null,
+    responsavel_nacionalidade: (fd.get("responsavel_nacionalidade") as string) || null,
+    responsavel_nome_pai: (fd.get("responsavel_nome_pai") as string) || null,
+    responsavel_nome_mae: (fd.get("responsavel_nome_mae") as string) || null,
     telefone_responsavel: (fd.get("telefone") as string) || null,
     email_responsavel: (fd.get("email") as string) || null,
     status: (fd.get("status") as string) || "Ativo",

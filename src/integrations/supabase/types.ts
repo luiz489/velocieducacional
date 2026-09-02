@@ -413,6 +413,9 @@ export type Database = {
           responsavel_financeiro: string
           responsavel_naturalidade_cidade: string | null
           responsavel_naturalidade_uf: string | null
+          responsavel_nacionalidade: string | null
+          responsavel_nome_pai: string | null
+          responsavel_nome_mae: string | null
           responsavel_rg: string | null
           responsavel_rg_data_emissao: string | null
           responsavel_rg_orgao_emissor: string | null
@@ -449,6 +452,9 @@ export type Database = {
           responsavel_financeiro: string
           responsavel_naturalidade_cidade?: string | null
           responsavel_naturalidade_uf?: string | null
+          responsavel_nacionalidade?: string | null
+          responsavel_nome_pai?: string | null
+          responsavel_nome_mae?: string | null
           responsavel_rg?: string | null
           responsavel_rg_data_emissao?: string | null
           responsavel_rg_orgao_emissor?: string | null
@@ -485,6 +491,9 @@ export type Database = {
           responsavel_financeiro?: string
           responsavel_naturalidade_cidade?: string | null
           responsavel_naturalidade_uf?: string | null
+          responsavel_nacionalidade?: string | null
+          responsavel_nome_pai?: string | null
+          responsavel_nome_mae?: string | null
           responsavel_rg?: string | null
           responsavel_rg_data_emissao?: string | null
           responsavel_rg_orgao_emissor?: string | null
@@ -3980,6 +3989,9 @@ export type Database = {
           contratante_id: string | null
           contratante_naturalidade_cidade: string | null
           contratante_naturalidade_uf: string | null
+          contratante_nacionalidade: string | null
+          contratante_nome_pai: string | null
+          contratante_nome_mae: string | null
           contratante_nome: string | null
           contratante_rg: string | null
           contratante_rg_data_emissao: string | null
@@ -3993,6 +4005,7 @@ export type Database = {
           ensino_padrao: string | null
           escola_cidade: string | null
           escola_cnpj: string | null
+          escola_cep: string | null
           escola_endereco: string | null
           escola_id: string | null
           escola_nome: string | null
@@ -4010,7 +4023,10 @@ export type Database = {
           serie: string | null
           taxa_matricula: number | null
           turno: string | null
+          valor_anual_sem_desconto: number | null
+          valor_anual_sem_desconto_extenso: string | null
           valor_mensalidade: number | null
+          valor_mensalidade_extenso: string | null
           valor_mensalidade_com_desconto: number | null
           valor_mensalidade_com_desconto_extenso: string | null
         }
