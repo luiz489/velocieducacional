@@ -779,7 +779,127 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
           </Button>
         </CardContent>
       </Card>
+
+      <IntegracaoBancariaCard escolaId={escolaId} />
       </div>
     </div>
+  );
+}
+
+function IntegracaoBancariaCard({ escolaId }: { escolaId: string | null }) {
+  const qc = useQueryClient();
+  const [salvando, setSalvando] = useState(false);
+  const [form, setForm] = useState({
+    agencia: "", conta_corrente: "", codigo_beneficiario: "", posto: "",
+    codigo_acesso: "", x_api_key: "", chave_pix: "", ambiente: "homologacao",
+  });
+
+  const { data: integracao } = useQuery({
+    queryKey: ["integracao-bancaria", escolaId],
+    enabled: !!escolaId,
+    queryFn: async () => {
+      // Nunca busca as chaves sensíveis de volta - só se já existe configuração
+      const { data, error } = await supabase
+        .from("escolas_integracao_bancaria")
+        .select("id, banco, agencia, conta_corrente, codigo_beneficiario, posto, ambiente, ativo, atualizado_em")
+        .eq("escola_id", escolaId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const salvar = async () => {
+    if (!escolaId) return;
+    if (!form.agencia || !form.conta_corrente || !form.codigo_beneficiario || !form.posto || !form.codigo_acesso || !form.x_api_key || !form.chave_pix) {
+      toast.error("Preencha todos os campos.");
+      return;
+    }
+    setSalvando(true);
+    const { error } = await supabase.from("escolas_integracao_bancaria").upsert({
+      escola_id: escolaId,
+      banco: "sicredi",
+      agencia: form.agencia,
+      conta_corrente: form.conta_corrente,
+      codigo_beneficiario: form.codigo_beneficiario,
+      posto: form.posto,
+      codigo_acesso: form.codigo_acesso,
+      x_api_key: form.x_api_key,
+      chave_pix: form.chave_pix,
+      ambiente: form.ambiente,
+    }, { onConflict: "escola_id" });
+    setSalvando(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    toast.success("Integração bancária salva!");
+    setForm({ agencia: "", conta_corrente: "", codigo_beneficiario: "", posto: "", codigo_acesso: "", x_api_key: "", chave_pix: "", ambiente: "homologacao" });
+    qc.invalidateQueries({ queryKey: ["integracao-bancaria", escolaId] });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Integração Bancária — Sicredi</CardTitle>
+        <CardDescription>
+          Emissão de boleto híbrido (com QR Code Pix) direto pela API do Sicredi. Precisa ter o produto
+          Cobrança (modalidade API) contratado com sua cooperativa, e ter optado pela opção de boleto híbrido.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {integracao && (
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            Já configurado: Agência {integracao.agencia} / Conta {integracao.conta_corrente} — ambiente{" "}
+            <strong>{integracao.ambiente === "producao" ? "Produção" : "Homologação (testes)"}</strong>.
+            Preencha os campos abaixo pra substituir.
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Agência</Label>
+            <Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} placeholder="00000" />
+          </div>
+          <div>
+            <Label>Posto</Label>
+            <Input value={form.posto} onChange={(e) => setForm({ ...form, posto: e.target.value })} placeholder="00" />
+          </div>
+          <div>
+            <Label>Conta Corrente</Label>
+            <Input value={form.conta_corrente} onChange={(e) => setForm({ ...form, conta_corrente: e.target.value })} />
+          </div>
+          <div>
+            <Label>Código do Beneficiário (Convênio)</Label>
+            <Input value={form.codigo_beneficiario} onChange={(e) => setForm({ ...form, codigo_beneficiario: e.target.value })} />
+          </div>
+          <div className="col-span-2">
+            <Label>Código de Acesso (gerado no Internet Banking do Sicredi)</Label>
+            <Input type="password" value={form.codigo_acesso} onChange={(e) => setForm({ ...form, codigo_acesso: e.target.value })} />
+          </div>
+          <div className="col-span-2">
+            <Label>X-API-KEY (Portal do Desenvolvedor Sicredi)</Label>
+            <Input type="password" value={form.x_api_key} onChange={(e) => setForm({ ...form, x_api_key: e.target.value })} />
+          </div>
+          <div className="col-span-2">
+            <Label>Chave Pix da conta (pra emissão do boleto híbrido)</Label>
+            <Input value={form.chave_pix} onChange={(e) => setForm({ ...form, chave_pix: e.target.value })} />
+          </div>
+          <div>
+            <Label>Ambiente</Label>
+            <select
+              value={form.ambiente}
+              onChange={(e) => setForm({ ...form, ambiente: e.target.value })}
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="homologacao">Homologação (testes)</option>
+              <option value="producao">Produção</option>
+            </select>
+          </div>
+        </div>
+        <Button onClick={salvar} disabled={salvando}>
+          {salvando ? "Salvando…" : "Salvar Integração"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

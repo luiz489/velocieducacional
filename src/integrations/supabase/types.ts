@@ -1994,6 +1994,65 @@ export type Database = {
           },
         ]
       }
+      escolas_integracao_bancaria: {
+        Row: {
+          agencia: string
+          ambiente: string
+          ativo: boolean
+          banco: string
+          chave_pix: string
+          codigo_acesso: string
+          codigo_beneficiario: string
+          conta_corrente: string
+          criado_em: string
+          escola_id: string
+          id: string
+          posto: string
+          x_api_key: string
+          atualizado_em: string
+        }
+        Insert: {
+          agencia: string
+          ambiente?: string
+          ativo?: boolean
+          banco?: string
+          chave_pix: string
+          codigo_acesso: string
+          codigo_beneficiario: string
+          conta_corrente: string
+          criado_em?: string
+          escola_id: string
+          id?: string
+          posto: string
+          x_api_key: string
+          atualizado_em?: string
+        }
+        Update: {
+          agencia?: string
+          ambiente?: string
+          ativo?: boolean
+          banco?: string
+          chave_pix?: string
+          codigo_acesso?: string
+          codigo_beneficiario?: string
+          conta_corrente?: string
+          criado_em?: string
+          escola_id?: string
+          id?: string
+          posto?: string
+          x_api_key?: string
+          atualizado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escolas_integracao_bancaria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro: {
         Row: {
           created_at: string
