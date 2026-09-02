@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,8 +24,10 @@ type Campo = {
 
 export default function GerarDocumento() {
   const { escolaAtivaId } = useEscolaAtiva();
-  const [templateId, setTemplateId] = useState<string>("");
-  const [alunoId, setAlunoId] = useState<string>("");
+  const location = useLocation();
+  const preSelecao = (location.state ?? {}) as { templateId?: string; alunoId?: string };
+  const [templateId, setTemplateId] = useState<string>(preSelecao.templateId ?? "");
+  const [alunoId, setAlunoId] = useState<string>(preSelecao.alunoId ?? "");
   const [valoresManuais, setValoresManuais] = useState<Record<string, string>>({});
   const [resultado, setResultado] = useState<string | null>(null);
 

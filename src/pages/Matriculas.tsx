@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, Plus, MoreHorizontal, ClipboardList, DollarSign, CheckCircle, UserPlus, UserCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Plus, MoreHorizontal, ClipboardList, DollarSign, CheckCircle, UserPlus, UserCheck, FileSignature } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,28 @@ function getStatusBadge(status: string) {
 export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
   const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro } = useMatriculas();
+  const navigate = useNavigate();
+  const [alunoParaContrato, setAlunoParaContrato] = useState<string | null>(null);
+
+  const { data: templatesContrato } = useQuery({
+    queryKey: ["templates-contrato"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_templates")
+        .select("id, nome")
+        .eq("ativo", true)
+        .like("codigo", "contrato_%")
+        .order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const emitirContrato = (templateId: string) => {
+    if (!alunoParaContrato) return;
+    navigate("/documentos/gerar", { state: { templateId, alunoId: alunoParaContrato } });
+  };
+
   const { escolaAtivaId } = useEscolaAtiva();
 
   const { data: camposVisiveis } = useQuery({
@@ -491,6 +514,9 @@ export default function Matriculas() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleOpenCarne(m)}>Ver Carnê</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setAlunoParaContrato(m.aluno_id)}>
+                        <FileSignature className="h-4 w-4 mr-2" /> Emitir Contrato
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openEditMatricula(m)}>Editar</DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteMatricula(m)}>Excluir</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -512,6 +538,26 @@ export default function Matriculas() {
       <div className="text-sm text-muted-foreground">
         Mostrando {filtered.length} de {matriculas.length} matrículas
       </div>
+
+      <Dialog open={!!alunoParaContrato} onOpenChange={(open) => !open && setAlunoParaContrato(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Escolha o modelo de contrato</DialogTitle>
+            <DialogDescription>Você vai poder conferir e preencher os dados antes de gerar.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {!templatesContrato?.length ? (
+              <p className="text-sm text-muted-foreground">Nenhum modelo de contrato cadastrado.</p>
+            ) : (
+              templatesContrato.map((t) => (
+                <Button key={t.id} variant="outline" className="w-full justify-start" onClick={() => emitirContrato(t.id)}>
+                  <FileSignature className="h-4 w-4 mr-2" /> {t.nome}
+                </Button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
