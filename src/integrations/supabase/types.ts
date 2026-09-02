@@ -4270,6 +4270,10 @@ export type Database = {
         }
         Returns: string
       }
+      estornar_faturamento_titulos: {
+        Args: { p_ids: string[] }
+        Returns: number
+      }
       faturar_titulos: {
         Args: { p_ids: string[] }
         Returns: number
