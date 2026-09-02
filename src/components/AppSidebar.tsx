@@ -108,7 +108,7 @@ const menuGroups = [
   {
     label: "Comunidade",
     items: [
-      { title: "Parceiros", url: "/parceiros", icon: MapPin },
+      { title: "Fornecedores", url: "/fornecedores", icon: MapPin },
     ],
   },
 ];

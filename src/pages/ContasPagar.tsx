@@ -66,6 +66,7 @@ export default function ContasPagar() {
         .from("contas_a_pagar")
         .select("id, fornecedor, fornecedor_id, descricao, valor, categoria, data_vencimento, data_pagamento, status")
         .eq("escola_id", escolaAtivaId!)
+        .eq("faturado", true)
         .order("data_vencimento", { ascending: false });
       if (error) throw error;
       return (data ?? []) as ContaPagar[];
@@ -257,7 +258,7 @@ export default function ContasPagar() {
               <Label>Fornecedor *</Label>
               {fornecedores.length === 0 && !loadingForn ? (
                 <p className="text-xs text-muted-foreground">
-                  Nenhum fornecedor cadastrado. <Link to="/parceiros" className="text-primary underline">Cadastrar parceiro do tipo Fornecedor →</Link>
+                  Nenhum fornecedor cadastrado. <Link to="/fornecedores" className="text-primary underline">Cadastrar fornecedor →</Link>
                 </p>
               ) : (
                 <Select value={form.fornecedor_id} onValueChange={v => setForm({ ...form, fornecedor_id: v })}>

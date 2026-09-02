@@ -65,6 +65,7 @@ type Contrato = {
   observacoes: string | null;
   numero_contrato: string | null;
   renovacao_automatica: boolean;
+  dia_faturamento_automatico: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -104,6 +105,7 @@ export default function Contratos() {
     observacoes: "",
     numero_contrato: "",
     renovacao_automatica: false,
+    dia_faturamento_automatico: "",
   });
   const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
@@ -132,6 +134,7 @@ export default function Contratos() {
     observacoes: "",
     numero_contrato: "",
     renovacao_automatica: false,
+    dia_faturamento_automatico: "",
   };
 
   const abrirNovo = () => {
@@ -153,6 +156,7 @@ export default function Contratos() {
       observacoes: c.observacoes ?? "",
       numero_contrato: c.numero_contrato ?? "",
       renovacao_automatica: c.renovacao_automatica,
+      dia_faturamento_automatico: c.dia_faturamento_automatico ? String(c.dia_faturamento_automatico) : "",
     });
     setOpen(true);
   };
@@ -169,6 +173,7 @@ export default function Contratos() {
         numero_contrato: form.numero_contrato || null,
         renovacao_automatica: form.renovacao_automatica,
         observacoes: form.observacoes || null,
+        dia_faturamento_automatico: form.dia_faturamento_automatico ? parseInt(form.dia_faturamento_automatico) : null,
       };
       if (editing) {
         const { error } = await supabase.from("contratos").update(payload).eq("id", editing.id);
@@ -205,6 +210,27 @@ export default function Contratos() {
     },
     onError: (e: any) => toast.error("Erro ao excluir: " + e.message),
   });
+
+  const faturarMesAtualMutation = useMutation({
+    mutationFn: async (contratoId: string) => {
+      const hoje = new Date();
+      const { error } = await supabase.rpc("gerar_conta_a_pagar_contrato", {
+        p_contrato_id: contratoId,
+        p_mes: hoje.getMonth() + 1,
+        p_ano: hoje.getFullYear(),
+        p_faturar_imediatamente: true,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Conta a pagar deste mês faturada! Já aparece em Contas a Pagar.");
+      queryClient.invalidateQueries({ queryKey: ["contas-a-pagar"] });
+      queryClient.invalidateQueries({ queryKey: ["faturamentos-contrato"] });
+    },
+    onError: (e: any) => toast.error("Erro ao faturar: " + e.message),
+  });
+
+  const [faturamentosContratoId, setFaturamentosContratoId] = useState<string | null>(null);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -264,7 +290,7 @@ export default function Contratos() {
                     <p className="text-sm py-2 text-muted-foreground">{editing.fornecedor} (não editável aqui)</p>
                   ) : fornecedores.length === 0 && !loadingForn ? (
                     <p className="text-xs text-muted-foreground py-2">
-                      Nenhum fornecedor. <Link to="/parceiros" className="text-primary underline">Cadastrar →</Link>
+                      Nenhum fornecedor. <Link to="/fornecedores" className="text-primary underline">Cadastrar →</Link>
                     </p>
                   ) : (
                     <Select value={form.fornecedor_id} onValueChange={v => setForm({ ...form, fornecedor_id: v })}>
@@ -335,6 +361,17 @@ export default function Contratos() {
                     value={form.numero_contrato}
                     onChange={(e) => setForm({ ...form, numero_contrato: e.target.value })}
                     placeholder="Opcional"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Dia de Faturamento Automático</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="28"
+                    value={form.dia_faturamento_automatico}
+                    onChange={(e) => setForm({ ...form, dia_faturamento_automatico: e.target.value })}
+                    placeholder="Opcional - deixe em branco pra faturar manualmente"
                   />
                 </div>
               </div>
@@ -491,6 +528,12 @@ export default function Contratos() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => abrirEdicao(c)}>Editar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => faturarMesAtualMutation.mutate(c.id)}>
+                            Faturar Mês Atual
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setFaturamentosContratoId(c.id)}>
+                            Ver Faturamentos / Estornar
+                          </DropdownMenuItem>
                           {c.status !== "Ativo" && (
                             <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: c.id, status: "Ativo" })}>
                               <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Ativar
@@ -522,6 +565,75 @@ export default function Contratos() {
           </Table>
         </CardContent>
       </Card>
+
+      <FaturamentosDialog
+        contratoId={faturamentosContratoId}
+        onOpenChange={(open) => !open && setFaturamentosContratoId(null)}
+      />
     </div>
+  );
+}
+
+function FaturamentosDialog({ contratoId, onOpenChange }: { contratoId: string | null; onOpenChange: (open: boolean) => void }) {
+  const qc = useQueryClient();
+
+  const { data: contas } = useQuery({
+    queryKey: ["faturamentos-contrato", contratoId],
+    enabled: !!contratoId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contas_a_pagar")
+        .select("id, descricao, valor, data_vencimento, status, faturado, competencia_referencia")
+        .eq("contrato_id", contratoId!)
+        .order("competencia_referencia", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const estornar = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("estornar_faturamento_conta_a_pagar", { p_ids: [id] });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Faturamento estornado.");
+      qc.invalidateQueries({ queryKey: ["faturamentos-contrato", contratoId] });
+      qc.invalidateQueries({ queryKey: ["contas-a-pagar"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={!!contratoId} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Faturamentos deste Contrato</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+          {!contas?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Nenhuma conta a pagar gerada ainda.</p>
+          ) : (
+            contas.map((c) => (
+              <div key={c.id} className="flex items-center justify-between border rounded-md p-3 text-sm">
+                <div>
+                  <div className="font-medium">{c.descricao}</div>
+                  <div className="text-muted-foreground text-xs">
+                    Venc. {format(new Date(c.data_vencimento + "T12:00:00"), "dd/MM/yyyy")} — R$ {Number(c.valor).toFixed(2)} —{" "}
+                    {c.faturado ? "Faturado" : "Não faturado"} — {c.status}
+                  </div>
+                </div>
+                {c.faturado && c.status !== "Pago" && (
+                  <Button variant="outline" size="sm" onClick={() => estornar.mutate(c.id)} disabled={estornar.isPending}>
+                    Estornar
+                  </Button>
+                )}
+                {c.status === "Pago" && <span className="text-xs text-muted-foreground" title="Já pago, não pode estornar">🔒</span>}
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

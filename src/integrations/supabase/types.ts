@@ -1020,14 +1020,23 @@ export type Database = {
           categoria: string
           competencia_ano: number | null
           competencia_mes: number | null
+          competencia_referencia: string | null
+          contrato_id: string | null
           created_at: string
           data_pagamento: string | null
           data_vencimento: string
           descricao: string
           escola_id: string
+          faturado: boolean
+          faturado_em: string | null
           fornecedor: string
           fornecedor_id: string | null
           funcionario_id: string | null
+          gateway_pagamento_id: string | null
+          status_envio_banco: string
+          enviado_em: string | null
+          efetivado_em: string | null
+          comprovante_url: string | null
           id: string
           professor_id: string | null
           status: string
@@ -1038,14 +1047,23 @@ export type Database = {
           categoria?: string
           competencia_ano?: number | null
           competencia_mes?: number | null
+          competencia_referencia?: string | null
+          contrato_id?: string | null
           created_at?: string
           data_pagamento?: string | null
           data_vencimento: string
           descricao: string
           escola_id: string
+          faturado?: boolean
+          faturado_em?: string | null
           fornecedor: string
           fornecedor_id?: string | null
           funcionario_id?: string | null
+          gateway_pagamento_id?: string | null
+          status_envio_banco?: string
+          enviado_em?: string | null
+          efetivado_em?: string | null
+          comprovante_url?: string | null
           id?: string
           professor_id?: string | null
           status?: string
@@ -1056,14 +1074,23 @@ export type Database = {
           categoria?: string
           competencia_ano?: number | null
           competencia_mes?: number | null
+          competencia_referencia?: string | null
+          contrato_id?: string | null
           created_at?: string
           data_pagamento?: string | null
           data_vencimento?: string
           descricao?: string
           escola_id?: string
+          faturado?: boolean
+          faturado_em?: string | null
           fornecedor?: string
           fornecedor_id?: string | null
           funcionario_id?: string | null
+          gateway_pagamento_id?: string | null
+          status_envio_banco?: string
+          enviado_em?: string | null
+          efetivado_em?: string | null
+          comprovante_url?: string | null
           id?: string
           professor_id?: string | null
           status?: string
@@ -1205,6 +1232,7 @@ export type Database = {
           data_inicio: string
           descricao: string
           dia_vencimento: number
+          dia_faturamento_automatico: number | null
           escola_id: string
           fornecedor: string
           fornecedor_id: string | null
@@ -1224,6 +1252,7 @@ export type Database = {
           data_inicio: string
           descricao: string
           dia_vencimento?: number
+          dia_faturamento_automatico?: number | null
           escola_id: string
           fornecedor: string
           fornecedor_id?: string | null
@@ -1243,6 +1272,7 @@ export type Database = {
           data_inicio?: string
           descricao?: string
           dia_vencimento?: number
+          dia_faturamento_automatico?: number | null
           escola_id?: string
           fornecedor?: string
           fornecedor_id?: string | null
@@ -2062,6 +2092,10 @@ export type Database = {
           escola_id: string
           faturado: boolean
           faturado_em: string | null
+          gateway_cobranca_id: string | null
+          link_pagamento: string | null
+          pix_qr_code: string | null
+          boleto_linha_digitavel: string | null
           id: string
           matricula_id: string
           status: string
@@ -2078,6 +2112,10 @@ export type Database = {
           escola_id: string
           faturado?: boolean
           faturado_em?: string | null
+          gateway_cobranca_id?: string | null
+          link_pagamento?: string | null
+          pix_qr_code?: string | null
+          boleto_linha_digitavel?: string | null
           id?: string
           matricula_id: string
           status?: string
@@ -2094,6 +2132,10 @@ export type Database = {
           escola_id?: string
           faturado?: boolean
           faturado_em?: string | null
+          gateway_cobranca_id?: string | null
+          link_pagamento?: string | null
+          pix_qr_code?: string | null
+          boleto_linha_digitavel?: string | null
           id?: string
           matricula_id?: string
           status?: string
@@ -2282,6 +2324,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_pagamentos_funcionarios_export"
             referencedColumns: ["funcionario_id"]
+          },
+        ]
+      }
+      fornecedores: {
+        Row: {
+          ativo: boolean
+          categoria: string | null
+          cnpj_cpf: string | null
+          created_at: string
+          email: string | null
+          escola_id: string
+          id: string
+          nome: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string | null
+          cnpj_cpf?: string | null
+          created_at?: string
+          email?: string | null
+          escola_id: string
+          id?: string
+          nome: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string | null
+          cnpj_cpf?: string | null
+          created_at?: string
+          email?: string | null
+          escola_id?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fornecedores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4332,6 +4421,30 @@ export type Database = {
       estornar_faturamento_titulos: {
         Args: { p_ids: string[] }
         Returns: number
+      }
+      baixar_titulo_por_cobranca_bancaria: {
+        Args: { p_gateway_cobranca_id: string; p_valor_pago: number; p_data_pagamento: string }
+        Returns: string
+      }
+      confirmar_pagamento_bancario: {
+        Args: { p_gateway_pagamento_id: string; p_comprovante_url?: string }
+        Returns: string
+      }
+      estornar_faturamento_conta_a_pagar: {
+        Args: { p_ids: string[] }
+        Returns: number
+      }
+      faturar_contas_a_pagar: {
+        Args: { p_ids: string[] }
+        Returns: number
+      }
+      gerar_conta_a_pagar_contrato: {
+        Args: { p_contrato_id: string; p_mes: number; p_ano: number; p_faturar_imediatamente?: boolean }
+        Returns: string
+      }
+      processar_faturamento_automatico_contratos: {
+        Args: Record<PropertyKey, never>
+        Returns: { contrato_descricao: string; resultado: string }[]
       }
       faturar_titulos: {
         Args: { p_ids: string[] }

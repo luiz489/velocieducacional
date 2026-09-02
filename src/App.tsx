@@ -19,7 +19,7 @@ import Contratos from "@/pages/Contratos";
 import Compras from "@/pages/Compras";
 import Configuracoes from "@/pages/Configuracoes";
 import Filiais from "@/pages/Filiais";
-import Parceiros from "@/pages/Parceiros";
+import Fornecedores from "@/pages/Fornecedores";
 import MatrizesCurriculares from "@/pages/MatrizesCurriculares";
 import Disciplinas from "@/pages/Disciplinas";
 import Categorias from "@/pages/Categorias";
@@ -82,7 +82,7 @@ function ProtectedRoutes() {
         <Route path="/compras" element={<Compras />} />
         <Route path="/notas" element={<Pedagogico />} />
         <Route path="/ocorrencias" element={<Ocorrencias />} />
-            <Route path="/parceiros" element={<Parceiros />} />
+            <Route path="/fornecedores" element={<Fornecedores />} />
             <Route path="/matrizes-curriculares" element={<MatrizesCurriculares />} />
             <Route path="/disciplinas" element={<Disciplinas />} />
             <Route path="/categorias" element={<Categorias />} />

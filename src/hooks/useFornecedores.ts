@@ -8,7 +8,7 @@ export interface FornecedorOption {
   categoria: string;
 }
 
-/** Carrega parceiros marcados como Fornecedor e ativos. */
+/** Carrega fornecedores ativos (cadastro simples, pra pagamentos esporádicos). */
 export function useFornecedores() {
   const { escolaAtivaId } = useEscolaAtiva();
   return useQuery({
@@ -16,14 +16,13 @@ export function useFornecedores() {
     enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("parceiros")
+        .from("fornecedores")
         .select("id, nome, categoria")
         .eq("escola_id", escolaAtivaId!)
-        .eq("tipo", "Fornecedor")
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;
-      return (data || []) as FornecedorOption[];
+      return (data || []).map((f) => ({ ...f, categoria: f.categoria ?? "" })) as FornecedorOption[];
     },
   });
 }

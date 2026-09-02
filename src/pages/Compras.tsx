@@ -453,7 +453,7 @@ function CotacoesSection({ solicitacaoId, status }: { solicitacaoId: string; sta
               <Label>Fornecedor *</Label>
               {fornecedores.length === 0 && !loadingForn ? (
                 <p className="text-xs text-muted-foreground py-1">
-                  Nenhum fornecedor. <Link to="/parceiros" className="text-primary underline">Cadastrar →</Link>
+                  Nenhum fornecedor. <Link to="/fornecedores" className="text-primary underline">Cadastrar →</Link>
                 </p>
               ) : (
                 <Select value={form.fornecedor_id} onValueChange={v => setForm(f => ({ ...f, fornecedor_id: v }))}>
