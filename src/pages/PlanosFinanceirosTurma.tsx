@@ -26,7 +26,6 @@ export default function PlanosFinanceirosTurma() {
   const [valorMensalidade, setValorMensalidade] = useState("");
   const [numeroParcelas, setNumeroParcelas] = useState("12");
   const [diaVencimento, setDiaVencimento] = useState("10");
-  const [taxaMatricula, setTaxaMatricula] = useState("0");
   const [salvando, setSalvando] = useState(false);
 
   const abrirEdicao = (t: TurmaComPlano) => {
@@ -34,7 +33,6 @@ export default function PlanosFinanceirosTurma() {
     setValorMensalidade(t.valor_mensalidade != null ? String(t.valor_mensalidade) : "");
     setNumeroParcelas(t.numero_parcelas != null ? String(t.numero_parcelas) : "12");
     setDiaVencimento(t.dia_vencimento != null ? String(t.dia_vencimento) : "10");
-    setTaxaMatricula(t.taxa_matricula != null ? String(t.taxa_matricula) : "0");
   };
 
   const handleSalvar = async () => {
@@ -46,7 +44,7 @@ export default function PlanosFinanceirosTurma() {
       valor_mensalidade: Number(valorMensalidade),
       numero_parcelas: Number(numeroParcelas),
       dia_vencimento: Number(diaVencimento),
-      taxa_matricula: Number(taxaMatricula || 0),
+      taxa_matricula: 0,
     });
     setSalvando(false);
     if (ok) setEditando(null);
@@ -149,6 +147,8 @@ export default function PlanosFinanceirosTurma() {
             <DialogTitle>Plano Financeiro — {editando?.turma_nome}</DialogTitle>
             <DialogDescription>
               Esses valores serão usados para gerar automaticamente o carnê de cada aluno matriculado nesta turma.
+              A Taxa de Matrícula é calculada automaticamente (valor de uma mensalidade, já com desconto) - não
+              precisa configurar separadamente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -183,17 +183,6 @@ export default function PlanosFinanceirosTurma() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div>
-              <Label>Taxa de Matrícula (R$, opcional)</Label>
-              <Input
-                type="number" step="0.01" min="0"
-                value={taxaMatricula} onChange={(e) => setTaxaMatricula(e.target.value)}
-                placeholder="0.00" className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Cobrada como parcela extra apenas na primeira matrícula do aluno na turma.
-              </p>
             </div>
           </div>
           <DialogFooter>
