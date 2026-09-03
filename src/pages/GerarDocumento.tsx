@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Printer, FileSignature, Copy } from "lucide-react";
+import { Printer, FileSignature, Copy, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
@@ -25,6 +25,7 @@ type Campo = {
 export default function GerarDocumento() {
   const { escolaAtivaId } = useEscolaAtiva();
   const location = useLocation();
+  const navigate = useNavigate();
   const preSelecao = (location.state ?? {}) as { templateId?: string; alunoId?: string };
   const [templateId, setTemplateId] = useState<string>(preSelecao.templateId ?? "");
   const [alunoId, setAlunoId] = useState<string>(preSelecao.alunoId ?? "");
@@ -124,6 +125,9 @@ export default function GerarDocumento() {
   return (
     <div className="space-y-6">
       <div>
+        <Button variant="ghost" size="sm" className="mb-2 -ml-2 gap-1" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4" /> Voltar
+        </Button>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <FileSignature className="h-6 w-6" /> Gerar Documento
         </h1>
