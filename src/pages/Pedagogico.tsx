@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -17,6 +18,8 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { gerarBoletim } from "@/lib/relatorios";
+import { FileDown } from "lucide-react";
 
 type Situacao = "Aprovado" | "Recuperação" | "Reprovado" | "Cursando";
 
@@ -93,7 +96,7 @@ export default function Pedagogico() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("turmas")
-        .select("id, nome")
+        .select("id, nome, ano_letivo")
         .eq("escola_id", escolaAtivaId!)
         .order("nome");
       if (error) throw error;
@@ -189,7 +192,46 @@ export default function Pedagogico() {
     : 0;
 
   const turmaNome = turmas?.find((t) => t.id === turmaId)?.nome ?? "";
+  const turmaAnoLetivo = turmas?.find((t) => t.id === turmaId)?.ano_letivo;
   const disciplinaNome = disciplinas?.find((d) => d.id === disciplinaId)?.nome ?? "";
+
+  const [gerandoBoletimId, setGerandoBoletimId] = useState<string | null>(null);
+
+  const handleGerarBoletim = async (matriculaId: string, alunoNome: string) => {
+    setGerandoBoletimId(matriculaId);
+    try {
+      const { data: notasCompletas, error } = await supabase
+        .from("pedagogico")
+        .select("disciplina, av1, av2, recuperacao, frequencia_percentual")
+        .eq("matricula_id", matriculaId);
+      if (error) throw error;
+
+      if (!notasCompletas?.length) {
+        toast.error("Este aluno ainda não tem nenhuma nota lançada em nenhuma disciplina.");
+        return;
+      }
+
+      const notas = notasCompletas.map((n) => {
+        const { media, situacao } = calcularSituacao(n.av1, n.av2);
+        return {
+          disciplina: n.disciplina,
+          av1: n.av1,
+          av2: n.av2,
+          recuperacao: n.recuperacao,
+          media,
+          frequencia: n.frequencia_percentual ?? 0,
+          situacao,
+        };
+      });
+
+      gerarBoletim({ nome: alunoNome, turma: turmaNome, ano_letivo: turmaAnoLetivo }, notas);
+      toast.success("Boletim gerado!");
+    } catch (e: any) {
+      toast.error("Erro ao gerar boletim: " + e.message);
+    } finally {
+      setGerandoBoletimId(null);
+    }
+  };
 
   if (!escolaAtivaId) return null;
 
@@ -292,6 +334,7 @@ export default function Pedagogico() {
                       <TableHead className="text-center w-20">Rec.</TableHead>
                       <TableHead className="text-center w-20">Média</TableHead>
                       <TableHead className="text-center">Situação</TableHead>
+                      <TableHead className="text-center w-10">Boletim</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -319,10 +362,20 @@ export default function Pedagogico() {
                           </span>
                         </TableCell>
                         <TableCell className="text-center">{getSituacaoBadge(aluno.situacao)}</TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost" size="icon" className="h-8 w-8"
+                            title="Gerar Boletim (todas as disciplinas)"
+                            disabled={gerandoBoletimId === aluno.matricula_id}
+                            onClick={() => handleGerarBoletim(aluno.matricula_id, aluno.aluno_nome)}
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {comMedia.length === 0 && (
-                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
