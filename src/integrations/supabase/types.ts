@@ -2329,39 +2329,75 @@ export type Database = {
       }
       fornecedores: {
         Row: {
+          agencia: string | null
           ativo: boolean
+          banco: string | null
+          bairro: string | null
           categoria: string | null
+          cep: string | null
+          chave_pix: string | null
+          cidade: string | null
           cnpj_cpf: string | null
+          conta: string | null
           created_at: string
           email: string | null
+          endereco: string | null
           escola_id: string
           id: string
           nome: string
+          observacoes: string | null
+          razao_social: string | null
           telefone: string | null
+          tipo_conta: string | null
+          uf: string | null
           updated_at: string
         }
         Insert: {
+          agencia?: string | null
           ativo?: boolean
+          banco?: string | null
+          bairro?: string | null
           categoria?: string | null
+          cep?: string | null
+          chave_pix?: string | null
+          cidade?: string | null
           cnpj_cpf?: string | null
+          conta?: string | null
           created_at?: string
           email?: string | null
+          endereco?: string | null
           escola_id: string
           id?: string
           nome: string
+          observacoes?: string | null
+          razao_social?: string | null
           telefone?: string | null
+          tipo_conta?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Update: {
+          agencia?: string | null
           ativo?: boolean
+          banco?: string | null
+          bairro?: string | null
           categoria?: string | null
+          cep?: string | null
+          chave_pix?: string | null
+          cidade?: string | null
           cnpj_cpf?: string | null
+          conta?: string | null
           created_at?: string
           email?: string | null
+          endereco?: string | null
           escola_id?: string
           id?: string
           nome?: string
+          observacoes?: string | null
+          razao_social?: string | null
           telefone?: string | null
+          tipo_conta?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -26,7 +26,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
-import { Link } from "react-router-dom";
+import { FornecedorFormDialog } from "@/components/FornecedorFormDialog";
+import { UserPlus } from "lucide-react";
 
 interface ContaPagar {
   id: string;
@@ -55,6 +56,7 @@ export default function ContasPagar() {
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroCat, setFiltroCat] = useState("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [fornecedorDialogOpen, setFornecedorDialogOpen] = useState(false);
   const [form, setForm] = useState({ fornecedor_id: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "" });
   const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
@@ -255,10 +257,15 @@ export default function ContasPagar() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>Fornecedor *</Label>
+              <div className="flex items-center justify-between">
+                <Label>Fornecedor *</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs gap-1" onClick={() => setFornecedorDialogOpen(true)}>
+                  <UserPlus className="h-3 w-3" /> Novo fornecedor
+                </Button>
+              </div>
               {fornecedores.length === 0 && !loadingForn ? (
                 <p className="text-xs text-muted-foreground">
-                  Nenhum fornecedor cadastrado. <Link to="/fornecedores" className="text-primary underline">Cadastrar fornecedor →</Link>
+                  Nenhum fornecedor cadastrado ainda. Clique em "Novo fornecedor" acima.
                 </p>
               ) : (
                 <Select value={form.fornecedor_id} onValueChange={v => setForm({ ...form, fornecedor_id: v })}>
@@ -296,6 +303,15 @@ export default function ContasPagar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <FornecedorFormDialog
+        open={fornecedorDialogOpen}
+        onOpenChange={setFornecedorDialogOpen}
+        onSaved={(f) => {
+          qc.invalidateQueries({ queryKey: ["fornecedores"] });
+          setForm((prev) => ({ ...prev, fornecedor_id: f.id }));
+        }}
+      />
     </div>
   );
 }
