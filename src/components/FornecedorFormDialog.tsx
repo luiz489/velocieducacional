@@ -96,7 +96,8 @@ export function FornecedorFormDialog({
   const handleCnpjBlur = async () => {
     const digitos = form.cnpj_cpf.replace(/\D/g, "");
     if (digitos.length !== 14) return; // só busca se for CNPJ (14 dígitos) - CPF não tem consulta pública
-    const resultado = await buscarCnpj(form.cnpj_cpf);
+    const { dados: resultado, erro } = await buscarCnpj(form.cnpj_cpf);
+    if (erro) { toast.error(erro); return; }
     if (!resultado) return;
     setForm((f) => ({
       ...f,

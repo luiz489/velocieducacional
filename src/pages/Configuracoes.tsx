@@ -453,7 +453,8 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   };
 
   const handleCnpjBlur = async () => {
-    const resultado = await buscarCnpj(dadosForm.cnpj);
+    const { dados: resultado, erro } = await buscarCnpj(dadosForm.cnpj);
+    if (erro) { toast.error(erro); return; }
     if (!resultado) return;
     setDadosForm((f) => ({
       ...f,

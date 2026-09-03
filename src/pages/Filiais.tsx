@@ -53,7 +53,8 @@ export default function Filiais() {
   };
 
   const handleCnpjBlur = async () => {
-    const resultado = await buscarCnpj(form.cnpj);
+    const { dados: resultado, erro } = await buscarCnpj(form.cnpj);
+    if (erro) { toast.error(erro); return; }
     if (!resultado) return;
     setForm((f) => ({
       ...f,

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+const FUNCTIONS_URL = "https://mqjsfmhqxdbtanrqizvr.supabase.co/functions/v1";
 
 export type DadosPorCnpj = {
   razaoSocial: string;
@@ -15,37 +18,50 @@ export type DadosPorCnpj = {
 };
 
 /**
- * Busca dados cadastrais de uma empresa a partir do CNPJ (API pública
- * BrasilAPI, dados oficiais da Receita Federal). Chame `buscarCnpj` assim
- * que o CNPJ tiver 14 dígitos (ex: no onBlur do campo).
+ * Busca dados cadastrais de uma empresa a partir do CNPJ (dados oficiais da
+ * Receita Federal, via BrasilAPI). A chamada passa pela nossa Edge Function
+ * "cnpj-lookup" (não é feita direto do navegador) - evita qualquer bloqueio
+ * de CORS que a API pública possa ter pra chamadas vindas de um site.
  */
 export function useCnpjLookup() {
   const [buscando, setBuscando] = useState(false);
 
-  const buscarCnpj = async (cnpjDigitado: string): Promise<DadosPorCnpj | null> => {
+  const buscarCnpj = async (cnpjDigitado: string): Promise<{ dados: DadosPorCnpj | null; erro: string | null }> => {
     const cnpj = cnpjDigitado.replace(/\D/g, "");
-    if (cnpj.length !== 14) return null;
+    if (cnpj.length !== 14) return { dados: null, erro: null };
 
     setBuscando(true);
     try {
-      const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-      if (!resposta.ok) return null;
+      const { data: sessao } = await supabase.auth.getSession();
+      const token = sessao.session?.access_token;
+
+      const resposta = await fetch(`${FUNCTIONS_URL}/cnpj-lookup?cnpj=${cnpj}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
       const dados = await resposta.json();
+      if (!resposta.ok || dados.error) {
+        return { dados: null, erro: dados.error || "Não foi possível buscar os dados deste CNPJ." };
+      }
+
       return {
-        razaoSocial: dados.razao_social || "",
-        nomeFantasia: dados.nome_fantasia || "",
-        logradouro: [dados.logradouro, dados.numero].filter(Boolean).join(", ") || "",
-        numero: dados.numero || "",
-        bairro: dados.bairro || "",
-        cidade: dados.municipio || "",
-        uf: dados.uf || "",
-        cep: dados.cep || "",
-        telefone: dados.ddd_telefone_1 || "",
-        email: dados.email || "",
-        situacaoCadastral: dados.descricao_situacao_cadastral || "",
+        dados: {
+          razaoSocial: dados.razao_social || "",
+          nomeFantasia: dados.nome_fantasia || "",
+          logradouro: [dados.logradouro, dados.numero].filter(Boolean).join(", ") || "",
+          numero: dados.numero || "",
+          bairro: dados.bairro || "",
+          cidade: dados.municipio || "",
+          uf: dados.uf || "",
+          cep: dados.cep || "",
+          telefone: dados.ddd_telefone_1 || "",
+          email: dados.email || "",
+          situacaoCadastral: dados.descricao_situacao_cadastral || "",
+        },
+        erro: null,
       };
-    } catch {
-      return null;
+    } catch (e: any) {
+      return { dados: null, erro: "Erro ao buscar CNPJ: " + e.message };
     } finally {
       setBuscando(false);
     }
