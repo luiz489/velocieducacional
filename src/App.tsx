@@ -38,6 +38,7 @@ import PagamentosFuncionarios from "@/pages/PagamentosFuncionarios";
 import AppMobile from "@/pages/AppMobile";
 import AppFinanceiro from "@/pages/AppFinanceiro";
 import Login from "@/pages/Login";
+import RedefinirSenha from "@/pages/RedefinirSenha";
 import NotFound from "@/pages/NotFound";
 import { PlataformaLayout } from "@/components/plataforma/PlataformaLayout";
 import VisaoGeral from "@/pages/plataforma/VisaoGeral";
@@ -130,6 +131,7 @@ const App = () => (
         <EscolaProvider>
           <Routes>
             <Route path="/login" element={<AuthRoute />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/app" element={<AppMobile />} />
             <Route path="/app/financeiro" element={<AppFinanceiro />} />
             <Route path="/plataforma" element={<PlataformaLayout />}>

@@ -210,6 +210,19 @@ export default function Configuracoes() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const solicitarResetSenha = async (email: string | undefined) => {
+    if (!email) return;
+    if (!confirm(`Enviar e-mail de redefinição de senha para ${email}?`)) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    if (error) {
+      toast.error("Erro ao enviar: " + error.message);
+      return;
+    }
+    toast.success(`E-mail de redefinição enviado para ${email}.`);
+  };
+
   const temPermissao = (permissaoId: string) =>
     !!papelPermissoesAtuais?.some((pp) => pp.permissao_id === permissaoId);
 
@@ -330,7 +343,10 @@ export default function Configuracoes() {
                       <TableCell className="text-muted-foreground">{u.profiles?.email ?? "—"}</TableCell>
                       <TableCell><Badge variant="outline">{u.papeis?.nome ?? "—"}</Badge></TableCell>
                       <TableCell><Badge variant={u.ativo ? "default" : "secondary"}>{u.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right space-x-1">
+                        <Button size="sm" variant="ghost" onClick={() => solicitarResetSenha(u.profiles?.email)} disabled={!u.profiles?.email}>
+                          Resetar Senha
+                        </Button>
                         <Button size="sm" variant="ghost" onClick={() => toggleAtivo.mutate({ id: u.id, ativo: !u.ativo })}>
                           {u.ativo ? "Desativar" : "Reativar"}
                         </Button>

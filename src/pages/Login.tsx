@@ -13,7 +13,25 @@ export default function Login() {
   const [fullName, setFullName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [enviandoReset, setEnviandoReset] = useState(false);
   const { toast } = useToast();
+
+  const handleEsqueciSenha = async () => {
+    if (!email) {
+      toast({ title: "Digite seu e-mail primeiro", description: "Preencha o campo de e-mail acima antes de solicitar a redefinição.", variant: "destructive" });
+      return;
+    }
+    setEnviandoReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    setEnviandoReset(false);
+    if (error) {
+      toast({ title: "Erro ao enviar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "E-mail enviado!", description: "Confira sua caixa de entrada para redefinir a senha." });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +123,18 @@ export default function Login() {
               {loading ? "Carregando..." : isSignUp ? "Cadastrar" : "Entrar"}
             </Button>
           </form>
+          {!isSignUp && (
+            <div className="mt-3 text-center text-sm">
+              <button
+                type="button"
+                className="text-muted-foreground underline-offset-4 hover:underline"
+                onClick={handleEsqueciSenha}
+                disabled={enviandoReset}
+              >
+                {enviandoReset ? "Enviando..." : "Esqueci minha senha"}
+              </button>
+            </div>
+          )}
           <div className="mt-4 text-center text-sm">
             <button
               type="button"
