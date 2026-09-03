@@ -9,23 +9,34 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Plus, Building2, MapPin } from "lucide-react";
+import { Plus, Building2, MapPin, MoreHorizontal } from "lucide-react";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 
 type Filial = {
   id: string;
   nome: string;
+  cnpj: string | null;
   cidade: string | null;
   uf: string | null;
+  endereco: string | null;
+  cep: string | null;
+  telefone: string | null;
+  email: string | null;
   ativo: boolean;
 };
+
+const emptyForm = { nome: "", cnpj: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "", email: "" };
 
 export default function Filiais() {
   const qc = useQueryClient();
   const { escolaAtivaId, refetchEscolas } = useEscolaAtiva();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ nome: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "" });
+  const [editing, setEditing] = useState<Filial | null>(null);
+  const [form, setForm] = useState(emptyForm);
   const { buscarCep, buscando: buscandoCep } = useCepLookup();
 
   const handleCepBlur = async () => {
@@ -57,24 +68,34 @@ export default function Filiais() {
     queryKey: ["filiais", escolaAtual?.grupo_economico_id, escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
+      const campos = "id, nome, cnpj, cidade, uf, endereco, cep, telefone, email, ativo";
       if (escolaAtual?.grupo_economico_id) {
         const { data, error } = await supabase
           .from("escolas")
-          .select("id, nome, cidade, uf, ativo")
+          .select(campos)
           .eq("grupo_economico_id", escolaAtual.grupo_economico_id)
           .order("nome");
         if (error) throw error;
         return data as Filial[];
       }
-      // Ainda não tem grupo econômico - só mostra a própria escola
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, cidade, uf, ativo")
+        .select(campos)
         .eq("id", escolaAtivaId!);
       if (error) throw error;
       return data as Filial[];
     },
   });
+
+  const abrirNovo = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const abrirEdicao = (f: Filial) => {
+    setEditing(f);
+    setForm({
+      nome: f.nome, cnpj: f.cnpj ?? "", cidade: f.cidade ?? "", uf: f.uf ?? "",
+      endereco: f.endereco ?? "", cep: f.cep ?? "", telefone: f.telefone ?? "", email: f.email ?? "",
+    });
+    setOpen(true);
+  };
 
   const criar = useMutation({
     mutationFn: async () => {
@@ -86,6 +107,8 @@ export default function Filiais() {
         p_endereco: form.endereco || null,
         p_telefone: form.telefone || null,
         p_cep: form.cep || null,
+        p_cnpj: form.cnpj || null,
+        p_email: form.email || null,
       });
       if (error) throw error;
       return data as string;
@@ -95,9 +118,51 @@ export default function Filiais() {
       qc.invalidateQueries({ queryKey: ["filiais"] });
       await refetchEscolas(novaEscolaId);
       setOpen(false);
-      setForm({ nome: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "" });
+      setForm(emptyForm);
     },
     onError: (e: any) => toast.error("Erro ao criar filial: " + e.message),
+  });
+
+  const atualizar = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const { error } = await supabase.rpc("atualizar_filial", {
+        p_filial_id: editing.id,
+        p_nome: form.nome,
+        p_cnpj: form.cnpj || null,
+        p_cidade: form.cidade || null,
+        p_uf: form.uf || null,
+        p_endereco: form.endereco || null,
+        p_cep: form.cep || null,
+        p_telefone: form.telefone || null,
+        p_email: form.email || null,
+        p_ativo: editing.ativo,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Filial atualizada!");
+      qc.invalidateQueries({ queryKey: ["filiais"] });
+      refetchEscolas();
+      setOpen(false);
+      setEditing(null);
+    },
+    onError: (e: any) => toast.error("Erro ao atualizar: " + e.message),
+  });
+
+  const alternarAtivo = useMutation({
+    mutationFn: async (f: Filial) => {
+      const { error } = await supabase.rpc("atualizar_filial", {
+        p_filial_id: f.id, p_nome: f.nome, p_cnpj: f.cnpj, p_cidade: f.cidade, p_uf: f.uf,
+        p_endereco: f.endereco, p_cep: f.cep, p_telefone: f.telefone, p_email: f.email, p_ativo: !f.ativo,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Status atualizado.");
+      qc.invalidateQueries({ queryKey: ["filiais"] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   return (
@@ -113,19 +178,25 @@ export default function Filiais() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Nova Filial</Button>
+            <Button onClick={abrirNovo}><Plus className="h-4 w-4 mr-2" />Nova Filial</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Nova Filial</DialogTitle>
+              <DialogTitle>{editing ? "Editar Filial" : "Nova Filial"}</DialogTitle>
               <DialogDescription>
-                Cria uma unidade nova com dados totalmente separados. Você já sai vinculado como administrador dela.
+                {editing
+                  ? "Esses dados aparecem em documentos e relatórios gerados por esta filial."
+                  : "Cria uma unidade nova com dados totalmente separados. Você já sai vinculado como administrador dela."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               <div>
                 <Label>Nome da Filial *</Label>
                 <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Unidade Norte" />
+              </div>
+              <div>
+                <Label>CNPJ</Label>
+                <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="Importante pra documentos e contratos" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -151,14 +222,23 @@ export default function Filiais() {
                 <Label>Endereço</Label>
                 <Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
               </div>
-              <div>
-                <Label>Telefone</Label>
-                <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Telefone</Label>
+                  <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
+                </div>
+                <div>
+                  <Label>E-mail</Label>
+                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </div>
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={() => criar.mutate()} disabled={!form.nome || criar.isPending}>
-                {criar.isPending ? "Criando..." : "Criar Filial"}
+              <Button
+                onClick={() => editing ? atualizar.mutate() : criar.mutate()}
+                disabled={!form.nome || criar.isPending || atualizar.isPending}
+              >
+                {criar.isPending || atualizar.isPending ? "Salvando..." : editing ? "Salvar Alterações" : "Criar Filial"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -171,13 +251,15 @@ export default function Filiais() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>CNPJ</TableHead>
                 <TableHead>Localização</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
               )}
               {filiais?.map((f) => (
                 <TableRow key={f.id} className={f.id === escolaAtivaId ? "bg-muted/40" : ""}>
@@ -185,6 +267,7 @@ export default function Filiais() {
                     {f.nome}
                     {f.id === escolaAtivaId && <Badge variant="outline" className="ml-2 text-xs">Você está aqui</Badge>}
                   </TableCell>
+                  <TableCell className="text-muted-foreground">{f.cnpj || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {f.cidade ? (
                       <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{f.cidade} - {f.uf}</span>
@@ -192,6 +275,19 @@ export default function Filiais() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={f.ativo ? "default" : "outline"}>{f.ativo ? "Ativa" : "Inativa"}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => abrirEdicao(f)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => alternarAtivo.mutate(f)}>
+                          {f.ativo ? "Desativar" : "Ativar"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

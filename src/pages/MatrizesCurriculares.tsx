@@ -33,6 +33,9 @@ type Matriz = {
   descricao: string | null;
   ativo: boolean;
   categoria_id: string | null;
+  base_curricular: string | null;
+  coordenador_responsavel: string | null;
+  carga_horaria_total: number | null;
   categorias?: { nome: string } | null;
 };
 
@@ -55,6 +58,7 @@ export default function MatrizesCurriculares() {
   const [form, setForm] = useState({
     nome: "", serie: "", ano_letivo: new Date().getFullYear(),
     turno: "Manhã", descricao: "", ativo: true, categoria_id: "",
+    base_curricular: "", coordenador_responsavel: "", carga_horaria_total: "",
   });
 
   const { data: categorias } = useQuery({
@@ -81,7 +85,14 @@ export default function MatrizesCurriculares() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { ...form, descricao: form.descricao || null, categoria_id: form.categoria_id || null };
+      const payload = {
+        ...form,
+        descricao: form.descricao || null,
+        categoria_id: form.categoria_id || null,
+        base_curricular: form.base_curricular || null,
+        coordenador_responsavel: form.coordenador_responsavel || null,
+        carga_horaria_total: form.carga_horaria_total ? Number(form.carga_horaria_total) : null,
+      };
       if (editing) {
         const { error } = await supabase.from("matrizes_curriculares").update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -113,7 +124,10 @@ export default function MatrizesCurriculares() {
 
   function reset() {
     setEditing(null);
-    setForm({ nome: "", serie: "", ano_letivo: new Date().getFullYear(), turno: "Manhã", descricao: "", ativo: true, categoria_id: "" });
+    setForm({
+      nome: "", serie: "", ano_letivo: new Date().getFullYear(), turno: "Manhã", descricao: "", ativo: true, categoria_id: "",
+      base_curricular: "", coordenador_responsavel: "", carga_horaria_total: "",
+    });
   }
 
   function openEdit(m: Matriz) {
@@ -122,6 +136,8 @@ export default function MatrizesCurriculares() {
       nome: m.nome, serie: m.serie, ano_letivo: m.ano_letivo,
       turno: m.turno, descricao: m.descricao ?? "", ativo: m.ativo,
       categoria_id: m.categoria_id ?? "",
+      base_curricular: m.base_curricular ?? "", coordenador_responsavel: m.coordenador_responsavel ?? "",
+      carga_horaria_total: m.carga_horaria_total ? String(m.carga_horaria_total) : "",
     });
     setOpen(true);
   }
@@ -189,6 +205,22 @@ export default function MatrizesCurriculares() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Base Curricular</Label>
+                    <Input value={form.base_curricular} onChange={(e) => setForm({ ...form, base_curricular: e.target.value })}
+                      placeholder="Ex: BNCC" />
+                  </div>
+                  <div>
+                    <Label>Carga Horária Total (h)</Label>
+                    <Input type="number" value={form.carga_horaria_total} onChange={(e) => setForm({ ...form, carga_horaria_total: e.target.value })}
+                      placeholder="Opcional - soma das disciplinas" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Coordenador(a) Responsável</Label>
+                  <Input value={form.coordenador_responsavel} onChange={(e) => setForm({ ...form, coordenador_responsavel: e.target.value })} />
+                </div>
                 <div className="flex items-center gap-2">
                   <Checkbox checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: !!v })} />
                   <Label>Ativa</Label>
@@ -222,7 +254,10 @@ export default function MatrizesCurriculares() {
                 {data?.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.nome}</TableCell>
-                    <TableCell>{m.serie}</TableCell>
+                    <TableCell>
+                      {m.serie}
+                      {m.base_curricular && <div className="text-xs text-muted-foreground">{m.base_curricular}</div>}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{m.categorias?.nome ?? "—"}</TableCell>
                     <TableCell>{m.ano_letivo}</TableCell>
                     <TableCell>{m.turno}</TableCell>

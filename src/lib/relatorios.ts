@@ -218,7 +218,7 @@ export function gerarFichaAluno(aluno: AlunoData) {
   doc.save(`ficha_${aluno.nome.replace(/\s+/g, "_").toLowerCase()}.pdf`);
 }
 
-export function gerarBoletim(aluno: { nome: string; turma: string }, notas: NotaBoletim[]) {
+export function gerarBoletim(aluno: { nome: string; turma: string; ano_letivo?: number }, notas: NotaBoletim[]) {
   const doc = new jsPDF();
   addHeader(doc, "Boletim Escolar");
 
@@ -229,7 +229,7 @@ export function gerarBoletim(aluno: { nome: string; turma: string }, notas: Nota
   y = addFieldRow(doc, [
     { label: "Nome do Aluno", value: aluno.nome },
     { label: "Turma", value: aluno.turma },
-    { label: "Ano Letivo", value: "2026" },
+    { label: "Ano Letivo", value: aluno.ano_letivo ? String(aluno.ano_letivo) : "—" },
   ], y);
 
   y += 4;

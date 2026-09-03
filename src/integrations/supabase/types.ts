@@ -2883,7 +2883,10 @@ export type Database = {
         Row: {
           ano_letivo: number
           ativo: boolean
+          base_curricular: string | null
+          carga_horaria_total: number | null
           categoria_id: string | null
+          coordenador_responsavel: string | null
           created_at: string
           descricao: string | null
           escola_id: string
@@ -2896,7 +2899,10 @@ export type Database = {
         Insert: {
           ano_letivo: number
           ativo?: boolean
+          base_curricular?: string | null
+          carga_horaria_total?: number | null
           categoria_id?: string | null
+          coordenador_responsavel?: string | null
           created_at?: string
           descricao?: string | null
           escola_id: string
@@ -2909,7 +2915,10 @@ export type Database = {
         Update: {
           ano_letivo?: number
           ativo?: boolean
+          base_curricular?: string | null
+          carga_horaria_total?: number | null
           categoria_id?: string | null
+          coordenador_responsavel?: string | null
           created_at?: string
           descricao?: string | null
           escola_id?: string
@@ -4426,9 +4435,19 @@ export type Database = {
         Args: { p_escola_id: string }
         Returns: undefined
       }
+      atualizar_filial: {
+        Args: {
+          p_filial_id: string; p_nome: string; p_cnpj?: string; p_cidade?: string; p_uf?: string;
+          p_endereco?: string; p_cep?: string; p_telefone?: string; p_email?: string; p_ativo: boolean
+        }
+        Returns: undefined
+      }
       criar_filial: {
         Args: {
+          p_cep?: string
           p_cidade?: string
+          p_cnpj?: string
+          p_email?: string
           p_endereco?: string
           p_escola_origem_id: string
           p_nome_filial: string
