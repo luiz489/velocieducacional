@@ -165,7 +165,7 @@ export function FornecedorFormDialog({
             <p className="text-sm font-medium text-muted-foreground mb-2">Dados básicos</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <Label>Nome / Nome Fantasia *</Label>
+                <Label>Nome Fantasia *</Label>
                 <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
               </div>
               <div className="col-span-2">

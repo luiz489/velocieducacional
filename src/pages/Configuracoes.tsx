@@ -436,7 +436,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   const [enviandoLogo, setEnviandoLogo] = useState(false);
   const [salvandoDados, setSalvandoDados] = useState(false);
   const [dadosForm, setDadosForm] = useState({
-    nome: "", cnpj: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "", email: "",
+    nome: "", razao_social: "", cnpj: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "", email: "",
   });
   const { buscarCep, buscando: buscandoCep } = useCepLookup();
   const { buscarCnpj, buscando: buscandoCnpj } = useCnpjLookup();
@@ -459,6 +459,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     setDadosForm((f) => ({
       ...f,
       nome: f.nome || resultado.nomeFantasia || resultado.razaoSocial,
+      razao_social: f.razao_social || resultado.razaoSocial,
       telefone: f.telefone || resultado.telefone,
       cep: f.cep || resultado.cep,
       endereco: f.endereco || resultado.logradouro,
@@ -473,7 +474,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico")
+        .select("id, nome, razao_social, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
@@ -536,6 +537,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     if (escola) {
       setDadosForm({
         nome: escola.nome ?? "",
+        razao_social: (escola as any).razao_social ?? "",
         cnpj: escola.cnpj ?? "",
         cidade: escola.cidade ?? "",
         uf: escola.uf ?? "",
@@ -556,6 +558,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     setSalvandoDados(true);
     const { error } = await supabase.from("escolas").update({
       nome: dadosForm.nome.trim(),
+      razao_social: dadosForm.razao_social || null,
       cnpj: dadosForm.cnpj || null,
       cidade: dadosForm.cidade || null,
       uf: dadosForm.uf || null,
@@ -633,11 +636,19 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <Label>Nome da Escola</Label>
+            <Label>Nome da Escola (Nome Fantasia)</Label>
             <Input
               value={dadosForm.nome}
               onChange={(e) => setDadosForm({ ...dadosForm, nome: e.target.value })}
-              placeholder="Nome da escola"
+              placeholder="Como a escola é conhecida"
+            />
+          </div>
+          <div>
+            <Label>Razão Social</Label>
+            <Input
+              value={dadosForm.razao_social}
+              onChange={(e) => setDadosForm({ ...dadosForm, razao_social: e.target.value })}
+              placeholder="Nome jurídico/legal, como consta no CNPJ"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -20,6 +20,7 @@ import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
 type Filial = {
   id: string;
   nome: string;
+  razao_social: string | null;
   cnpj: string | null;
   cidade: string | null;
   uf: string | null;
@@ -30,7 +31,7 @@ type Filial = {
   ativo: boolean;
 };
 
-const emptyForm = { nome: "", cnpj: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "", email: "" };
+const emptyForm = { nome: "", razao_social: "", cnpj: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "", email: "" };
 
 export default function Filiais() {
   const qc = useQueryClient();
@@ -59,6 +60,7 @@ export default function Filiais() {
     setForm((f) => ({
       ...f,
       nome: f.nome || resultado.nomeFantasia || resultado.razaoSocial,
+      razao_social: f.razao_social || resultado.razaoSocial,
       telefone: f.telefone || resultado.telefone,
       email: f.email || resultado.email,
       cep: f.cep || resultado.cep,
@@ -86,7 +88,7 @@ export default function Filiais() {
     queryKey: ["filiais", escolaAtual?.grupo_economico_id, escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const campos = "id, nome, cnpj, cidade, uf, endereco, cep, telefone, email, ativo";
+      const campos = "id, nome, razao_social, cnpj, cidade, uf, endereco, cep, telefone, email, ativo";
       if (escolaAtual?.grupo_economico_id) {
         const { data, error } = await supabase
           .from("escolas")
@@ -109,7 +111,7 @@ export default function Filiais() {
   const abrirEdicao = (f: Filial) => {
     setEditing(f);
     setForm({
-      nome: f.nome, cnpj: f.cnpj ?? "", cidade: f.cidade ?? "", uf: f.uf ?? "",
+      nome: f.nome, razao_social: f.razao_social ?? "", cnpj: f.cnpj ?? "", cidade: f.cidade ?? "", uf: f.uf ?? "",
       endereco: f.endereco ?? "", cep: f.cep ?? "", telefone: f.telefone ?? "", email: f.email ?? "",
     });
     setOpen(true);
@@ -127,6 +129,7 @@ export default function Filiais() {
         p_cep: form.cep || null,
         p_cnpj: form.cnpj || null,
         p_email: form.email || null,
+        p_razao_social: form.razao_social || null,
       });
       if (error) throw error;
       return data as string;
@@ -155,6 +158,7 @@ export default function Filiais() {
         p_telefone: form.telefone || null,
         p_email: form.email || null,
         p_ativo: editing.ativo,
+        p_razao_social: form.razao_social || null,
       });
       if (error) throw error;
     },
@@ -173,6 +177,7 @@ export default function Filiais() {
       const { error } = await supabase.rpc("atualizar_filial", {
         p_filial_id: f.id, p_nome: f.nome, p_cnpj: f.cnpj, p_cidade: f.cidade, p_uf: f.uf,
         p_endereco: f.endereco, p_cep: f.cep, p_telefone: f.telefone, p_email: f.email, p_ativo: !f.ativo,
+        p_razao_social: f.razao_social,
       });
       if (error) throw error;
     },
@@ -211,6 +216,10 @@ export default function Filiais() {
               <div>
                 <Label>Nome da Filial *</Label>
                 <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Unidade Norte" />
+              </div>
+              <div>
+                <Label>Razão Social</Label>
+                <Input value={form.razao_social} onChange={(e) => setForm({ ...form, razao_social: e.target.value })} placeholder="Nome jurídico/legal, como consta no CNPJ" />
               </div>
               <div>
                 <Label>CNPJ</Label>

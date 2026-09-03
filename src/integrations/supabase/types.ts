@@ -4438,7 +4438,8 @@ export type Database = {
       atualizar_filial: {
         Args: {
           p_filial_id: string; p_nome: string; p_cnpj?: string; p_cidade?: string; p_uf?: string;
-          p_endereco?: string; p_cep?: string; p_telefone?: string; p_email?: string; p_ativo: boolean
+          p_endereco?: string; p_cep?: string; p_telefone?: string; p_email?: string; p_ativo: boolean;
+          p_razao_social?: string
         }
         Returns: undefined
       }
@@ -4451,6 +4452,7 @@ export type Database = {
           p_endereco?: string
           p_escola_origem_id: string
           p_nome_filial: string
+          p_razao_social?: string
           p_telefone?: string
           p_uf?: string
         }
