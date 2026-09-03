@@ -97,6 +97,7 @@ export default function Matriculas() {
   const [formDataVencimentoMatricula, setFormDataVencimentoMatricula] = useState("");
   const [formParcelasTaxa, setFormParcelasTaxa] = useState("1");
   const [formDesconto, setFormDesconto] = useState("0");
+  const [formValorNegociado, setFormValorNegociado] = useState("");
   const [formBolsa, setFormBolsa] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -108,6 +109,22 @@ export default function Matriculas() {
   const [editDesconto, setEditDesconto] = useState("0");
   const [editBolsa, setEditBolsa] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editValorNegociado, setEditValorNegociado] = useState("");
+
+  const { data: planoTurmaEdit } = useQuery({
+    queryKey: ["plano-financeiro-turma", editTurmaId],
+    enabled: !!editTurmaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("planos_financeiros_turma")
+        .select("valor_mensalidade")
+        .eq("turma_id", editTurmaId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const valorBaseEdit = planoTurmaEdit?.valor_mensalidade ?? null;
 
   const { data: planoTurma } = useQuery({
     queryKey: ["plano-financeiro-turma", formTurmaId],
@@ -149,6 +166,7 @@ export default function Matriculas() {
     setFormDataVencimentoMatricula("");
     setFormParcelasTaxa("1");
     setFormDesconto("0");
+    setFormValorNegociado("");
     setFormBolsa(false);
   };
 
@@ -235,6 +253,7 @@ export default function Matriculas() {
     setEditDataVencimentoMatricula(m.data_vencimento_matricula ?? "");
     setEditParcelasTaxa(String(m.parcelas_taxa_matricula ?? 1));
     setEditDesconto(String(m.percentual_desconto ?? 0));
+    setEditValorNegociado("");
     setEditBolsa(m.bolsa_100);
     setEditOpen(true);
   };
@@ -396,6 +415,26 @@ export default function Matriculas() {
                     <Checkbox id="bolsa" checked={formBolsa} onCheckedChange={(v) => setFormBolsa(!!v)} />
                     <Label htmlFor="bolsa" className="cursor-pointer">Bolsa 100%</Label>
                   </div>
+                </div>
+                <div>
+                  <Label>Ou digite o valor negociado da mensalidade (R$)</Label>
+                  <Input
+                    type="number" min="0" step="0.01"
+                    value={formValorNegociado}
+                    disabled={formBolsa || valorBase == null}
+                    onChange={(e) => {
+                      setFormValorNegociado(e.target.value);
+                      if (valorBase && e.target.value) {
+                        const desconto = ((valorBase - Number(e.target.value)) / valorBase) * 100;
+                        setFormDesconto(desconto > 0 ? desconto.toFixed(2) : "0");
+                      }
+                    }}
+                    placeholder={valorBase ? `Ex: ${(valorBase * 0.7).toFixed(2)}` : "Selecione uma turma com plano configurado"}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ao digitar o valor fixo negociado, o desconto (%) acima é calculado automaticamente.
+                  </p>
                 </div>
 
                 {formTurmaId && (
@@ -618,6 +657,26 @@ export default function Matriculas() {
                 <Checkbox id="edit-bolsa" checked={editBolsa} onCheckedChange={(v) => setEditBolsa(!!v)} />
                 <Label htmlFor="edit-bolsa" className="cursor-pointer">Bolsa 100%</Label>
               </div>
+            </div>
+            <div>
+              <Label>Ou digite o valor negociado da mensalidade (R$)</Label>
+              <Input
+                type="number" min="0" step="0.01"
+                value={editValorNegociado}
+                disabled={editBolsa || valorBaseEdit == null}
+                onChange={(e) => {
+                  setEditValorNegociado(e.target.value);
+                  if (valorBaseEdit && e.target.value) {
+                    const desconto = ((valorBaseEdit - Number(e.target.value)) / valorBaseEdit) * 100;
+                    setEditDesconto(desconto > 0 ? desconto.toFixed(2) : "0");
+                  }
+                }}
+                placeholder={valorBaseEdit ? `Ex: ${(valorBaseEdit * 0.7).toFixed(2)}` : undefined}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Ao digitar o valor fixo negociado, o desconto (%) acima é calculado automaticamente.
+              </p>
             </div>
             <div className="flex justify-end gap-3 pt-2 border-t">
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
