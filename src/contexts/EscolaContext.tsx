@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 type EscolaVinculada = {
   escola_id: string;
   nome: string;
+  razao_social: string | null;
   grupo_economico_id: string | null;
   /** true = vínculo real em usuarios_escolas. false = acesso só por ser superadmin (modo administrador). */
   membroReal: boolean;
@@ -46,7 +47,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
 
     const { data: vinculos, error: errVinculos } = await supabase
       .from("usuarios_escolas")
-      .select("escola_id, escolas(id, nome, grupo_economico_id)")
+      .select("escola_id, escolas(id, nome, razao_social, grupo_economico_id)")
       .eq("user_id", user.id)
       .eq("ativo", true);
 
@@ -57,6 +58,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
     const reais: EscolaVinculada[] = (vinculos ?? []).map((r: any) => ({
       escola_id: r.escola_id,
       nome: r.escolas?.nome ?? "Escola",
+      razao_social: r.escolas?.razao_social ?? null,
       grupo_economico_id: r.escolas?.grupo_economico_id ?? null,
       membroReal: true,
     }));
@@ -73,14 +75,14 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
       setIsSuperadmin(true);
       const { data: todasEscolas, error: errTodas } = await supabase
         .from("escolas")
-        .select("id, nome, grupo_economico_id")
+        .select("id, nome, razao_social, grupo_economico_id")
         .order("nome");
 
       if (!errTodas) {
         const idsReais = new Set(reais.map((e) => e.escola_id));
         const extras: EscolaVinculada[] = (todasEscolas ?? [])
           .filter((e) => !idsReais.has(e.id))
-          .map((e) => ({ escola_id: e.id, nome: e.nome, grupo_economico_id: e.grupo_economico_id, membroReal: false }));
+          .map((e) => ({ escola_id: e.id, nome: e.nome, razao_social: e.razao_social ?? null, grupo_economico_id: e.grupo_economico_id, membroReal: false }));
         listaFinal = [...reais, ...extras];
       }
     }

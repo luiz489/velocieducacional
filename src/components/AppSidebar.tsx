@@ -119,7 +119,8 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
   const { escolaAtivaId, escolas, filiaisDaEscolaAtiva, isSuperadmin, emModoAdministrador, setEscolaAtivaId } = useEscolaAtiva();
-  const escolaNome = escolas.find((e) => e.escola_id === escolaAtivaId)?.nome ?? "Carregando…";
+  const escolaAtiva = escolas.find((e) => e.escola_id === escolaAtivaId);
+  const escolaNome = escolaAtiva?.nome ?? "Carregando…";
 
   const { data: escolaLogoPath } = useQuery({
     queryKey: ["escola-logo", escolaAtivaId],
@@ -159,8 +160,10 @@ export function AppSidebar() {
               ) : (
                 <h2 className="text-sm font-bold text-sidebar-primary truncate">{escolaNome}</h2>
               )}
-              <p className="text-xs text-sidebar-foreground/60">
-                {emModoAdministrador ? "Modo Administrador" : "ERP Escolar"}
+              <p className="text-xs text-sidebar-foreground/60 truncate" title={escolaAtiva?.razao_social ?? undefined}>
+                {emModoAdministrador
+                  ? (escolaAtiva?.razao_social ? `Modo Administrador · ${escolaAtiva.razao_social}` : "Modo Administrador")
+                  : "ERP Escolar"}
               </p>
             </div>
           )}
