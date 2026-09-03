@@ -95,6 +95,7 @@ export default function Matriculas() {
   const [formTurmaId, setFormTurmaId] = useState("");
   const [formDataIngresso, setFormDataIngresso] = useState(new Date().toISOString().split("T")[0]);
   const [formDataVencimentoMatricula, setFormDataVencimentoMatricula] = useState("");
+  const [formParcelasTaxa, setFormParcelasTaxa] = useState("1");
   const [formDesconto, setFormDesconto] = useState("0");
   const [formBolsa, setFormBolsa] = useState(false);
 
@@ -103,6 +104,7 @@ export default function Matriculas() {
   const [editTurmaId, setEditTurmaId] = useState("");
   const [editDataIngresso, setEditDataIngresso] = useState("");
   const [editDataVencimentoMatricula, setEditDataVencimentoMatricula] = useState("");
+  const [editParcelasTaxa, setEditParcelasTaxa] = useState("1");
   const [editDesconto, setEditDesconto] = useState("0");
   const [editBolsa, setEditBolsa] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -145,6 +147,7 @@ export default function Matriculas() {
     setFormTurmaId("");
     setFormDataIngresso(new Date().toISOString().split("T")[0]);
     setFormDataVencimentoMatricula("");
+    setFormParcelasTaxa("1");
     setFormDesconto("0");
     setFormBolsa(false);
   };
@@ -211,6 +214,7 @@ export default function Matriculas() {
         data_vencimento_matricula: formDataVencimentoMatricula || undefined,
         percentual_desconto: formBolsa ? 0 : Number(formDesconto || 0),
         bolsa_100: formBolsa,
+        parcelas_taxa_matricula: Number(formParcelasTaxa || 1),
       });
 
       if (ok) {
@@ -229,6 +233,7 @@ export default function Matriculas() {
     setEditTurmaId(m.turma_id);
     setEditDataIngresso(m.data_ingresso);
     setEditDataVencimentoMatricula(m.data_vencimento_matricula ?? "");
+    setEditParcelasTaxa(String(m.parcelas_taxa_matricula ?? 1));
     setEditDesconto(String(m.percentual_desconto ?? 0));
     setEditBolsa(m.bolsa_100);
     setEditOpen(true);
@@ -249,6 +254,7 @@ export default function Matriculas() {
       data_vencimento_matricula: editDataVencimentoMatricula || null,
       percentual_desconto: Number(editDesconto || 0),
       bolsa_100: editBolsa,
+      parcelas_taxa_matricula: Number(editParcelasTaxa || 1),
     });
     setSavingEdit(false);
     if (ok) {
@@ -368,6 +374,13 @@ export default function Matriculas() {
                   <Input type="date" value={formDataVencimentoMatricula} onChange={(e) => setFormDataVencimentoMatricula(e.target.value)} className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-1">
                     Se não preencher, usa a mesma data de ingresso.
+                  </p>
+                </div>
+                <div>
+                  <Label>Parcelas da Taxa de Matrícula</Label>
+                  <Input type="number" min="1" value={formParcelasTaxa} onChange={(e) => setFormParcelasTaxa(e.target.value)} className="mt-1" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    1 = à vista. Mais de 1 divide o valor em parcelas mensais.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 items-end">
@@ -587,6 +600,10 @@ export default function Matriculas() {
             <div>
               <Label>Vencimento da Taxa de Matrícula (opcional)</Label>
               <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Parcelas da Taxa de Matrícula</Label>
+              <Input type="number" min="1" value={editParcelasTaxa} onChange={(e) => setEditParcelasTaxa(e.target.value)} className="mt-1" />
             </div>
             <div className="grid grid-cols-2 gap-3 items-end">
               <div>

@@ -2732,6 +2732,7 @@ export type Database = {
           created_at: string
           data_ingresso: string
           data_vencimento_matricula: string | null
+          parcelas_taxa_matricula: number
           escola_id: string
           id: string
           percentual_desconto: number | null
@@ -2745,6 +2746,7 @@ export type Database = {
           created_at?: string
           data_ingresso?: string
           data_vencimento_matricula?: string | null
+          parcelas_taxa_matricula?: number
           escola_id: string
           id?: string
           percentual_desconto?: number | null
@@ -2758,6 +2760,7 @@ export type Database = {
           created_at?: string
           data_ingresso?: string
           data_vencimento_matricula?: string | null
+          parcelas_taxa_matricula?: number
           escola_id?: string
           id?: string
           percentual_desconto?: number | null

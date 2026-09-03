@@ -57,7 +57,7 @@ export default function ContasPagar() {
   const [filtroCat, setFiltroCat] = useState("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [fornecedorDialogOpen, setFornecedorDialogOpen] = useState(false);
-  const [form, setForm] = useState({ fornecedor_id: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "" });
+  const [form, setForm] = useState({ fornecedor_id: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "", parcelas: "1" });
   const { data: fornecedores = [], isLoading: loadingForn } = useFornecedores();
 
   const { data: contas = [], isLoading } = useQuery({
@@ -102,21 +102,30 @@ export default function ContasPagar() {
         throw new Error("Preencha todos os campos obrigatórios.");
       }
       const forn = fornecedores.find(f => f.id === form.fornecedor_id);
-      const { error } = await supabase.from("contas_a_pagar").insert({
-        fornecedor: forn?.nome || "",
-        fornecedor_id: form.fornecedor_id,
-        descricao: form.descricao,
-        valor: parseFloat(form.valor),
-        categoria: form.categoria,
-        data_vencimento: form.data_vencimento,
-        status: "Pendente",
-        escola_id: escolaAtivaId,
+      const totalParcelas = Math.max(parseInt(form.parcelas) || 1, 1);
+      const dataBase = new Date(form.data_vencimento + "T12:00:00");
+
+      const linhas = Array.from({ length: totalParcelas }, (_, i) => {
+        const vencimento = new Date(dataBase);
+        vencimento.setMonth(vencimento.getMonth() + i);
+        return {
+          fornecedor: forn?.nome || "",
+          fornecedor_id: form.fornecedor_id,
+          descricao: totalParcelas > 1 ? `${form.descricao} ${i + 1}/${totalParcelas}` : form.descricao,
+          valor: parseFloat(form.valor),
+          categoria: form.categoria,
+          data_vencimento: vencimento.toISOString().slice(0, 10),
+          status: "Pendente",
+          escola_id: escolaAtivaId,
+        };
       });
+
+      const { error } = await supabase.from("contas_a_pagar").insert(linhas);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Conta registrada com sucesso!");
-      setForm({ fornecedor_id: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "" });
+      setForm({ fornecedor_id: "", descricao: "", valor: "", categoria: "Outros", data_vencimento: "", parcelas: "1" });
       setDialogOpen(false);
       qc.invalidateQueries({ queryKey: ["contas-a-pagar"] });
     },
@@ -293,9 +302,16 @@ export default function ContasPagar() {
                 </Select>
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Data de Vencimento *</Label>
-              <Input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Data de Vencimento (1ª parcela) *</Label>
+                <Input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Quantidade de Parcelas</Label>
+                <Input type="number" min="1" value={form.parcelas} onChange={e => setForm({ ...form, parcelas: e.target.value })} />
+                <p className="text-xs text-muted-foreground">Mais de 1 gera parcelas mensais, com o mesmo valor cada.</p>
+              </div>
             </div>
             <Button onClick={() => salvar.mutate()} className="w-full mt-2" disabled={salvar.isPending}>
               {salvar.isPending ? "Salvando..." : "Salvar Conta"}

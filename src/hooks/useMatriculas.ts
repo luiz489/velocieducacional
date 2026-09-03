@@ -15,6 +15,7 @@ export type MatriculaResumo = {
   ano_letivo: number;
   data_ingresso: string;
   data_vencimento_matricula: string | null;
+  parcelas_taxa_matricula: number;
   status_pagamento: string;
   percentual_desconto: number | null;
   bolsa_100: boolean;
@@ -43,7 +44,7 @@ export function useMatriculas() {
     const { data, error } = await supabase
       .from("matriculas")
       .select(`
-        id, aluno_id, turma_id, data_ingresso, data_vencimento_matricula, status_pagamento, percentual_desconto, bolsa_100,
+        id, aluno_id, turma_id, data_ingresso, data_vencimento_matricula, parcelas_taxa_matricula, status_pagamento, percentual_desconto, bolsa_100,
         alunos ( nome ),
         turmas ( nome, turno, ano_letivo ),
         financeiro ( status, valor )
@@ -69,6 +70,7 @@ export function useMatriculas() {
         ano_letivo: m.turmas?.ano_letivo ?? 0,
         data_ingresso: m.data_ingresso,
         data_vencimento_matricula: m.data_vencimento_matricula,
+        parcelas_taxa_matricula: m.parcelas_taxa_matricula,
         status_pagamento: m.status_pagamento,
         percentual_desconto: m.percentual_desconto,
         bolsa_100: m.bolsa_100,
@@ -143,12 +145,13 @@ export function useMatriculas() {
 
   const updateMatricula = useCallback(async (
     id: string,
-    dados: { turma_id: string; data_ingresso: string; data_vencimento_matricula?: string | null; percentual_desconto: number; bolsa_100: boolean }
+    dados: { turma_id: string; data_ingresso: string; data_vencimento_matricula?: string | null; percentual_desconto: number; bolsa_100: boolean; parcelas_taxa_matricula?: number }
   ) => {
     const { error } = await supabase.from("matriculas").update({
       turma_id: dados.turma_id,
       data_ingresso: dados.data_ingresso,
       data_vencimento_matricula: dados.data_vencimento_matricula || null,
+      parcelas_taxa_matricula: dados.parcelas_taxa_matricula ?? 1,
       percentual_desconto: dados.bolsa_100 ? 0 : dados.percentual_desconto,
       bolsa_100: dados.bolsa_100,
     }).eq("id", id);
