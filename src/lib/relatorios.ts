@@ -337,3 +337,67 @@ export function gerarBoletim(aluno: { nome: string; turma: string; ano_letivo?: 
   addFooter(doc);
   doc.save(`boletim_${aluno.nome.replace(/\s+/g, "_").toLowerCase()}.pdf`);
 }
+
+interface LancamentoExport {
+  aluno_nome: string;
+  responsavel: string;
+  descricao: string;
+  tipo: string;
+  valor: number;
+  data_vencimento: string;
+  data_pagamento: string | null;
+  status: string;
+}
+
+/** Exporta a lista de Contas a Receber (Financeiro) já filtrada como está na tela, com o resumo por status. */
+export function exportarFinanceiroPDF(
+  lancamentos: LancamentoExport[],
+  resumo: { recebido: number; pendente: number; atrasado: number; inadimplencia: number }
+) {
+  const doc = new jsPDF({ orientation: "landscape" });
+  addHeader(doc, "Contas a Receber");
+
+  const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
+  let y = 48;
+  y = addSectionTitle(doc, "Resumo", y);
+  y = addFieldRow(doc, [
+    { label: "Recebido", value: fmt(resumo.recebido) },
+    { label: "Pendente", value: fmt(resumo.pendente) },
+    { label: "Em Atraso", value: fmt(resumo.atrasado) },
+    { label: "Inadimplência", value: `${resumo.inadimplencia.toFixed(1)}%` },
+  ], y);
+
+  y += 6;
+  y = addSectionTitle(doc, `Lançamentos (${lancamentos.length})`, y);
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 14, right: 14 },
+    head: [["Aluno", "Responsável", "Descrição", "Tipo", "Valor", "Vencimento", "Pagamento", "Status"]],
+    body: lancamentos.map((l) => [
+      l.aluno_nome,
+      l.responsavel,
+      l.descricao,
+      l.tipo,
+      fmt(l.valor),
+      formatarDataBR(l.data_vencimento),
+      l.data_pagamento ? formatarDataBR(l.data_pagamento) : "—",
+      l.status,
+    ]),
+    styles: { fontSize: 8, cellPadding: 3, font: "helvetica" },
+    headStyles: { fillColor: [26, 54, 93], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.column.index === 7) {
+        const status = String(data.cell.raw);
+        if (status === "Pago") data.cell.styles.textColor = [34, 139, 34];
+        else if (status === "Atrasado") data.cell.styles.textColor = [220, 38, 38];
+        else data.cell.styles.textColor = [180, 140, 20];
+      }
+    },
+  });
+
+  addFooter(doc);
+  doc.save(`contas_a_receber_${new Date().toISOString().slice(0, 10)}.pdf`);
+}

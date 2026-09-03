@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useFinanceiro, type LancamentoRow } from "@/hooks/useFinanceiro";
+import { exportarFinanceiroPDF } from "@/lib/relatorios";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -114,7 +115,22 @@ export default function Financeiro() {
           <h1 className="text-2xl font-bold text-foreground">Financeiro</h1>
           <p className="text-sm text-muted-foreground">Contas a receber e gestão de inadimplência</p>
         </div>
-        <Button variant="outline" onClick={() => toast.info("Exportação ainda não implementada.")}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (filtered.length === 0) {
+              toast.error("Nenhum lançamento pra exportar com os filtros atuais.");
+              return;
+            }
+            exportarFinanceiroPDF(filtered, {
+              recebido: totalRecebido,
+              pendente: totalPendente,
+              atrasado: totalAtrasado,
+              inadimplencia,
+            });
+            toast.success("Relatório exportado!");
+          }}
+        >
           <Download className="h-4 w-4 mr-2" />Exportar Relatório
         </Button>
       </div>
