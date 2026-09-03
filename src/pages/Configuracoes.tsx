@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { ShieldCheck, UserPlus, UserCog, Plus, Settings } from "lucide-react";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
+import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
 import { CAMPOS_MATRICULA_CONFIGURAVEIS } from "@/components/AlunoCamposFieldset";
 
 type Papel = { id: string; nome: string; descricao: string | null; escola_id: string | null; papel_sistema: boolean };
@@ -438,6 +439,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     nome: "", cnpj: "", cidade: "", uf: "", endereco: "", cep: "", telefone: "", email: "",
   });
   const { buscarCep, buscando: buscandoCep } = useCepLookup();
+  const { buscarCnpj, buscando: buscandoCnpj } = useCnpjLookup();
 
   const handleCepBlur = async () => {
     const resultado = await buscarCep(dadosForm.cep);
@@ -447,6 +449,20 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
       endereco: f.endereco || resultado.logradouro,
       cidade: resultado.cidade,
       uf: resultado.uf,
+    }));
+  };
+
+  const handleCnpjBlur = async () => {
+    const resultado = await buscarCnpj(dadosForm.cnpj);
+    if (!resultado) return;
+    setDadosForm((f) => ({
+      ...f,
+      nome: f.nome || resultado.nomeFantasia || resultado.razaoSocial,
+      telefone: f.telefone || resultado.telefone,
+      cep: f.cep || resultado.cep,
+      endereco: f.endereco || resultado.logradouro,
+      cidade: f.cidade || resultado.cidade,
+      uf: f.uf || resultado.uf,
     }));
   };
 
@@ -626,7 +642,13 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>CNPJ</Label>
-              <Input value={dadosForm.cnpj} onChange={(e) => setDadosForm({ ...dadosForm, cnpj: e.target.value })} />
+              <Input
+                value={dadosForm.cnpj}
+                onChange={(e) => setDadosForm({ ...dadosForm, cnpj: mascaraCNPJ(e.target.value) })}
+                onBlur={handleCnpjBlur}
+                placeholder="Digite pra preencher os dados automaticamente"
+              />
+              {buscandoCnpj && <p className="text-xs text-muted-foreground mt-1">Buscando dados na Receita Federal...</p>}
             </div>
             <div>
               <Label>Telefone</Label>

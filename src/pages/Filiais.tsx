@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Building2, MapPin, MoreHorizontal } from "lucide-react";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
+import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
 
 type Filial = {
   id: string;
@@ -38,6 +39,7 @@ export default function Filiais() {
   const [editing, setEditing] = useState<Filial | null>(null);
   const [form, setForm] = useState(emptyForm);
   const { buscarCep, buscando: buscandoCep } = useCepLookup();
+  const { buscarCnpj, buscando: buscandoCnpj } = useCnpjLookup();
 
   const handleCepBlur = async () => {
     const resultado = await buscarCep(form.cep);
@@ -47,6 +49,21 @@ export default function Filiais() {
       endereco: f.endereco || resultado.logradouro,
       cidade: resultado.cidade,
       uf: resultado.uf,
+    }));
+  };
+
+  const handleCnpjBlur = async () => {
+    const resultado = await buscarCnpj(form.cnpj);
+    if (!resultado) return;
+    setForm((f) => ({
+      ...f,
+      nome: f.nome || resultado.nomeFantasia || resultado.razaoSocial,
+      telefone: f.telefone || resultado.telefone,
+      email: f.email || resultado.email,
+      cep: f.cep || resultado.cep,
+      endereco: f.endereco || resultado.logradouro,
+      cidade: f.cidade || resultado.cidade,
+      uf: f.uf || resultado.uf,
     }));
   };
 
@@ -196,7 +213,13 @@ export default function Filiais() {
               </div>
               <div>
                 <Label>CNPJ</Label>
-                <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="Importante pra documentos e contratos" />
+                <Input
+                  value={form.cnpj}
+                  onChange={(e) => setForm({ ...form, cnpj: mascaraCNPJ(e.target.value) })}
+                  onBlur={handleCnpjBlur}
+                  placeholder="Digite pra preencher os dados automaticamente"
+                />
+                {buscandoCnpj && <p className="text-xs text-muted-foreground mt-1">Buscando dados na Receita Federal...</p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

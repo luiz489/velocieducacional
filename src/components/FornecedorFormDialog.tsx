@@ -9,6 +9,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
+import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
+import { mascaraCPF } from "@/lib/masks";
+
+/** Aplica máscara de CPF (até 11 dígitos) ou CNPJ (12-14 dígitos), conforme o tamanho digitado. */
+function mascaraCnpjOuCpf(valor: string): string {
+  const digitos = valor.replace(/\D/g, "");
+  return digitos.length > 11 ? mascaraCNPJ(valor) : mascaraCPF(valor);
+}
 import { toast } from "sonner";
 
 export type FornecedorCompleto = {
@@ -53,6 +61,7 @@ export function FornecedorFormDialog({
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const { buscarCep, buscando: buscandoCep } = useCepLookup();
+  const { buscarCnpj, buscando: buscandoCnpj } = useCnpjLookup();
 
   useEffect(() => {
     if (open) {
@@ -81,6 +90,25 @@ export function FornecedorFormDialog({
       bairro: resultado.bairro,
       cidade: resultado.cidade,
       uf: resultado.uf,
+    }));
+  };
+
+  const handleCnpjBlur = async () => {
+    const digitos = form.cnpj_cpf.replace(/\D/g, "");
+    if (digitos.length !== 14) return; // só busca se for CNPJ (14 dígitos) - CPF não tem consulta pública
+    const resultado = await buscarCnpj(form.cnpj_cpf);
+    if (!resultado) return;
+    setForm((f) => ({
+      ...f,
+      nome: f.nome || resultado.nomeFantasia || resultado.razaoSocial,
+      razao_social: f.razao_social || resultado.razaoSocial,
+      telefone: f.telefone || resultado.telefone,
+      email: f.email || resultado.email,
+      cep: f.cep || resultado.cep,
+      endereco: f.endereco || resultado.logradouro,
+      bairro: f.bairro || resultado.bairro,
+      cidade: f.cidade || resultado.cidade,
+      uf: f.uf || resultado.uf,
     }));
   };
 
@@ -145,7 +173,13 @@ export function FornecedorFormDialog({
               </div>
               <div>
                 <Label>CNPJ/CPF</Label>
-                <Input value={form.cnpj_cpf} onChange={(e) => setForm({ ...form, cnpj_cpf: e.target.value })} />
+                <Input
+                  value={form.cnpj_cpf}
+                  onChange={(e) => setForm({ ...form, cnpj_cpf: mascaraCnpjOuCpf(e.target.value) })}
+                  onBlur={handleCnpjBlur}
+                  placeholder="Digite o CNPJ pra preencher os dados automaticamente"
+                />
+                {buscandoCnpj && <p className="text-xs text-muted-foreground mt-1">Buscando dados na Receita Federal...</p>}
               </div>
               <div>
                 <Label>Categoria</Label>
