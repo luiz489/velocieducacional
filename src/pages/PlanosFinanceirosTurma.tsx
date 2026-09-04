@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Pencil, Plus, Wallet, AlertCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Pencil, Plus, Wallet, AlertCircle, Trash2, ListPlus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +19,69 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePlanosFinanceirosTurma, type TurmaComPlano } from "@/hooks/usePlanosFinanceirosTurma";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { toast } from "sonner";
 
 export default function PlanosFinanceirosTurma() {
   const { turmas, loading, salvarPlano } = usePlanosFinanceirosTurma();
   const { escolaAtivaId } = useEscolaAtiva();
+  const qc = useQueryClient();
 
   const [editando, setEditando] = useState<TurmaComPlano | null>(null);
   const [valorMensalidade, setValorMensalidade] = useState("");
   const [numeroParcelas, setNumeroParcelas] = useState("12");
   const [diaVencimento, setDiaVencimento] = useState("10");
   const [salvando, setSalvando] = useState(false);
+
+  const [modalidadesDe, setModalidadesDe] = useState<TurmaComPlano | null>(null);
+  const [novaModNome, setNovaModNome] = useState("");
+  const [novaModValor, setNovaModValor] = useState("");
+
+  const { data: modalidades } = useQuery({
+    queryKey: ["modalidades-turma", modalidadesDe?.turma_id],
+    enabled: !!modalidadesDe,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("modalidades_financeiras_turma")
+        .select("*")
+        .eq("turma_id", modalidadesDe!.turma_id)
+        .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const criarModalidade = useMutation({
+    mutationFn: async () => {
+      if (!modalidadesDe || !escolaAtivaId) return;
+      const { error } = await supabase.from("modalidades_financeiras_turma").insert({
+        turma_id: modalidadesDe.turma_id,
+        escola_id: escolaAtivaId,
+        nome: novaModNome,
+        valor_mensalidade: Number(novaModValor),
+        ordem: modalidades?.length ?? 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Modalidade adicionada!");
+      setNovaModNome("");
+      setNovaModValor("");
+      qc.invalidateQueries({ queryKey: ["modalidades-turma", modalidadesDe?.turma_id] });
+    },
+    onError: (e: any) => toast.error("Erro: " + e.message),
+  });
+
+  const excluirModalidade = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("modalidades_financeiras_turma").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Modalidade removida.");
+      qc.invalidateQueries({ queryKey: ["modalidades-turma", modalidadesDe?.turma_id] });
+    },
+    onError: (e: any) => toast.error("Erro: " + e.message),
+  });
 
   const abrirEdicao = (t: TurmaComPlano) => {
     setEditando(t);
@@ -117,15 +172,22 @@ export default function PlanosFinanceirosTurma() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {t.plano_id ? (
-                      <Button variant="ghost" size="icon" onClick={() => abrirEdicao(t)} title="Editar plano">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button variant="outline" size="sm" onClick={() => abrirEdicao(t)}>
-                        <Plus className="h-4 w-4 mr-1" /> Configurar
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {t.plano_id ? (
+                        <Button variant="ghost" size="icon" onClick={() => abrirEdicao(t)} title="Editar plano">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => abrirEdicao(t)}>
+                          <Plus className="h-4 w-4 mr-1" /> Configurar
+                        </Button>
+                      )}
+                      {t.plano_id && (
+                        <Button variant="ghost" size="icon" onClick={() => setModalidadesDe(t)} title="Modalidades (Integral, Com Almoço etc.)">
+                          <ListPlus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -191,6 +253,55 @@ export default function PlanosFinanceirosTurma() {
               {salvando ? "Salvando..." : "Salvar Plano"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!modalidadesDe} onOpenChange={(open) => !open && setModalidadesDe(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modalidades — {modalidadesDe?.turma_nome}</DialogTitle>
+            <DialogDescription>
+              Variações de valor pra essa turma (ex: Mensal R$ {modalidadesDe?.valor_mensalidade}, Integral, Com
+              Almoço). Na matrícula, a família escolhe uma delas; se nenhuma for escolhida, usa o valor padrão
+              do plano acima.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {modalidades?.length ? (
+              <div className="space-y-2">
+                {modalidades.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+                    <span>{m.nome}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">R$ {Number(m.valor_mensalidade).toFixed(2)}</span>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => excluirModalidade.mutate(m.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma modalidade cadastrada ainda.</p>
+            )}
+
+            <div className="border-t pt-3 space-y-2">
+              <Label>Nova modalidade</Label>
+              <div className="flex gap-2">
+                <Input placeholder="Ex: Integral com Almoço" value={novaModNome} onChange={(e) => setNovaModNome(e.target.value)} />
+                <Input
+                  type="number" step="0.01" min="0" placeholder="R$" className="w-28"
+                  value={novaModValor} onChange={(e) => setNovaModValor(e.target.value)}
+                />
+              </div>
+              <Button
+                size="sm" className="w-full" onClick={() => criarModalidade.mutate()}
+                disabled={!novaModNome || !novaModValor || criarModalidade.isPending}
+              >
+                {criarModalidade.isPending ? "Adicionando..." : "Adicionar"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -93,6 +93,7 @@ export default function Matriculas() {
   const [formAlunoId, setFormAlunoId] = useState("");
 
   const [formTurmaId, setFormTurmaId] = useState("");
+  const [formModalidadeId, setFormModalidadeId] = useState("");
   const [formDataIngresso, setFormDataIngresso] = useState(new Date().toISOString().split("T")[0]);
   const [formDataVencimentoMatricula, setFormDataVencimentoMatricula] = useState("");
   const [formParcelasTaxa, setFormParcelasTaxa] = useState("1");
@@ -103,6 +104,7 @@ export default function Matriculas() {
   const [editOpen, setEditOpen] = useState(false);
   const [editingMatricula, setEditingMatricula] = useState<typeof matriculas[number] | null>(null);
   const [editTurmaId, setEditTurmaId] = useState("");
+  const [editModalidadeId, setEditModalidadeId] = useState("");
   const [editDataIngresso, setEditDataIngresso] = useState("");
   const [editDataVencimentoMatricula, setEditDataVencimentoMatricula] = useState("");
   const [editParcelasTaxa, setEditParcelasTaxa] = useState("1");
@@ -110,6 +112,19 @@ export default function Matriculas() {
   const [editBolsa, setEditBolsa] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editValorNegociado, setEditValorNegociado] = useState("");
+
+  const { data: modalidadesEdit } = useQuery({
+    queryKey: ["modalidades-turma", editTurmaId],
+    enabled: !!editTurmaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("modalidades_financeiras_turma")
+        .select("id, nome, valor_mensalidade")
+        .eq("turma_id", editTurmaId).eq("ativo", true).order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: planoTurmaEdit } = useQuery({
     queryKey: ["plano-financeiro-turma", editTurmaId],
@@ -124,7 +139,21 @@ export default function Matriculas() {
       return data;
     },
   });
-  const valorBaseEdit = planoTurmaEdit?.valor_mensalidade ?? null;
+  const valorBaseEdit = modalidadesEdit?.find((m) => m.id === editModalidadeId)?.valor_mensalidade
+    ?? planoTurmaEdit?.valor_mensalidade ?? null;
+
+  const { data: modalidadesForm } = useQuery({
+    queryKey: ["modalidades-turma", formTurmaId],
+    enabled: !!formTurmaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("modalidades_financeiras_turma")
+        .select("id, nome, valor_mensalidade")
+        .eq("turma_id", formTurmaId).eq("ativo", true).order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: planoTurma } = useQuery({
     queryKey: ["plano-financeiro-turma", formTurmaId],
@@ -140,7 +169,8 @@ export default function Matriculas() {
     },
   });
 
-  const valorBase = planoTurma?.valor_mensalidade ?? null;
+  const valorBase = modalidadesForm?.find((m) => m.id === formModalidadeId)?.valor_mensalidade
+    ?? planoTurma?.valor_mensalidade ?? null;
   const valorDesconto = valorBase != null
     ? (formBolsa ? valorBase : valorBase * (Number(formDesconto || 0) / 100))
     : null;
@@ -167,6 +197,7 @@ export default function Matriculas() {
     setFormParcelasTaxa("1");
     setFormDesconto("0");
     setFormValorNegociado("");
+    setFormModalidadeId("");
     setFormBolsa(false);
   };
 
@@ -233,6 +264,7 @@ export default function Matriculas() {
         percentual_desconto: formBolsa ? 0 : Number(formDesconto || 0),
         bolsa_100: formBolsa,
         parcelas_taxa_matricula: Number(formParcelasTaxa || 1),
+        modalidade_financeira_id: formModalidadeId || undefined,
       });
 
       if (ok) {
@@ -249,6 +281,7 @@ export default function Matriculas() {
   const openEditMatricula = (m: typeof matriculas[number]) => {
     setEditingMatricula(m);
     setEditTurmaId(m.turma_id);
+    setEditModalidadeId(m.modalidade_financeira_id ?? "");
     setEditDataIngresso(m.data_ingresso);
     setEditDataVencimentoMatricula(m.data_vencimento_matricula ?? "");
     setEditParcelasTaxa(String(m.parcelas_taxa_matricula ?? 1));
@@ -264,6 +297,7 @@ export default function Matriculas() {
     const dadosAlteraramFinanceiro =
       editDataIngresso !== editingMatricula.data_ingresso ||
       editTurmaId !== editingMatricula.turma_id ||
+      editModalidadeId !== (editingMatricula.modalidade_financeira_id ?? "") ||
       Number(editDesconto || 0) !== (editingMatricula.percentual_desconto ?? 0) ||
       editBolsa !== editingMatricula.bolsa_100;
 
@@ -274,6 +308,7 @@ export default function Matriculas() {
       percentual_desconto: Number(editDesconto || 0),
       bolsa_100: editBolsa,
       parcelas_taxa_matricula: Number(editParcelasTaxa || 1),
+      modalidade_financeira_id: editModalidadeId || null,
     });
     setSavingEdit(false);
     if (ok) {
@@ -381,6 +416,19 @@ export default function Matriculas() {
                     </SelectContent>
                   </Select>
                 </div>
+                {!!modalidadesForm?.length && (
+                  <div>
+                    <Label>Modalidade</Label>
+                    <Select value={formModalidadeId} onValueChange={setFormModalidadeId}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Mensal (padrão da turma)" /></SelectTrigger>
+                      <SelectContent>
+                        {modalidadesForm.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.nome} — R$ {Number(m.valor_mensalidade).toFixed(2)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label>Data de Ingresso</Label>
                   <Input type="date" value={formDataIngresso} onChange={(e) => setFormDataIngresso(e.target.value)} className="mt-1" />
@@ -632,6 +680,19 @@ export default function Matriculas() {
                 </SelectContent>
               </Select>
             </div>
+            {!!modalidadesEdit?.length && (
+              <div>
+                <Label>Modalidade</Label>
+                <Select value={editModalidadeId} onValueChange={setEditModalidadeId}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Mensal (padrão da turma)" /></SelectTrigger>
+                  <SelectContent>
+                    {modalidadesEdit.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.nome} — R$ {Number(m.valor_mensalidade).toFixed(2)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>Data de Ingresso</Label>
               <Input type="date" value={editDataIngresso} onChange={(e) => setEditDataIngresso(e.target.value)} className="mt-1" />

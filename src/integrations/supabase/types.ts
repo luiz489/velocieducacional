@@ -2742,6 +2742,7 @@ export type Database = {
           data_ingresso: string
           data_vencimento_matricula: string | null
           parcelas_taxa_matricula: number
+          modalidade_financeira_id: string | null
           escola_id: string
           id: string
           percentual_desconto: number | null
@@ -2756,6 +2757,7 @@ export type Database = {
           data_ingresso?: string
           data_vencimento_matricula?: string | null
           parcelas_taxa_matricula?: number
+          modalidade_financeira_id?: string | null
           escola_id: string
           id?: string
           percentual_desconto?: number | null
@@ -2770,6 +2772,7 @@ export type Database = {
           data_ingresso?: string
           data_vencimento_matricula?: string | null
           parcelas_taxa_matricula?: number
+          modalidade_financeira_id?: string | null
           escola_id?: string
           id?: string
           percentual_desconto?: number | null
@@ -2884,6 +2887,50 @@ export type Database = {
             columns: ["matriz_id"]
             isOneToOne: false
             referencedRelation: "matrizes_curriculares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modalidades_financeiras_turma: {
+        Row: {
+          id: string
+          turma_id: string
+          escola_id: string
+          nome: string
+          valor_mensalidade: number
+          ordem: number
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          turma_id: string
+          escola_id: string
+          nome: string
+          valor_mensalidade: number
+          ordem?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          turma_id?: string
+          escola_id?: string
+          nome?: string
+          valor_mensalidade?: number
+          ordem?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modalidades_financeiras_turma_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
             referencedColumns: ["id"]
           },
         ]
