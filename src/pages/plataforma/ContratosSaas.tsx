@@ -14,6 +14,7 @@ import {
 import { Plus, FileSignature, Printer, Settings } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { gerarContratoSaas } from "@/lib/contratoSaas";
+import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
 
 function formatCurrency(v: number | null | undefined) {
   return (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -46,6 +47,7 @@ export default function ContratosSaas() {
     nome_empresa: "", razao_social: "", cnpj: "", endereco: "", cidade: "", uf: "", cep: "", telefone: "", email: "",
   });
   const [textoContrato, setTextoContrato] = useState<string | null>(null);
+  const { buscarCnpj, buscando: buscandoCnpj } = useCnpjLookup();
 
   const { data: plataformaConfig } = useQuery({
     queryKey: ["plataforma-config"],
@@ -86,6 +88,36 @@ export default function ContratosSaas() {
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
+
+  const handleCnpjContratanteBlur = async () => {
+    const { dados, erro } = await buscarCnpj(form.cnpj_contratante);
+    if (erro) { toast({ title: "Erro ao buscar CNPJ", description: erro, variant: "destructive" }); return; }
+    if (!dados) return;
+    setForm((f) => ({
+      ...f,
+      razao_social_contratante: f.razao_social_contratante || dados.razaoSocial,
+      endereco_contratante: f.endereco_contratante || dados.logradouro,
+      cidade_contratante: f.cidade_contratante || dados.cidade,
+      uf_contratante: f.uf_contratante || dados.uf,
+    }));
+  };
+
+  const handleCnpjConfigBlur = async () => {
+    const { dados, erro } = await buscarCnpj(configForm.cnpj);
+    if (erro) { toast({ title: "Erro ao buscar CNPJ", description: erro, variant: "destructive" }); return; }
+    if (!dados) return;
+    setConfigForm((f) => ({
+      ...f,
+      nome_empresa: f.nome_empresa || dados.nomeFantasia || dados.razaoSocial,
+      razao_social: f.razao_social || dados.razaoSocial,
+      telefone: f.telefone || dados.telefone,
+      email: f.email || dados.email,
+      cep: f.cep || dados.cep,
+      endereco: f.endereco || dados.logradouro,
+      cidade: f.cidade || dados.cidade,
+      uf: f.uf || dados.uf,
+    }));
+  };
 
   const { data: planos } = useQuery({
     queryKey: ["planos-saas-select"],
@@ -246,7 +278,13 @@ export default function ContratosSaas() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>CNPJ</Label>
-                  <Input value={form.cnpj_contratante} onChange={(e) => setForm({ ...form, cnpj_contratante: e.target.value })} />
+                  <Input
+                    value={form.cnpj_contratante}
+                    onChange={(e) => setForm({ ...form, cnpj_contratante: mascaraCNPJ(e.target.value) })}
+                    onBlur={handleCnpjContratanteBlur}
+                    placeholder="Digite pra preencher os dados automaticamente"
+                  />
+                  {buscandoCnpj && <p className="text-xs text-muted-foreground mt-1">Buscando dados na Receita Federal...</p>}
                 </div>
                 <div>
                   <Label>Responsável (assinante)</Label>
@@ -331,7 +369,13 @@ export default function ContratosSaas() {
                 </div>
                 <div>
                   <Label>CNPJ</Label>
-                  <Input value={configForm.cnpj} onChange={(e) => setConfigForm({ ...configForm, cnpj: e.target.value })} />
+                  <Input
+                    value={configForm.cnpj}
+                    onChange={(e) => setConfigForm({ ...configForm, cnpj: mascaraCNPJ(e.target.value) })}
+                    onBlur={handleCnpjConfigBlur}
+                    placeholder="Digite pra preencher os dados automaticamente"
+                  />
+                  {buscandoCnpj && <p className="text-xs text-muted-foreground mt-1">Buscando dados na Receita Federal...</p>}
                 </div>
                 <div>
                   <Label>Endereço</Label>
