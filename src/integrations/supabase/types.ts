@@ -4111,6 +4111,7 @@ export type Database = {
         Row: {
           ano_letivo: number
           categoria_id: string | null
+          matriz_curricular_id: string | null
           created_at: string
           escola_id: string
           id: string
@@ -4124,6 +4125,7 @@ export type Database = {
         Insert: {
           ano_letivo: number
           categoria_id?: string | null
+          matriz_curricular_id?: string | null
           created_at?: string
           escola_id: string
           id?: string
@@ -4137,6 +4139,7 @@ export type Database = {
         Update: {
           ano_letivo?: number
           categoria_id?: string | null
+          matriz_curricular_id?: string | null
           created_at?: string
           escola_id?: string
           id?: string
@@ -4148,6 +4151,13 @@ export type Database = {
           vagas_totais?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "turmas_matriz_curricular_id_fkey"
+            columns: ["matriz_curricular_id"]
+            isOneToOne: false
+            referencedRelation: "matrizes_curriculares"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "turmas_categoria_id_fkey"
             columns: ["categoria_id"]

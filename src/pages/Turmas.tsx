@@ -54,12 +54,28 @@ export default function Turmas() {
   const [vagas, setVagas] = useState("30");
   const [categoriaId, setCategoriaId] = useState("");
   const [professorRegenteId, setProfessorRegenteId] = useState("");
+  const [matrizCurricularId, setMatrizCurricularId] = useState("");
 
   const { data: categorias } = useQuery({
     queryKey: ["categorias", escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase.from("categorias").select("id, nome").eq("escola_id", escolaAtivaId!).order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: matrizes } = useQuery({
+    queryKey: ["matrizes-ativas", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("matrizes_curriculares")
+        .select("id, nome, serie, ano_letivo")
+        .eq("escola_id", escolaAtivaId!)
+        .eq("ativo", true)
+        .order("nome");
       if (error) throw error;
       return data;
     },
@@ -100,6 +116,7 @@ export default function Turmas() {
     setVagas("30");
     setCategoriaId("");
     setProfessorRegenteId("");
+    setMatrizCurricularId("");
   };
 
   const openEdit = (t: TurmaRow) => {
@@ -111,6 +128,7 @@ export default function Turmas() {
     setVagas(String(t.vagas_totais));
     setCategoriaId(t.categoria_id ?? "");
     setProfessorRegenteId(t.professor_regente_id ?? "");
+    setMatrizCurricularId(t.matriz_curricular_id ?? "");
     setDialogOpen(true);
   };
 
@@ -126,6 +144,7 @@ export default function Turmas() {
       vagas_totais: Number(vagas),
       categoria_id: categoriaId || null,
       professor_regente_id: professorRegenteId || null,
+      matriz_curricular_id: matrizCurricularId || null,
     };
     const ok = editing ? await updateTurma(editing.id, payload) : await createTurma(escolaAtivaId, payload);
     setSaving(false);
@@ -241,6 +260,15 @@ export default function Turmas() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="col-span-2">
+                  <Label>Matriz Curricular</Label>
+                  <Select value={matrizCurricularId} onValueChange={setMatrizCurricularId}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Opcional - qual grade curricular esta turma segue" /></SelectTrigger>
+                    <SelectContent>
+                      {matrizes?.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome} ({m.serie} - {m.ano_letivo})</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancelar</Button>
@@ -325,7 +353,12 @@ export default function Turmas() {
               const percent = turma.vagas_totais > 0 ? Math.round((turma.alunos_matriculados / turma.vagas_totais) * 100) : 0;
               return (
                 <TableRow key={turma.id}>
-                  <TableCell className="font-medium">{turma.nome}</TableCell>
+                  <TableCell className="font-medium">
+                    {turma.nome}
+                    {turma.matriz_curricular_nome && (
+                      <div className="text-xs text-muted-foreground font-normal">{turma.matriz_curricular_nome}</div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{turma.ano_letivo}</TableCell>
                   <TableCell>{turma.turno}</TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">{turma.sala ?? "—"}</TableCell>

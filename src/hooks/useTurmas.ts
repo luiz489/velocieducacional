@@ -15,6 +15,8 @@ export type TurmaRow = {
   categoria_nome: string | null;
   professor_regente_id: string | null;
   professor_regente_nome: string | null;
+  matriz_curricular_id: string | null;
+  matriz_curricular_nome: string | null;
 };
 
 // Chave compartilhada com useMatriculas.ts - criar/editar uma turma aqui
@@ -31,7 +33,7 @@ export function useTurmas() {
     queryFn: async () => {
       const { data: turmasData, error } = await supabase
         .from("turmas")
-        .select("id, nome, ano_letivo, turno, sala, vagas_totais, categoria_id, professor_regente_id, categorias(nome), professores(nome)")
+        .select("id, nome, ano_letivo, turno, sala, vagas_totais, categoria_id, professor_regente_id, matriz_curricular_id, categorias(nome), professores(nome), matrizes_curriculares(nome)")
         .eq("escola_id", escolaAtivaId!)
         .order("nome");
 
@@ -60,6 +62,8 @@ export function useTurmas() {
         categoria_nome: t.categorias?.nome ?? null,
         professor_regente_id: t.professor_regente_id,
         professor_regente_nome: t.professores?.nome ?? null,
+        matriz_curricular_id: t.matriz_curricular_id,
+        matriz_curricular_nome: t.matrizes_curriculares?.nome ?? null,
         alunos_matriculados: contagem.get(t.id) ?? 0,
       }));
     },
@@ -67,7 +71,7 @@ export function useTurmas() {
 
   const createTurma = async (escolaId: string, turma: {
     nome: string; ano_letivo: number; turno: string; sala?: string | null; vagas_totais: number;
-    categoria_id?: string | null; professor_regente_id?: string | null;
+    categoria_id?: string | null; professor_regente_id?: string | null; matriz_curricular_id?: string | null;
   }) => {
     const { error } = await supabase.from("turmas").insert({ ...turma, escola_id: escolaId });
     if (error) {
@@ -81,7 +85,7 @@ export function useTurmas() {
 
   const updateTurma = async (id: string, turma: {
     nome: string; ano_letivo: number; turno: string; sala?: string | null; vagas_totais: number;
-    categoria_id?: string | null; professor_regente_id?: string | null;
+    categoria_id?: string | null; professor_regente_id?: string | null; matriz_curricular_id?: string | null;
   }) => {
     const { error } = await supabase.from("turmas").update(turma).eq("id", id);
     if (error) {
