@@ -36,7 +36,7 @@ function addHeader(doc: jsPDF, periodo: string) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.text("EduGestão", 14, 16);
+  doc.text("Veloci Educacional", 14, 16);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text("Sistema de Gestão Escolar", 14, 24);
@@ -67,7 +67,7 @@ function addFooter(doc: jsPDF) {
     doc.line(0, ph - 18, pw, ph - 18);
     doc.setFontSize(7);
     doc.setTextColor(120, 130, 140);
-    doc.text("EduGestão — ERP Escolar • Documento gerado automaticamente", 14, ph - 7);
+    doc.text("Veloci Educacional • Documento gerado automaticamente", 14, ph - 7);
     doc.text(`Página ${i} de ${total}`, pw - 14, ph - 7, { align: "right" });
   }
 }

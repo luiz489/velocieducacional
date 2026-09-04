@@ -30,7 +30,7 @@ export function gerarCarnePDF(aluno: CarneAluno, parcelas: CarneParcela[]) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("EduGestão · Carnê de Pagamento", margin, 18);
+  doc.text("Veloci Educacional · Carnê de Pagamento", margin, 18);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(`Emitido em ${new Date().toLocaleDateString("pt-BR")}`, pageW - margin, 18, { align: "right" });
@@ -90,7 +90,7 @@ function drawBoleto(
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text(`Parcela ${num}/${total}`, x + 3, y + 6.5);
-  doc.text("EduGestão", x + w - 3, y + 6.5, { align: "right" });
+  doc.text("Veloci Educacional", x + w - 3, y + 6.5, { align: "right" });
 
   doc.setTextColor(20);
   doc.setFontSize(8);

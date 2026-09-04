@@ -168,7 +168,7 @@ export function AppSidebar() {
               <p className="text-xs text-sidebar-foreground/60 truncate" title={escolaAtiva?.razao_social ?? undefined}>
                 {emModoAdministrador
                   ? (escolaAtiva?.razao_social ? `Modo Administrador · ${escolaAtiva.razao_social}` : "Modo Administrador")
-                  : "ERP Escolar"}
+                  : "Veloci Educacional"}
               </p>
             </div>
           )}
