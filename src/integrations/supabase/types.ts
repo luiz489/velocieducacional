@@ -394,6 +394,7 @@ export type Database = {
           email_responsavel: string | null
           endereco: string | null
           escola_id: string
+          foto_url: string | null
           hora_entrada: string | null
           hora_saida: string | null
           id: string
@@ -435,6 +436,7 @@ export type Database = {
           email_responsavel?: string | null
           endereco?: string | null
           escola_id: string
+          foto_url?: string | null
           hora_entrada?: string | null
           hora_saida?: string | null
           id?: string
@@ -476,6 +478,7 @@ export type Database = {
           email_responsavel?: string | null
           endereco?: string | null
           escola_id?: string
+          foto_url?: string | null
           hora_entrada?: string | null
           hora_saida?: string | null
           id?: string
