@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Landmark, CheckCircle2, Settings } from "lucide-react";
+import { Landmark, CheckCircle2, Settings, Trash2, Plus, ListChecks } from "lucide-react";
 
 /**
  * Catálogo de bancos com integração disponível no sistema. Pra adicionar um
@@ -94,6 +94,8 @@ export default function ParametrizacoesFinanceiras() {
         onOpenChange={(open) => setBancoAberto(open ? "sicredi" : null)}
         escolaId={escolaAtivaId}
       />
+
+      <ValoresOpcionaisMatricula escolaId={escolaAtivaId} />
     </div>
   );
 }
@@ -202,5 +204,105 @@ function SicrediDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ValoresOpcionaisMatricula({ escolaId }: { escolaId: string | null }) {
+  const qc = useQueryClient();
+  const [nome, setNome] = useState("");
+  const [valor, setValor] = useState("");
+
+  const { data: opcionais } = useQuery({
+    queryKey: ["valores-opcionais-matricula", escolaId],
+    enabled: !!escolaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("valores_opcionais_matricula")
+        .select("*")
+        .eq("escola_id", escolaId!)
+        .eq("ativo", true)
+        .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const criar = useMutation({
+    mutationFn: async () => {
+      if (!escolaId) return;
+      const { error } = await supabase.from("valores_opcionais_matricula").insert({
+        escola_id: escolaId,
+        nome,
+        valor: Number(valor),
+        ordem: opcionais?.length ?? 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Valor opcional adicionado!");
+      setNome("");
+      setValor("");
+      qc.invalidateQueries({ queryKey: ["valores-opcionais-matricula", escolaId] });
+    },
+    onError: (e: any) => toast.error("Erro: " + e.message),
+  });
+
+  const excluir = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("valores_opcionais_matricula").update({ ativo: false }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Removido.");
+      qc.invalidateQueries({ queryKey: ["valores-opcionais-matricula", escolaId] });
+    },
+    onError: (e: any) => toast.error("Erro: " + e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <ListChecks className="h-4 w-4" /> Valores Opcionais da Matrícula
+        </CardTitle>
+        <CardDescription>
+          Itens que a família pode marcar na hora da matrícula, somando ao valor da mensalidade (ex: Almoço).
+          O desconto/bolsa continua aplicando sobre o total (mensalidade + opcionais marcados).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {opcionais?.length ? (
+          <div className="space-y-2">
+            {opcionais.map((o) => (
+              <div key={o.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
+                <span className="font-medium">{o.nome}</span>
+                <div className="flex items-center gap-3">
+                  <span>R$ {Number(o.valor).toFixed(2)}</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => excluir.mutate(o.id)}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum valor opcional cadastrado ainda.</p>
+        )}
+
+        <div className="flex gap-2 items-end border-t pt-4">
+          <div className="flex-1">
+            <Label>Nome</Label>
+            <Input placeholder="Ex: Almoço" value={nome} onChange={(e) => setNome(e.target.value)} className="mt-1" />
+          </div>
+          <div className="w-32">
+            <Label>Valor (R$)</Label>
+            <Input type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)} className="mt-1" />
+          </div>
+          <Button onClick={() => criar.mutate()} disabled={!nome || !valor || criar.isPending}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

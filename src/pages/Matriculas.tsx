@@ -94,6 +94,7 @@ export default function Matriculas() {
 
   const [formTurmaId, setFormTurmaId] = useState("");
   const [formModalidadeId, setFormModalidadeId] = useState("");
+  const [formOpcionaisIds, setFormOpcionaisIds] = useState<string[]>([]);
   const [formDataIngresso, setFormDataIngresso] = useState(new Date().toISOString().split("T")[0]);
   const [formDataVencimentoMatricula, setFormDataVencimentoMatricula] = useState("");
   const [formParcelasTaxa, setFormParcelasTaxa] = useState("1");
@@ -105,6 +106,7 @@ export default function Matriculas() {
   const [editingMatricula, setEditingMatricula] = useState<typeof matriculas[number] | null>(null);
   const [editTurmaId, setEditTurmaId] = useState("");
   const [editModalidadeId, setEditModalidadeId] = useState("");
+  const [editOpcionaisIds, setEditOpcionaisIds] = useState<string[]>([]);
   const [editDataIngresso, setEditDataIngresso] = useState("");
   const [editDataVencimentoMatricula, setEditDataVencimentoMatricula] = useState("");
   const [editParcelasTaxa, setEditParcelasTaxa] = useState("1");
@@ -112,6 +114,26 @@ export default function Matriculas() {
   const [editBolsa, setEditBolsa] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editValorNegociado, setEditValorNegociado] = useState("");
+
+  const { data: opcionaisDisponiveis } = useQuery({
+    queryKey: ["valores-opcionais-matricula", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("valores_opcionais_matricula")
+        .select("id, nome, valor")
+        .eq("escola_id", escolaAtivaId!).eq("ativo", true).order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const toggleOpcional = (id: string, marcados: string[], setMarcados: (v: string[]) => void) => {
+    setMarcados(marcados.includes(id) ? marcados.filter((x) => x !== id) : [...marcados, id]);
+  };
+
+  const somaOpcionais = (ids: string[]) =>
+    (opcionaisDisponiveis ?? []).filter((o) => ids.includes(o.id)).reduce((s, o) => s + Number(o.valor), 0);
 
   const { data: modalidadesEdit } = useQuery({
     queryKey: ["modalidades-turma", editTurmaId],
@@ -139,8 +161,8 @@ export default function Matriculas() {
       return data;
     },
   });
-  const valorBaseEdit = modalidadesEdit?.find((m) => m.id === editModalidadeId)?.valor_mensalidade
-    ?? planoTurmaEdit?.valor_mensalidade ?? null;
+  const valorBaseEdit = (modalidadesEdit?.find((m) => m.id === editModalidadeId)?.valor_mensalidade
+    ?? planoTurmaEdit?.valor_mensalidade ?? null);
 
   const { data: modalidadesForm } = useQuery({
     queryKey: ["modalidades-turma", formTurmaId],
@@ -169,8 +191,9 @@ export default function Matriculas() {
     },
   });
 
-  const valorBase = modalidadesForm?.find((m) => m.id === formModalidadeId)?.valor_mensalidade
+  const valorBaseSemOpcionais = modalidadesForm?.find((m) => m.id === formModalidadeId)?.valor_mensalidade
     ?? planoTurma?.valor_mensalidade ?? null;
+  const valorBase = valorBaseSemOpcionais != null ? valorBaseSemOpcionais + somaOpcionais(formOpcionaisIds) : null;
   const valorDesconto = valorBase != null
     ? (formBolsa ? valorBase : valorBase * (Number(formDesconto || 0) / 100))
     : null;
@@ -258,7 +281,7 @@ export default function Matriculas() {
         return;
       }
 
-      const ok = await matricularAluno(alunoId, formTurmaId, escolaAtivaId, {
+      const novaMatriculaId = await matricularAluno(alunoId, formTurmaId, escolaAtivaId, {
         data_ingresso: formDataIngresso,
         data_vencimento_matricula: formDataVencimentoMatricula || undefined,
         percentual_desconto: formBolsa ? 0 : Number(formDesconto || 0),
@@ -267,7 +290,12 @@ export default function Matriculas() {
         modalidade_financeira_id: formModalidadeId || undefined,
       });
 
-      if (ok) {
+      if (novaMatriculaId) {
+        if (formOpcionaisIds.length > 0) {
+          await supabase.from("matricula_valores_opcionais").insert(
+            formOpcionaisIds.map((id) => ({ matricula_id: novaMatriculaId as string, valor_opcional_id: id }))
+          );
+        }
         toast.success("Matrícula realizada! As parcelas são geradas automaticamente se a turma já tiver um plano financeiro configurado.");
         setDialogOpen(false);
         resetForm();
@@ -278,7 +306,7 @@ export default function Matriculas() {
     }
   };
 
-  const openEditMatricula = (m: typeof matriculas[number]) => {
+  const openEditMatricula = async (m: typeof matriculas[number]) => {
     setEditingMatricula(m);
     setEditTurmaId(m.turma_id);
     setEditModalidadeId(m.modalidade_financeira_id ?? "");
@@ -288,16 +316,30 @@ export default function Matriculas() {
     setEditDesconto(String(m.percentual_desconto ?? 0));
     setEditValorNegociado("");
     setEditBolsa(m.bolsa_100);
+    const { data: opcionaisAtuais } = await supabase
+      .from("matricula_valores_opcionais")
+      .select("valor_opcional_id")
+      .eq("matricula_id", m.id);
+    setEditOpcionaisIds((opcionaisAtuais ?? []).map((o) => o.valor_opcional_id));
     setEditOpen(true);
   };
 
   const handleSaveEdit = async () => {
     if (!editingMatricula) return;
     setSavingEdit(true);
+    const opcionaisOriginais = await supabase
+      .from("matricula_valores_opcionais")
+      .select("valor_opcional_id")
+      .eq("matricula_id", editingMatricula.id)
+      .then((r) => (r.data ?? []).map((o) => o.valor_opcional_id).sort());
+    const opcionaisNovosOrdenados = [...editOpcionaisIds].sort();
+    const opcionaisMudaram = JSON.stringify(opcionaisOriginais) !== JSON.stringify(opcionaisNovosOrdenados);
+
     const dadosAlteraramFinanceiro =
       editDataIngresso !== editingMatricula.data_ingresso ||
       editTurmaId !== editingMatricula.turma_id ||
       editModalidadeId !== (editingMatricula.modalidade_financeira_id ?? "") ||
+      opcionaisMudaram ||
       Number(editDesconto || 0) !== (editingMatricula.percentual_desconto ?? 0) ||
       editBolsa !== editingMatricula.bolsa_100;
 
@@ -310,6 +352,15 @@ export default function Matriculas() {
       parcelas_taxa_matricula: Number(editParcelasTaxa || 1),
       modalidade_financeira_id: editModalidadeId || null,
     });
+
+    if (ok && opcionaisMudaram) {
+      await supabase.from("matricula_valores_opcionais").delete().eq("matricula_id", editingMatricula.id);
+      if (editOpcionaisIds.length > 0) {
+        await supabase.from("matricula_valores_opcionais").insert(
+          editOpcionaisIds.map((id) => ({ matricula_id: editingMatricula.id, valor_opcional_id: id }))
+        );
+      }
+    }
     setSavingEdit(false);
     if (ok) {
       setEditOpen(false);
@@ -427,6 +478,25 @@ export default function Matriculas() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+                {!!opcionaisDisponiveis?.length && (
+                  <div className="col-span-2">
+                    <Label>Valores Opcionais (somam na mensalidade)</Label>
+                    <div className="mt-1 flex flex-wrap gap-3">
+                      {opcionaisDisponiveis.map((o) => (
+                        <div key={o.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`opc-${o.id}`}
+                            checked={formOpcionaisIds.includes(o.id)}
+                            onCheckedChange={() => toggleOpcional(o.id, formOpcionaisIds, setFormOpcionaisIds)}
+                          />
+                          <Label htmlFor={`opc-${o.id}`} className="cursor-pointer font-normal">
+                            {o.nome} (+R$ {Number(o.valor).toFixed(2)})
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <div>
@@ -691,6 +761,25 @@ export default function Matriculas() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {!!opcionaisDisponiveis?.length && (
+              <div>
+                <Label>Valores Opcionais (somam na mensalidade)</Label>
+                <div className="mt-1 flex flex-wrap gap-3">
+                  {opcionaisDisponiveis.map((o) => (
+                    <div key={o.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`edit-opc-${o.id}`}
+                        checked={editOpcionaisIds.includes(o.id)}
+                        onCheckedChange={() => toggleOpcional(o.id, editOpcionaisIds, setEditOpcionaisIds)}
+                      />
+                      <Label htmlFor={`edit-opc-${o.id}`} className="cursor-pointer font-normal">
+                        {o.nome} (+R$ {Number(o.valor).toFixed(2)})
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             <div>

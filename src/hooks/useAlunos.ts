@@ -136,7 +136,7 @@ export function useAlunos() {
       );
       return false;
     }
-    const { error } = await supabase.from("matriculas").insert({
+    const { data: novaMatricula, error } = await supabase.from("matriculas").insert({
       aluno_id: alunoId,
       turma_id: turmaId,
       escola_id: escolaId,
@@ -146,7 +146,7 @@ export function useAlunos() {
       bolsa_100: opcoes?.bolsa_100 ?? false,
       parcelas_taxa_matricula: opcoes?.parcelas_taxa_matricula ?? 1,
       modalidade_financeira_id: opcoes?.modalidade_financeira_id || null,
-    });
+    }).select("id").single();
     if (error) {
       if (error.code === "23505" || error.message.toLowerCase().includes("matriculas_aluno_turma_unique")) {
         toast.error("Este aluno já está matriculado nesta turma e período.");
@@ -156,7 +156,7 @@ export function useAlunos() {
       return false;
     }
     toast.success("Matrícula realizada com sucesso!");
-    return true;
+    return novaMatricula.id;
   };
 
   return { alunos, turmas, loading, createAluno, updateAluno, inativarAluno, matricularAluno, refetch: fetchAlunos };

@@ -2891,6 +2891,69 @@ export type Database = {
           },
         ]
       }
+      matricula_valores_opcionais: {
+        Row: {
+          matricula_id: string
+          valor_opcional_id: string
+        }
+        Insert: {
+          matricula_id: string
+          valor_opcional_id: string
+        }
+        Update: {
+          matricula_id?: string
+          valor_opcional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matricula_valores_opcionais_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_valores_opcionais_valor_opcional_id_fkey"
+            columns: ["valor_opcional_id"]
+            isOneToOne: false
+            referencedRelation: "valores_opcionais_matricula"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      valores_opcionais_matricula: {
+        Row: {
+          id: string
+          escola_id: string
+          nome: string
+          valor: number
+          ordem: number
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          escola_id: string
+          nome: string
+          valor: number
+          ordem?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          escola_id?: string
+          nome?: string
+          valor?: number
+          ordem?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       modalidades_financeiras_turma: {
         Row: {
           id: string
