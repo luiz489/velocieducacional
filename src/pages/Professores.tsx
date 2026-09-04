@@ -106,7 +106,7 @@ export default function Professores() {
     queryKey: ["professores", escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("professores").select("*").eq("escola_id", escolaAtivaId!).order("nome");
+      const { data, error } = await supabase.from("v_professores_seguro").select("*").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Professor[];
     },

@@ -4269,6 +4269,102 @@ export type Database = {
       }
     }
     Views: {
+      v_professores_seguro: {
+        Row: {
+          id: string
+          nome: string
+          email: string | null
+          telefone: string | null
+          formacao: string | null
+          disciplinas: string[] | null
+          data_admissao: string | null
+          observacoes: string | null
+          ativo: boolean
+          created_at: string
+          updated_at: string
+          escola_id: string
+          tipo_contratacao: string | null
+          foto_url: string | null
+          endereco: string | null
+          cep: string | null
+          bairro: string | null
+          cidade: string | null
+          uf: string | null
+          cpf: string | null
+          rg: string | null
+          cnpj: string | null
+          razao_social: string | null
+          data_nascimento: string | null
+          banco_codigo: string | null
+          banco_nome: string | null
+          agencia: string | null
+          conta: string | null
+          tipo_conta: string | null
+          chave_pix: string | null
+          valor_mensal: number | null
+          dia_pagamento: number | null
+        }
+        Relationships: []
+      }
+      v_funcionarios_seguro: {
+        Row: {
+          id: string
+          escola_id: string
+          nome: string
+          sexo: string | null
+          estado_civil: string | null
+          nome_mae: string | null
+          nome_pai: string | null
+          nacionalidade: string | null
+          naturalidade_cidade: string | null
+          naturalidade_uf: string | null
+          cor_raca: string | null
+          grau_instrucao: string | null
+          endereco: string | null
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          uf: string | null
+          telefone: string | null
+          email: string | null
+          categoria_esocial: string | null
+          cargo: string | null
+          funcao: string | null
+          codigo_cbo: string | null
+          departamento: string | null
+          data_inicio_funcao: string | null
+          tipo_contrato: string | null
+          data_admissao: string | null
+          data_demissao: string | null
+          jornada_semanal_horas: number | null
+          horario_trabalho: string | null
+          ativo: boolean
+          observacoes: string | null
+          created_at: string
+          updated_at: string
+          foto_url: string | null
+          cpf: string | null
+          rg: string | null
+          rg_orgao_emissor: string | null
+          data_nascimento: string | null
+          pis_pasep: string | null
+          ctps_numero: string | null
+          ctps_serie: string | null
+          salario_base: number | null
+          data_vigencia_salario: string | null
+          dia_pagamento: number | null
+          vale_transporte: number | null
+          vale_refeicao: number | null
+          plano_saude: number | null
+          banco_codigo: string | null
+          banco_nome: string | null
+          agencia: string | null
+          conta: string | null
+          tipo_conta: string | null
+          chave_pix: string | null
+        }
+        Relationships: []
+      }
       v_boletim_bimestral: {
         Row: {
           aluno_id: string | null
