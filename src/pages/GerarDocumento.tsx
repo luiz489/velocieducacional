@@ -92,7 +92,22 @@ export default function GerarDocumento() {
       if (error) throw error;
       return data as string;
     },
-    onSuccess: (html) => {
+    onSuccess: async (html) => {
+      // O caminho do logo (bucket privado) vem marcado em data-logo-path;
+      // aqui geramos a URL assinada temporária e substituímos no HTML antes de exibir.
+      const match = html.match(/data-logo-path="([^"]*)"/);
+      const caminhoLogo = match?.[1];
+      if (caminhoLogo) {
+        const { data: assinada } = await supabase.storage.from("escola-logos").createSignedUrl(caminhoLogo, 3600);
+        if (assinada?.signedUrl) {
+          html = html.replace(`data-logo-path="${caminhoLogo}"`, `src="${assinada.signedUrl}"`);
+        } else {
+          html = html.replace(/<img data-logo-path="[^"]*"[^>]*\/>/, "");
+        }
+      } else if (match) {
+        // Escola sem logo cadastrado - remove a tag em vez de deixar um ícone quebrado
+        html = html.replace(/<img data-logo-path="[^"]*"[^>]*\/>/, "");
+      }
       setResultado(html);
       toast.success("Documento gerado");
     },
