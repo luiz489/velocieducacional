@@ -39,7 +39,7 @@ export default function RedefinirSenha() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (senha.length < 6) {
-      toast.error("A senha precisa ter pelo menos 6 caracteres.");
+      toast.error("A senha precisa ter pelo menos 8 caracteres.");
       return;
     }
     if (senha !== confirmarSenha) {
@@ -80,11 +80,11 @@ export default function RedefinirSenha() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="senha">Nova senha</Label>
-                <Input id="senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} minLength={6} required />
+                <Input id="senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} minLength={8} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmarSenha">Confirmar nova senha</Label>
-                <Input id="confirmarSenha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} minLength={6} required />
+                <Input id="confirmarSenha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} minLength={8} required />
               </div>
               <Button type="submit" className="w-full" disabled={salvando || sessaoValida !== true}>
                 {salvando ? "Salvando..." : "Redefinir Senha"}
