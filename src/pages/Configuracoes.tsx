@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { mascaraTelefone } from "@/lib/masks";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -680,7 +681,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
             </div>
             <div>
               <Label>Telefone</Label>
-              <Input value={dadosForm.telefone} onChange={(e) => setDadosForm({ ...dadosForm, telefone: e.target.value })} />
+              <Input value={dadosForm.telefone} onChange={(e) => setDadosForm({ ...dadosForm, telefone: mascaraTelefone(e.target.value) })} />
             </div>
             <div>
               <Label>CEP</Label>

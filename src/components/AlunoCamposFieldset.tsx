@@ -1,8 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { mascaraCPF } from "@/lib/masks";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { mascaraCPF, mascaraTelefone } from "@/lib/masks";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
+import { useCidadesPorUf } from "@/hooks/useCidadesPorUf";
+import { ESTADOS } from "@/lib/cidadesSP";
 
 export type AlunoCamposDefaultValues = {
   nome?: string;
@@ -32,6 +36,8 @@ export type AlunoCamposDefaultValues = {
   ra_censo?: string | null;
   nome_pai?: string | null;
   nome_mae?: string | null;
+  telefone_pai?: string | null;
+  telefone_mae?: string | null;
   naturalidade_cidade?: string | null;
   naturalidade_uf?: string | null;
   cor_raca?: string | null;
@@ -48,7 +54,7 @@ export type AlunoCamposDefaultValues = {
 export const CAMPOS_MATRICULA_CONFIGURAVEIS = [
   { chave: "responsavel_endereco", rotulo: "Endereço (CEP, bairro, cidade, UF, rua)" },
   { chave: "status", rotulo: "Status (Ativo/Inativo)" },
-  { chave: "filiacao", rotulo: "Nome do pai e da mãe" },
+  { chave: "filiacao", rotulo: "Nome e telefone do pai e da mãe" },
   { chave: "naturalidade", rotulo: "Naturalidade do aluno" },
   { chave: "cor_raca", rotulo: "Cor/Raça" },
   { chave: "ra_censo", rotulo: "RA (Censo Escolar)" },
@@ -65,6 +71,51 @@ export type CamposVisiveis = Record<string, boolean>;
 function visivel(config: CamposVisiveis | undefined, chave: string): boolean {
   if (!config) return true;
   return config[chave] !== false;
+}
+
+/** Par de campos UF + Cidade: UF é uma lista fixa dos 27 estados; a Cidade
+ * é buscada dinamicamente (API do IBGE) conforme a UF escolhida. */
+function CampoUfCidade({
+  labelCidade, labelUf, nomeCidade, nomeUf, ufInicial, cidadeInicial,
+}: {
+  labelCidade: string; labelUf: string; nomeCidade: string; nomeUf: string;
+  ufInicial?: string | null; cidadeInicial?: string | null;
+}) {
+  const [uf, setUf] = useState(ufInicial ?? "");
+  const [cidade, setCidade] = useState(cidadeInicial ?? "");
+  const { data: cidades, isLoading: carregandoCidades } = useCidadesPorUf(uf);
+
+  useEffect(() => {
+    // Se trocar de UF e a cidade atual não pertencer mais a ela, limpa a escolha
+    if (cidades && cidade && !cidades.includes(cidade)) setCidade("");
+  }, [cidades]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <>
+      <div>
+        <Label>{labelUf}</Label>
+        <Select value={uf} onValueChange={setUf}>
+          <SelectTrigger className="mt-1"><SelectValue placeholder="UF" /></SelectTrigger>
+          <SelectContent>
+            {ESTADOS.map((e) => <SelectItem key={e.uf} value={e.uf}>{e.uf} - {e.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <input type="hidden" name={nomeUf} value={uf} />
+      </div>
+      <div>
+        <Label>{labelCidade}</Label>
+        <Select value={cidade} onValueChange={setCidade} disabled={!uf}>
+          <SelectTrigger className="mt-1">
+            <SelectValue placeholder={!uf ? "Escolha a UF primeiro" : carregandoCidades ? "Carregando..." : "Selecione"} />
+          </SelectTrigger>
+          <SelectContent>
+            {cidades?.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <input type="hidden" name={nomeCidade} value={cidade} />
+      </div>
+    </>
+  );
 }
 
 /**
@@ -92,16 +143,31 @@ export function AlunoCamposFieldset({
   const { buscarCep, buscando: buscandoCep } = useCepLookup();
   const enderecoRef = useRef<HTMLInputElement>(null);
   const bairroRef = useRef<HTMLInputElement>(null);
-  const cidadeRef = useRef<HTMLInputElement>(null);
-  const ufRef = useRef<HTMLInputElement>(null);
 
   const handleCepBlur = async () => {
     const resultado = await buscarCep(cep);
     if (!resultado) return;
     if (enderecoRef.current && !enderecoRef.current.value) enderecoRef.current.value = resultado.logradouro;
     if (bairroRef.current) bairroRef.current.value = resultado.bairro;
-    if (cidadeRef.current) cidadeRef.current.value = resultado.cidade;
-    if (ufRef.current) ufRef.current.value = resultado.uf;
+  };
+
+  // Telefones (com máscara)
+  const [telefonePai, setTelefonePai] = useState(defaultValues?.telefone_pai ? mascaraTelefone(defaultValues.telefone_pai) : "");
+  const [telefoneMae, setTelefoneMae] = useState(defaultValues?.telefone_mae ? mascaraTelefone(defaultValues.telefone_mae) : "");
+  const [telefoneResp, setTelefoneResp] = useState(defaultValues?.telefone_responsavel ? mascaraTelefone(defaultValues.telefone_responsavel) : "");
+
+  // Nome do pai/mãe (precisam ser controlados pra alimentar o "copiar dados do pai")
+  const [nomePai, setNomePai] = useState(defaultValues?.nome_pai ?? "");
+  const [nomeMae, setNomeMae] = useState(defaultValues?.nome_mae ?? "");
+  const [nomeResponsavel, setNomeResponsavel] = useState(defaultValues?.responsavel_financeiro ?? "");
+  const [respEhPai, setRespEhPai] = useState(false);
+
+  const handleRespEhPaiChange = (marcado: boolean) => {
+    setRespEhPai(marcado);
+    if (marcado) {
+      setNomeResponsavel(nomePai);
+      setTelefoneResp(telefonePai);
+    }
   };
 
   const mostrarStatus = visivel(camposVisiveis, "status");
@@ -158,14 +224,11 @@ export function AlunoCamposFieldset({
               <Label htmlFor="responsavel_bairro">Bairro</Label>
               <Input id="responsavel_bairro" name="responsavel_bairro" className="mt-1" defaultValue={defaultValues?.responsavel_bairro || ""} ref={bairroRef} />
             </div>
-            <div>
-              <Label htmlFor="responsavel_cidade">Cidade</Label>
-              <Input id="responsavel_cidade" name="responsavel_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_cidade || ""} ref={cidadeRef} />
-            </div>
-            <div>
-              <Label htmlFor="responsavel_uf">UF</Label>
-              <Input id="responsavel_uf" name="responsavel_uf" placeholder="SP" maxLength={2} className="mt-1 max-w-[100px]" defaultValue={defaultValues?.responsavel_uf || ""} ref={ufRef} />
-            </div>
+            <CampoUfCidade
+              labelCidade="Cidade" labelUf="UF"
+              nomeCidade="responsavel_cidade" nomeUf="responsavel_uf"
+              ufInicial={defaultValues?.responsavel_uf} cidadeInicial={defaultValues?.responsavel_cidade}
+            />
           </>
         )}
 
@@ -188,25 +251,40 @@ export function AlunoCamposFieldset({
               <>
                 <div>
                   <Label htmlFor="nome_pai">Nome do Pai</Label>
-                  <Input id="nome_pai" name="nome_pai" className="mt-1" defaultValue={defaultValues?.nome_pai || ""} />
+                  <Input id="nome_pai" name="nome_pai" className="mt-1" value={nomePai} onChange={(e) => setNomePai(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="telefone_pai">Telefone do Pai</Label>
+                  <Input
+                    id="telefone_pai" name="telefone_pai" placeholder="(00) 00000-0000" className="mt-1"
+                    value={telefonePai} onChange={(e) => setTelefonePai(mascaraTelefone(e.target.value))}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="nome_mae">Nome da Mãe</Label>
-                  <Input id="nome_mae" name="nome_mae" className="mt-1" defaultValue={defaultValues?.nome_mae || ""} />
+                  <Input id="nome_mae" name="nome_mae" className="mt-1" value={nomeMae} onChange={(e) => setNomeMae(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="telefone_mae">Telefone da Mãe</Label>
+                  <Input
+                    id="telefone_mae" name="telefone_mae" placeholder="(00) 00000-0000" className="mt-1"
+                    value={telefoneMae} onChange={(e) => setTelefoneMae(mascaraTelefone(e.target.value))}
+                  />
+                </div>
+                <div className="col-span-2 flex items-center gap-2 -mt-1">
+                  <Checkbox id="resp_eh_pai" checked={respEhPai} onCheckedChange={(v) => handleRespEhPaiChange(!!v)} />
+                  <Label htmlFor="resp_eh_pai" className="cursor-pointer font-normal">
+                    O responsável financeiro é o pai (copia nome e telefone automaticamente)
+                  </Label>
                 </div>
               </>
             )}
             {mostrarNaturalidade && (
-              <>
-                <div>
-                  <Label htmlFor="naturalidade_cidade">Cidade de Naturalidade</Label>
-                  <Input id="naturalidade_cidade" name="naturalidade_cidade" className="mt-1" defaultValue={defaultValues?.naturalidade_cidade || ""} />
-                </div>
-                <div>
-                  <Label htmlFor="naturalidade_uf">UF de Naturalidade</Label>
-                  <Input id="naturalidade_uf" name="naturalidade_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.naturalidade_uf || ""} />
-                </div>
-              </>
+              <CampoUfCidade
+                labelCidade="Cidade de Naturalidade" labelUf="UF de Naturalidade"
+                nomeCidade="naturalidade_cidade" nomeUf="naturalidade_uf"
+                ufInicial={defaultValues?.naturalidade_uf} cidadeInicial={defaultValues?.naturalidade_cidade}
+              />
             )}
             {mostrarCorRaca && (
               <div>
@@ -252,13 +330,19 @@ export function AlunoCamposFieldset({
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <Label htmlFor="responsavel">Nome do Responsável</Label>
-            <Input id="responsavel" name="responsavel" placeholder="Nome do responsável" className="mt-1" defaultValue={defaultValues?.responsavel_financeiro} required />
+            <Input
+              id="responsavel" name="responsavel" placeholder="Nome do responsável" className="mt-1"
+              value={nomeResponsavel} onChange={(e) => setNomeResponsavel(e.target.value)} required
+            />
           </div>
           {mostrarRespTelefoneEmail && (
             <>
               <div>
                 <Label htmlFor="telefone">Telefone</Label>
-                <Input id="telefone" name="telefone" placeholder="(00) 00000-0000" className="mt-1" defaultValue={defaultValues?.telefone_responsavel || ""} />
+                <Input
+                  id="telefone" name="telefone" placeholder="(00) 00000-0000" className="mt-1"
+                  value={telefoneResp} onChange={(e) => setTelefoneResp(mascaraTelefone(e.target.value))}
+                />
               </div>
               <div>
                 <Label htmlFor="email">E-mail Responsável</Label>
@@ -320,16 +404,11 @@ export function AlunoCamposFieldset({
               </>
             )}
             {mostrarRespNaturalidade && (
-              <>
-                <div>
-                  <Label htmlFor="responsavel_naturalidade_cidade">Naturalidade (Cidade)</Label>
-                  <Input id="responsavel_naturalidade_cidade" name="responsavel_naturalidade_cidade" className="mt-1" defaultValue={defaultValues?.responsavel_naturalidade_cidade || ""} />
-                </div>
-                <div>
-                  <Label htmlFor="responsavel_naturalidade_uf">Naturalidade (UF)</Label>
-                  <Input id="responsavel_naturalidade_uf" name="responsavel_naturalidade_uf" placeholder="SP" maxLength={2} className="mt-1" defaultValue={defaultValues?.responsavel_naturalidade_uf || ""} />
-                </div>
-              </>
+              <CampoUfCidade
+                labelCidade="Naturalidade (Cidade)" labelUf="Naturalidade (UF)"
+                nomeCidade="responsavel_naturalidade_cidade" nomeUf="responsavel_naturalidade_uf"
+                ufInicial={defaultValues?.responsavel_naturalidade_uf} cidadeInicial={defaultValues?.responsavel_naturalidade_cidade}
+              />
             )}
             <div>
               <Label htmlFor="responsavel_nacionalidade">Nacionalidade</Label>
@@ -380,6 +459,8 @@ export function lerAlunoCamposDeFormData(fd: FormData) {
     ra_censo: (fd.get("ra_censo") as string) || null,
     nome_pai: (fd.get("nome_pai") as string) || null,
     nome_mae: (fd.get("nome_mae") as string) || null,
+    telefone_pai: (fd.get("telefone_pai") as string) || null,
+    telefone_mae: (fd.get("telefone_mae") as string) || null,
     naturalidade_cidade: (fd.get("naturalidade_cidade") as string) || null,
     naturalidade_uf: (fd.get("naturalidade_uf") as string) || null,
     cor_raca: (fd.get("cor_raca") as string) || null,

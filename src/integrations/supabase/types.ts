@@ -402,6 +402,8 @@ export type Database = {
           nome: string
           nome_mae: string | null
           nome_pai: string | null
+          telefone_pai: string | null
+          telefone_mae: string | null
           ra_censo: string | null
           responsavel_bairro: string | null
           responsavel_cep: string | null
@@ -441,6 +443,8 @@ export type Database = {
           nome: string
           nome_mae?: string | null
           nome_pai?: string | null
+          telefone_pai?: string | null
+          telefone_mae?: string | null
           ra_censo?: string | null
           responsavel_bairro?: string | null
           responsavel_cep?: string | null
@@ -480,6 +484,8 @@ export type Database = {
           nome?: string
           nome_mae?: string | null
           nome_pai?: string | null
+          telefone_pai?: string | null
+          telefone_mae?: string | null
           ra_censo?: string | null
           responsavel_bairro?: string | null
           responsavel_cep?: string | null

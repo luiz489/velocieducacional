@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
-import { mascaraCPF } from "@/lib/masks";
+import { mascaraCPF, mascaraTelefone } from "@/lib/masks";
 
 /** Aplica máscara de CPF (até 11 dígitos) ou CNPJ (12-14 dígitos), conforme o tamanho digitado. */
 function mascaraCnpjOuCpf(valor: string): string {
@@ -188,7 +188,7 @@ export function FornecedorFormDialog({
               </div>
               <div>
                 <Label>Telefone</Label>
-                <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
+                <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: mascaraTelefone(e.target.value) })} />
               </div>
               <div>
                 <Label>E-mail</Label>
