@@ -3405,6 +3405,194 @@ export type Database = {
           },
         ]
       }
+      plataforma_configuracoes: {
+        Row: {
+          id: string
+          nome_empresa: string
+          razao_social: string | null
+          cnpj: string | null
+          endereco: string | null
+          cidade: string | null
+          uf: string | null
+          cep: string | null
+          telefone: string | null
+          email: string | null
+          atualizado_em: string
+        }
+        Insert: {
+          id?: string
+          nome_empresa?: string
+          razao_social?: string | null
+          cnpj?: string | null
+          endereco?: string | null
+          cidade?: string | null
+          uf?: string | null
+          cep?: string | null
+          telefone?: string | null
+          email?: string | null
+          atualizado_em?: string
+        }
+        Update: {
+          id?: string
+          nome_empresa?: string
+          razao_social?: string | null
+          cnpj?: string | null
+          endereco?: string | null
+          cidade?: string | null
+          uf?: string | null
+          cep?: string | null
+          telefone?: string | null
+          email?: string | null
+          atualizado_em?: string
+        }
+        Relationships: []
+      }
+      saas_orcamentos: {
+        Row: {
+          id: string
+          nome_prospect: string
+          contato_nome: string | null
+          contato_email: string | null
+          contato_telefone: string | null
+          plano_id: string | null
+          valor_implantacao: number
+          parcelas_implantacao: number
+          valor_mensal_negociado: number | null
+          validade_ate: string | null
+          status: string
+          observacoes: string | null
+          criado_em: string
+          criado_por: string | null
+        }
+        Insert: {
+          id?: string
+          nome_prospect: string
+          contato_nome?: string | null
+          contato_email?: string | null
+          contato_telefone?: string | null
+          plano_id?: string | null
+          valor_implantacao?: number
+          parcelas_implantacao?: number
+          valor_mensal_negociado?: number | null
+          validade_ate?: string | null
+          status?: string
+          observacoes?: string | null
+          criado_em?: string
+          criado_por?: string | null
+        }
+        Update: {
+          id?: string
+          nome_prospect?: string
+          contato_nome?: string | null
+          contato_email?: string | null
+          contato_telefone?: string | null
+          plano_id?: string | null
+          valor_implantacao?: number
+          parcelas_implantacao?: number
+          valor_mensal_negociado?: number | null
+          validade_ate?: string | null
+          status?: string
+          observacoes?: string | null
+          criado_em?: string
+          criado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_orcamentos_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos_saas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_contratos: {
+        Row: {
+          id: string
+          escola_id: string | null
+          orcamento_id: string | null
+          numero_contrato: string | null
+          razao_social_contratante: string
+          cnpj_contratante: string | null
+          endereco_contratante: string | null
+          cidade_contratante: string | null
+          uf_contratante: string | null
+          responsavel_nome: string | null
+          responsavel_cpf: string | null
+          plano_id: string | null
+          valor_implantacao: number
+          parcelas_implantacao: number
+          valor_mensal: number
+          dia_vencimento: number
+          data_inicio: string
+          status: string
+          texto_contrato: string | null
+          criado_em: string
+          criado_por: string | null
+        }
+        Insert: {
+          id?: string
+          escola_id?: string | null
+          orcamento_id?: string | null
+          numero_contrato?: string | null
+          razao_social_contratante: string
+          cnpj_contratante?: string | null
+          endereco_contratante?: string | null
+          cidade_contratante?: string | null
+          uf_contratante?: string | null
+          responsavel_nome?: string | null
+          responsavel_cpf?: string | null
+          plano_id?: string | null
+          valor_implantacao?: number
+          parcelas_implantacao?: number
+          valor_mensal: number
+          dia_vencimento?: number
+          data_inicio?: string
+          status?: string
+          texto_contrato?: string | null
+          criado_em?: string
+          criado_por?: string | null
+        }
+        Update: {
+          id?: string
+          escola_id?: string | null
+          orcamento_id?: string | null
+          numero_contrato?: string | null
+          razao_social_contratante?: string
+          cnpj_contratante?: string | null
+          endereco_contratante?: string | null
+          cidade_contratante?: string | null
+          uf_contratante?: string | null
+          responsavel_nome?: string | null
+          responsavel_cpf?: string | null
+          plano_id?: string | null
+          valor_implantacao?: number
+          parcelas_implantacao?: number
+          valor_mensal?: number
+          dia_vencimento?: number
+          data_inicio?: string
+          status?: string
+          texto_contrato?: string | null
+          criado_em?: string
+          criado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_contratos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saas_contratos_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos_saas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planos_saas: {
         Row: {
           ativo: boolean

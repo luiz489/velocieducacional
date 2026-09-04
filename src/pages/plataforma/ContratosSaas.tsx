@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, FileSignature, Printer, Settings } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, FileSignature, Printer, Settings, MoreHorizontal, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { gerarContratoSaas } from "@/lib/contratoSaas";
 import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
@@ -41,12 +44,15 @@ const emptyForm = {
 export default function ContratosSaas() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [openConfig, setOpenConfig] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [configForm, setConfigForm] = useState({
     nome_empresa: "", razao_social: "", cnpj: "", endereco: "", cidade: "", uf: "", cep: "", telefone: "", email: "",
   });
+  const [contratoAbertoId, setContratoAbertoId] = useState<string | null>(null);
   const [textoContrato, setTextoContrato] = useState<string | null>(null);
+  const textoContratoRef = useRef<HTMLDivElement>(null);
   const { buscarCnpj, buscando: buscandoCnpj } = useCnpjLookup();
 
   const { data: plataformaConfig } = useQuery({
@@ -153,8 +159,7 @@ export default function ContratosSaas() {
 
   const criar = useMutation({
     mutationFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const { error } = await supabase.from("saas_contratos").insert({
+      const payload = {
         numero_contrato: form.numero_contrato || null,
         razao_social_contratante: form.razao_social_contratante,
         cnpj_contratante: form.cnpj_contratante || null,
@@ -170,18 +175,71 @@ export default function ContratosSaas() {
         dia_vencimento: Number(form.dia_vencimento || 10),
         data_inicio: form.data_inicio,
         escola_id: form.escola_id || null,
-        criado_por: userData.user?.id,
-      });
-      if (error) throw error;
+      };
+      if (editingId) {
+        const { error } = await supabase.from("saas_contratos").update(payload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { data: userData } = await supabase.auth.getUser();
+        const { error } = await supabase.from("saas_contratos").insert({ ...payload, criado_por: userData.user?.id });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      toast({ title: "Contrato criado!" });
+      toast({ title: editingId ? "Contrato atualizado!" : "Contrato criado!" });
       qc.invalidateQueries({ queryKey: ["saas-contratos"] });
       setOpen(false);
+      setEditingId(null);
       setForm(emptyForm);
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
+
+  const abrirNovo = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const abrirEdicao = (c: any) => {
+    setEditingId(c.id);
+    setForm({
+      numero_contrato: c.numero_contrato ?? "",
+      razao_social_contratante: c.razao_social_contratante ?? "",
+      cnpj_contratante: c.cnpj_contratante ?? "",
+      endereco_contratante: c.endereco_contratante ?? "",
+      cidade_contratante: c.cidade_contratante ?? "",
+      uf_contratante: c.uf_contratante ?? "",
+      responsavel_nome: c.responsavel_nome ?? "",
+      responsavel_cpf: c.responsavel_cpf ?? "",
+      plano_id: c.plano_id ?? "",
+      valor_implantacao: c.valor_implantacao != null ? String(c.valor_implantacao) : "",
+      parcelas_implantacao: String(c.parcelas_implantacao ?? 1),
+      valor_mensal: c.valor_mensal != null ? String(c.valor_mensal) : "",
+      dia_vencimento: String(c.dia_vencimento ?? 10),
+      data_inicio: c.data_inicio ?? new Date().toISOString().slice(0, 10),
+      escola_id: c.escola_id ?? "",
+    });
+    setOpen(true);
+  };
+
+  const excluir = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("saas_contratos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Contrato excluído." });
+      qc.invalidateQueries({ queryKey: ["saas-contratos"] });
+    },
+    onError: (e: any) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
+  });
+
+  const handleExcluir = (c: any) => {
+    if (!confirm(`Excluir o contrato de "${c.razao_social_contratante}"? Essa ação não pode ser desfeita.`)) return;
+    excluir.mutate(c.id);
+  };
+
 
   const atualizarStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -195,6 +253,11 @@ export default function ContratosSaas() {
   });
 
   const handleGerarContrato = async (contrato: any) => {
+    if (contrato.texto_contrato) {
+      setContratoAbertoId(contrato.id);
+      setTextoContrato(contrato.texto_contrato);
+      return;
+    }
     if (!plataformaConfig) {
       toast({ title: "Erro", description: "Configure os dados da plataforma primeiro.", variant: "destructive" });
       return;
@@ -226,13 +289,29 @@ export default function ContratosSaas() {
         email: plataformaConfig.email,
       }
     );
+    setContratoAbertoId(contrato.id);
     setTextoContrato(texto);
   };
 
+  const salvarTextoContrato = useMutation({
+    mutationFn: async () => {
+      if (!contratoAbertoId || !textoContratoRef.current) return;
+      const html = textoContratoRef.current.innerHTML;
+      const { error } = await supabase.from("saas_contratos").update({ texto_contrato: html }).eq("id", contratoAbertoId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Texto do contrato salvo!" });
+      qc.invalidateQueries({ queryKey: ["saas-contratos"] });
+    },
+    onError: (e: any) => toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" }),
+  });
+
   const handleImprimir = () => {
     const janela = window.open("", "_blank");
-    if (!janela || !textoContrato) return;
-    janela.document.write(`<html><head><title>Contrato</title></head><body>${textoContrato}</body></html>`);
+    const html = textoContratoRef.current?.innerHTML ?? textoContrato;
+    if (!janela || !html) return;
+    janela.document.write(`<html><head><title>Contrato</title></head><body>${html}</body></html>`);
     janela.document.close();
     janela.print();
   };
@@ -246,13 +325,13 @@ export default function ContratosSaas() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={abrirConfig}><Settings className="h-4 w-4 mr-2" />Dados da Contratada</Button>
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Novo Contrato</Button>
+              <Button onClick={abrirNovo}><Plus className="h-4 w-4 mr-2" />Novo Contrato</Button>
             </DialogTrigger>
           <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Novo Contrato SaaS</DialogTitle>
+              <DialogTitle>{editingId ? "Editar Contrato" : "Novo Contrato SaaS"}</DialogTitle>
               <DialogDescription>Dados do cliente contratante.</DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
@@ -346,7 +425,7 @@ export default function ContratosSaas() {
                 disabled={!form.razao_social_contratante || !form.valor_mensal || criar.isPending}
                 className="w-full"
               >
-                {criar.isPending ? "Salvando..." : "Criar Contrato"}
+                {criar.isPending ? "Salvando..." : editingId ? "Salvar Alterações" : "Criar Contrato"}
               </Button>
             </div>
           </DialogContent>
@@ -451,9 +530,18 @@ export default function ContratosSaas() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleGerarContrato(c)}>
-                        <FileSignature className="h-4 w-4 mr-1" /> Gerar
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleGerarContrato(c)}>
+                            <FileSignature className="h-4 w-4 mr-2" /> Gerar / Ver Contrato
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => abrirEdicao(c)}>Editar</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleExcluir(c)}>Excluir</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -463,18 +551,29 @@ export default function ContratosSaas() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!textoContrato} onOpenChange={(open) => !open && setTextoContrato(null)}>
+      <Dialog open={!!textoContrato} onOpenChange={(open) => { if (!open) { setTextoContrato(null); setContratoAbertoId(null); } }}>
         <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Contrato Gerado</DialogTitle>
-            <DialogDescription>Confira o texto antes de imprimir ou enviar para assinatura.</DialogDescription>
+            <DialogDescription>O texto é editável - clique dentro dele pra ajustar antes de salvar ou imprimir.</DialogDescription>
           </DialogHeader>
           {textoContrato && (
             <>
-              <div className="border rounded-md p-4 bg-white" dangerouslySetInnerHTML={{ __html: textoContrato }} />
-              <Button onClick={handleImprimir} className="w-full">
-                <Printer className="h-4 w-4 mr-2" /> Imprimir / Salvar PDF
-              </Button>
+              <div
+                ref={textoContratoRef}
+                className="border rounded-md p-4 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                contentEditable
+                suppressContentEditableWarning
+                dangerouslySetInnerHTML={{ __html: textoContrato }}
+              />
+              <div className="flex gap-2">
+                <Button onClick={() => salvarTextoContrato.mutate()} disabled={salvarTextoContrato.isPending} variant="outline" className="flex-1">
+                  <Save className="h-4 w-4 mr-2" /> {salvarTextoContrato.isPending ? "Salvando..." : "Salvar Alterações"}
+                </Button>
+                <Button onClick={handleImprimir} className="flex-1">
+                  <Printer className="h-4 w-4 mr-2" /> Imprimir / Salvar PDF
+                </Button>
+              </div>
             </>
           )}
         </DialogContent>
