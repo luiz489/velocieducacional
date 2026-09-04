@@ -161,12 +161,23 @@ export function AlunoCamposFieldset({
   const [nomeMae, setNomeMae] = useState(defaultValues?.nome_mae ?? "");
   const [nomeResponsavel, setNomeResponsavel] = useState(defaultValues?.responsavel_financeiro ?? "");
   const [respEhPai, setRespEhPai] = useState(false);
+  const [respEhMae, setRespEhMae] = useState(false);
 
   const handleRespEhPaiChange = (marcado: boolean) => {
     setRespEhPai(marcado);
     if (marcado) {
+      setRespEhMae(false);
       setNomeResponsavel(nomePai);
       setTelefoneResp(telefonePai);
+    }
+  };
+
+  const handleRespEhMaeChange = (marcado: boolean) => {
+    setRespEhMae(marcado);
+    if (marcado) {
+      setRespEhPai(false);
+      setNomeResponsavel(nomeMae);
+      setTelefoneResp(telefoneMae);
     }
   };
 
@@ -275,6 +286,12 @@ export function AlunoCamposFieldset({
                   <Checkbox id="resp_eh_pai" checked={respEhPai} onCheckedChange={(v) => handleRespEhPaiChange(!!v)} />
                   <Label htmlFor="resp_eh_pai" className="cursor-pointer font-normal">
                     O responsável financeiro é o pai (copia nome e telefone automaticamente)
+                  </Label>
+                </div>
+                <div className="col-span-2 flex items-center gap-2 -mt-1">
+                  <Checkbox id="resp_eh_mae" checked={respEhMae} onCheckedChange={(v) => handleRespEhMaeChange(!!v)} />
+                  <Label htmlFor="resp_eh_mae" className="cursor-pointer font-normal">
+                    O responsável financeiro é a mãe (copia nome e telefone automaticamente)
                   </Label>
                 </div>
               </>
