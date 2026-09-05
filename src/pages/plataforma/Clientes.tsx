@@ -20,7 +20,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { Building2, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 function formatCurrency(value: number | null | undefined) {
@@ -81,6 +81,29 @@ export default function Clientes() {
   });
 
   const invalidateClientes = () => queryClient.invalidateQueries({ queryKey: ["plataforma-clientes"] });
+
+  // Agrupa por grupo_economico_id, pra mostrar matriz + filiais juntas em
+  // vez de linhas soltas parecendo clientes sem nenhuma relação entre si.
+  const gruposOrdenados = (() => {
+    if (!clientes) return [];
+    const porGrupo = new Map<string, typeof clientes>();
+    const semGrupo: typeof clientes = [];
+    for (const c of clientes) {
+      if (!c.grupo_economico_id) { semGrupo.push(c); continue; }
+      const lista = porGrupo.get(c.grupo_economico_id) ?? [];
+      lista.push(c);
+      porGrupo.set(c.grupo_economico_id, lista);
+    }
+    const grupos = Array.from(porGrupo.entries()).map(([grupoId, escolas]) => ({
+      grupoId,
+      grupoNome: escolas[0].grupo_nome,
+      escolas: escolas.sort((a, b) => (b.eh_matriz ? 1 : 0) - (a.eh_matriz ? 1 : 0)),
+    }));
+    return [
+      ...grupos,
+      ...semGrupo.map((c) => ({ grupoId: c.escola_id!, grupoNome: null, escolas: [c] })),
+    ];
+  })();
 
   const criarCliente = useMutation({
     mutationFn: async () => {
@@ -205,65 +228,89 @@ export default function Clientes() {
               {!isLoading && (!clientes || clientes.length === 0) && (
                 <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cliente ainda.</TableCell></TableRow>
               )}
-              {clientes?.map((c) => {
-                const noLimiteUsuarios = (c.usuarios_ativos ?? 0) >= (c.limite_usuarios ?? Infinity);
-                const noLimiteAlunos = c.limite_alunos != null && (c.alunos_ativos ?? 0) >= c.limite_alunos;
-                return (
-                  <TableRow key={c.escola_id}>
-                    <TableCell className="font-medium">{c.escola_nome}</TableCell>
-                    <TableCell>{c.plano_atual ?? "—"}</TableCell>
-                    <TableCell>{statusBadge(c.status_assinatura)}</TableCell>
-                    <TableCell className={noLimiteUsuarios ? "text-destructive font-semibold" : ""}>
-                      {c.usuarios_ativos ?? 0} / {c.limite_usuarios ?? "∞"}
-                    </TableCell>
-                    <TableCell className={noLimiteAlunos ? "text-destructive font-semibold" : ""}>
-                      {c.alunos_ativos ?? 0} / {c.limite_alunos ?? "∞"}
-                    </TableCell>
-                    <TableCell>{formatCurrency(c.valor_mensal)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => entrarComoAdmin(c.escola_id!)}>
-                            Entrar como Administrador
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setTrocarPlanoEscolaId(c.escola_id!);
-                              setPlanoSelecionado("");
-                              setValorNegociado("");
-                            }}
-                          >
-                            Trocar de plano
-                          </DropdownMenuItem>
-                          {c.status_assinatura === "trial" && (
-                            <DropdownMenuItem
-                              className="text-emerald-600"
-                              onClick={() => reativar.mutate(c.escola_id!)}
-                            >
-                              Confirmar Assinatura (virar Ativa)
-                            </DropdownMenuItem>
-                          )}
-                          {c.escola_ativa ? (
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => suspender.mutate(c.escola_id!)}
-                            >
-                              Suspender
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem onClick={() => reativar.mutate(c.escola_id!)}>
-                              Reativar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {gruposOrdenados.map((grupo) => (
+                <>
+                  {grupo.escolas.length > 1 && (
+                    <TableRow key={`header-${grupo.grupoId}`} className="bg-muted/50 hover:bg-muted/50">
+                      <TableCell colSpan={7} className="py-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <Building2 className="h-3.5 w-3.5" />
+                          Grupo: {grupo.grupoNome} ({grupo.escolas.length} unidades)
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {grupo.escolas.map((c) => {
+                    const noLimiteUsuarios = (c.usuarios_ativos ?? 0) >= (c.limite_usuarios ?? Infinity);
+                    const noLimiteAlunos = c.limite_alunos != null && (c.alunos_ativos ?? 0) >= c.limite_alunos;
+                    const dentroDeGrupo = grupo.escolas.length > 1;
+                    return (
+                      <TableRow key={c.escola_id}>
+                        <TableCell className="font-medium">
+                          <div className={dentroDeGrupo ? "flex items-center gap-2 pl-4 border-l-2 border-muted ml-1" : ""}>
+                            {c.escola_nome}
+                            {dentroDeGrupo && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                {c.eh_matriz ? "Matriz" : "Filial"}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{c.plano_atual ?? "—"}</TableCell>
+                        <TableCell>{statusBadge(c.status_assinatura)}</TableCell>
+                        <TableCell className={noLimiteUsuarios ? "text-destructive font-semibold" : ""}>
+                          {c.usuarios_ativos ?? 0} / {c.limite_usuarios ?? "∞"}
+                        </TableCell>
+                        <TableCell className={noLimiteAlunos ? "text-destructive font-semibold" : ""}>
+                          {c.alunos_ativos ?? 0} / {c.limite_alunos ?? "∞"}
+                        </TableCell>
+                        <TableCell>{formatCurrency(c.valor_mensal)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => entrarComoAdmin(c.escola_id!)}>
+                                Entrar como Administrador
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setTrocarPlanoEscolaId(c.escola_id!);
+                                  setPlanoSelecionado("");
+                                  setValorNegociado("");
+                                }}
+                              >
+                                Trocar de plano
+                              </DropdownMenuItem>
+                              {c.status_assinatura === "trial" && (
+                                <DropdownMenuItem
+                                  className="text-emerald-600"
+                                  onClick={() => reativar.mutate(c.escola_id!)}
+                                >
+                                  Confirmar Assinatura (virar Ativa)
+                                </DropdownMenuItem>
+                              )}
+                              {c.escola_ativa ? (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => suspender.mutate(c.escola_id!)}
+                                >
+                                  Suspender
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => reativar.mutate(c.escola_id!)}>
+                                  Reativar
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

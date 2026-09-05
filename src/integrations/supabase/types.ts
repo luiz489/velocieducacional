@@ -4558,6 +4558,11 @@ export type Database = {
           escola_ativa: boolean | null
           escola_id: string | null
           escola_nome: string | null
+          escola_codigo: string | null
+          grupo_economico_id: string | null
+          grupo_nome: string | null
+          grupo_codigo: string | null
+          eh_matriz: boolean | null
           limite_alunos: number | null
           limite_usuarios: number | null
           plano_atual: string | null
@@ -5002,6 +5007,11 @@ export type Database = {
           escola_ativa: boolean | null
           escola_id: string | null
           escola_nome: string | null
+          escola_codigo: string | null
+          grupo_economico_id: string | null
+          grupo_nome: string | null
+          grupo_codigo: string | null
+          eh_matriz: boolean | null
           limite_alunos: number | null
           limite_usuarios: number | null
           plano_atual: string | null
