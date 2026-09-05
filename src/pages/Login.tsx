@@ -7,11 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Tela de login apenas - o autocadastro público foi removido de propósito.
+ * Contas novas só são criadas por um administrador da escola (Configurações
+ * → Usuários) ou pelo Modo Administrador (novo cliente), nunca por
+ * qualquer pessoa que chegue nesta tela.
+ */
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [enviandoReset, setEnviandoReset] = useState(false);
   const { toast } = useToast();
@@ -36,33 +40,13 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        toast({
-          title: "Cadastro realizado!",
-          description: "Verifique seu e-mail para confirmar a conta.",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message || "Ocorreu um erro. Tente novamente.",
+        title: "Erro ao entrar",
+        description: error.message || "E-mail ou senha incorretos.",
         variant: "destructive",
       });
     } finally {
@@ -78,24 +62,10 @@ export default function Login() {
             <GraduationCap className="h-14 w-14 text-primary" />
           </div>
           <CardTitle className="text-2xl">Veloci Educacional</CardTitle>
-          <CardDescription>
-            {isSignUp ? "Crie sua conta para acessar o sistema" : "Faça login para acessar o sistema"}
-          </CardDescription>
+          <CardDescription>Faça login para acessar o sistema</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nome completo</Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  maxLength={100}
-                />
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -120,30 +90,22 @@ export default function Login() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Carregando..." : isSignUp ? "Cadastrar" : "Entrar"}
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          {!isSignUp && (
-            <div className="mt-3 text-center text-sm">
-              <button
-                type="button"
-                className="text-muted-foreground underline-offset-4 hover:underline"
-                onClick={handleEsqueciSenha}
-                disabled={enviandoReset}
-              >
-                {enviandoReset ? "Enviando..." : "Esqueci minha senha"}
-              </button>
-            </div>
-          )}
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-3 text-center text-sm">
             <button
               type="button"
-              className="text-primary underline-offset-4 hover:underline"
-              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-muted-foreground underline-offset-4 hover:underline"
+              onClick={handleEsqueciSenha}
+              disabled={enviandoReset}
             >
-              {isSignUp ? "Já tem conta? Faça login" : "Não tem conta? Cadastre-se"}
+              {enviandoReset ? "Enviando..." : "Esqueci minha senha"}
             </button>
           </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Não tem conta? Peça ao administrador da sua escola para te cadastrar.
+          </p>
         </CardContent>
       </Card>
     </div>
