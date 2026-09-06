@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Building2, MoreHorizontal, Plus } from "lucide-react";
+import { MoreHorizontal, Plus, Trash2, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 function formatCurrency(value: number | null | undefined) {
@@ -81,6 +81,31 @@ export default function Clientes() {
   });
 
   const invalidateClientes = () => queryClient.invalidateQueries({ queryKey: ["plataforma-clientes"] });
+
+  const [grupoExpandidoId, setGrupoExpandidoId] = useState<string | null>(null);
+  const timeoutFecharRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const expandirGrupo = (grupoId: string) => {
+    if (timeoutFecharRef.current) clearTimeout(timeoutFecharRef.current);
+    setGrupoExpandidoId(grupoId);
+  };
+  const agendarFecharGrupo = () => {
+    timeoutFecharRef.current = setTimeout(() => setGrupoExpandidoId(null), 200);
+  };
+
+  const excluirCliente = useMutation({
+    mutationFn: async (escolaId: string) => {
+      const { error } = await supabase.rpc("excluir_cliente_saas", { p_escola_id: escolaId });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: "Cliente excluído." }); invalidateClientes(); },
+    onError: (err: any) => toast({ title: "Não foi possível excluir", description: err.message, variant: "destructive" }),
+  });
+
+  const handleExcluir = (nome: string, escolaId: string) => {
+    if (!confirm(`Excluir "${nome}" permanentemente? Isso só funciona se a escola ainda não tiver nenhum dado (alunos, financeiro etc). Essa ação não pode ser desfeita.`)) return;
+    excluirCliente.mutate(escolaId);
+  };
 
   // Agrupa por grupo_economico_id, pra mostrar matriz + filiais juntas em
   // vez de linhas soltas parecendo clientes sem nenhuma relação entre si.
@@ -228,89 +253,102 @@ export default function Clientes() {
               {!isLoading && (!clientes || clientes.length === 0) && (
                 <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cliente ainda.</TableCell></TableRow>
               )}
-              {gruposOrdenados.map((grupo) => (
-                <>
-                  {grupo.escolas.length > 1 && (
-                    <TableRow key={`header-${grupo.grupoId}`} className="bg-muted/50 hover:bg-muted/50">
-                      <TableCell colSpan={7} className="py-2">
-                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                          <Building2 className="h-3.5 w-3.5" />
-                          Grupo: {grupo.grupoNome} ({grupo.escolas.length} unidades)
+              {gruposOrdenados.map((grupo) => {
+                const temFiliais = grupo.escolas.length > 1;
+                const matriz = grupo.escolas.find((e) => e.eh_matriz) ?? grupo.escolas[0];
+                const filiais = grupo.escolas.filter((e) => e.escola_id !== matriz.escola_id);
+                const expandido = grupoExpandidoId === grupo.grupoId;
+
+                const renderLinha = (c: (typeof grupo.escolas)[number], ehFilial: boolean) => {
+                  const noLimiteUsuarios = (c.usuarios_ativos ?? 0) >= (c.limite_usuarios ?? Infinity);
+                  const noLimiteAlunos = c.limite_alunos != null && (c.alunos_ativos ?? 0) >= c.limite_alunos;
+                  return (
+                    <TableRow
+                      key={c.escola_id}
+                      onMouseEnter={() => temFiliais && expandirGrupo(grupo.grupoId)}
+                      onMouseLeave={() => temFiliais && agendarFecharGrupo()}
+                      className={ehFilial ? "bg-muted/30" : ""}
+                    >
+                      <TableCell className="font-medium">
+                        <div className={ehFilial ? "flex items-center gap-2 pl-6 border-l-2 border-muted ml-2" : "flex items-center gap-2"}>
+                          {temFiliais && !ehFilial && (
+                            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expandido ? "rotate-90" : ""}`} />
+                          )}
+                          {c.escola_nome}
+                          {temFiliais && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {ehFilial ? "Filial" : `Matriz · ${filiais.length} filiais`}
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
-                    </TableRow>
-                  )}
-                  {grupo.escolas.map((c) => {
-                    const noLimiteUsuarios = (c.usuarios_ativos ?? 0) >= (c.limite_usuarios ?? Infinity);
-                    const noLimiteAlunos = c.limite_alunos != null && (c.alunos_ativos ?? 0) >= c.limite_alunos;
-                    const dentroDeGrupo = grupo.escolas.length > 1;
-                    return (
-                      <TableRow key={c.escola_id}>
-                        <TableCell className="font-medium">
-                          <div className={dentroDeGrupo ? "flex items-center gap-2 pl-4 border-l-2 border-muted ml-1" : ""}>
-                            {c.escola_nome}
-                            {dentroDeGrupo && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                {c.eh_matriz ? "Matriz" : "Filial"}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{c.plano_atual ?? "—"}</TableCell>
-                        <TableCell>{statusBadge(c.status_assinatura)}</TableCell>
-                        <TableCell className={noLimiteUsuarios ? "text-destructive font-semibold" : ""}>
-                          {c.usuarios_ativos ?? 0} / {c.limite_usuarios ?? "∞"}
-                        </TableCell>
-                        <TableCell className={noLimiteAlunos ? "text-destructive font-semibold" : ""}>
-                          {c.alunos_ativos ?? 0} / {c.limite_alunos ?? "∞"}
-                        </TableCell>
-                        <TableCell>{formatCurrency(c.valor_mensal)}</TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => entrarComoAdmin(c.escola_id!)}>
-                                Entrar como Administrador
-                              </DropdownMenuItem>
+                      <TableCell>{c.plano_atual ?? "—"}</TableCell>
+                      <TableCell>{statusBadge(c.status_assinatura)}</TableCell>
+                      <TableCell className={noLimiteUsuarios ? "text-destructive font-semibold" : ""}>
+                        {c.usuarios_ativos ?? 0} / {c.limite_usuarios ?? "∞"}
+                      </TableCell>
+                      <TableCell className={noLimiteAlunos ? "text-destructive font-semibold" : ""}>
+                        {c.alunos_ativos ?? 0} / {c.limite_alunos ?? "∞"}
+                      </TableCell>
+                      <TableCell>{formatCurrency(c.valor_mensal)}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => entrarComoAdmin(c.escola_id!)}>
+                              Entrar como Administrador
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setTrocarPlanoEscolaId(c.escola_id!);
+                                setPlanoSelecionado("");
+                                setValorNegociado("");
+                              }}
+                            >
+                              Trocar de plano
+                            </DropdownMenuItem>
+                            {c.status_assinatura === "trial" && (
                               <DropdownMenuItem
-                                onClick={() => {
-                                  setTrocarPlanoEscolaId(c.escola_id!);
-                                  setPlanoSelecionado("");
-                                  setValorNegociado("");
-                                }}
+                                className="text-emerald-600"
+                                onClick={() => reativar.mutate(c.escola_id!)}
                               >
-                                Trocar de plano
+                                Confirmar Assinatura (virar Ativa)
                               </DropdownMenuItem>
-                              {c.status_assinatura === "trial" && (
-                                <DropdownMenuItem
-                                  className="text-emerald-600"
-                                  onClick={() => reativar.mutate(c.escola_id!)}
-                                >
-                                  Confirmar Assinatura (virar Ativa)
-                                </DropdownMenuItem>
-                              )}
-                              {c.escola_ativa ? (
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => suspender.mutate(c.escola_id!)}
-                                >
-                                  Suspender
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem onClick={() => reativar.mutate(c.escola_id!)}>
-                                  Reativar
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </>
-              ))}
+                            )}
+                            {c.escola_ativa ? (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => suspender.mutate(c.escola_id!)}
+                              >
+                                Suspender
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => reativar.mutate(c.escola_id!)}>
+                                Reativar
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleExcluir(c.escola_nome!, c.escola_id!)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                };
+
+                return (
+                  <>
+                    {renderLinha(matriz, false)}
+                    {temFiliais && expandido && filiais.map((f) => renderLinha(f, true))}
+                  </>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

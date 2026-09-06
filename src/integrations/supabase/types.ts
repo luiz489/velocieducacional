@@ -4884,6 +4884,10 @@ export type Database = {
         }
         Returns: string
       }
+      excluir_cliente_saas: {
+        Args: { p_escola_id: string }
+        Returns: undefined
+      }
       fn_data_por_extenso: { Args: { p_data?: string }; Returns: string }
       fn_numero_por_extenso: { Args: { n: number }; Returns: string }
       fn_tri_extenso: { Args: { n: number }; Returns: string }
