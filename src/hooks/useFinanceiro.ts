@@ -29,7 +29,6 @@ export function useFinanceiro() {
         matriculas ( alunos ( nome, responsavel_financeiro ) )
       `)
       .eq("escola_id", escolaAtivaId)
-      .eq("faturado", true)
       .order("data_vencimento", { ascending: false });
 
     if (error) {
