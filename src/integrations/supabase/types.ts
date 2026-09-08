@@ -5113,6 +5113,19 @@ export type Database = {
         Args: { p_email: string; p_escola_id: string; p_papel_id: string }
         Returns: undefined
       }
+      vincular_usuario_multi_escola: {
+        Args: { p_email: string; p_escola_ids: string[]; p_papel_nome: string }
+        Returns: undefined
+      }
+      escolas_gerenciaveis_do_grupo: {
+        Args: { p_escola_id: string }
+        Returns: {
+          escola_id: string
+          nome: string
+          eh_matriz: boolean
+          posso_gerenciar: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "staff"

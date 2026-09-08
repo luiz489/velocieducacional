@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { mascaraTelefone } from "@/lib/masks";
@@ -24,10 +24,19 @@ type Papel = { id: string; nome: string; descricao: string | null; escola_id: st
 type Modulo = { id: string; codigo: string; nome: string; ordem: number | null };
 type Permissao = { id: string; modulo_id: string; acao: string };
 type PapelPermissao = { papel_id: string; permissao_id: string };
-type UsuarioEscola = {
-  id: string; user_id: string; papel_id: string; ativo: boolean; criado_em: string;
+type UsuarioEscolaRow = {
+  id: string; user_id: string; papel_id: string; ativo: boolean; criado_em: string; escola_id: string;
   profiles: { full_name: string | null; email: string | null } | null;
   papeis: { nome: string } | null;
+  escolas: { nome: string } | null;
+};
+type EscolaGrupo = { escola_id: string; nome: string; eh_matriz: boolean; posso_gerenciar: boolean };
+type UnidadeDoUsuario = {
+  usuario_escola_id: string; escola_id: string; escola_nome: string;
+  eh_matriz: boolean; papel_nome: string; ativo: boolean; posso_gerenciar: boolean;
+};
+type UsuarioAgrupado = {
+  user_id: string; nome: string; email: string | null; unidades: UnidadeDoUsuario[];
 };
 
 const ACOES = ["visualizar", "criar", "editar", "excluir"] as const;
@@ -47,6 +56,7 @@ export default function Configuracoes() {
   const [novoPapelId, setNovoPapelId] = useState("");
   const [convidarEmail, setConvidarEmail] = useState("");
   const [convidarPapelId, setConvidarPapelId] = useState("");
+  const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<string[]>([]);
 
   const { data: papeis } = useQuery({
     queryKey: ["papeis", escolaAtivaId],
@@ -93,19 +103,63 @@ export default function Configuracoes() {
     },
   });
 
-  const { data: usuarios } = useQuery({
-    queryKey: ["usuarios-escola", escolaAtivaId],
+  const { data: escolasGrupo } = useQuery({
+    queryKey: ["escolas-grupo", escolaAtivaId],
     enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("escolas_gerenciaveis_do_grupo", { p_escola_id: escolaAtivaId });
+      if (error) throw error;
+      return (data ?? []) as EscolaGrupo[];
+    },
+  });
+
+  const idsDoGrupo = useMemo(() => (escolasGrupo ?? []).map((e) => e.escola_id), [escolasGrupo]);
+  const unidadesGerenciaveis = useMemo(
+    () => (escolasGrupo ?? []).filter((e) => e.posso_gerenciar),
+    [escolasGrupo],
+  );
+  const grupoTemFiliais = (escolasGrupo?.length ?? 0) > 1;
+
+  const { data: usuariosRaw } = useQuery({
+    queryKey: ["usuarios-grupo", idsDoGrupo],
+    enabled: idsDoGrupo.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("usuarios_escolas")
-        .select("id, user_id, papel_id, ativo, criado_em, profiles(full_name, email), papeis(nome)")
-        .eq("escola_id", escolaAtivaId)
+        .select("id, user_id, papel_id, ativo, criado_em, escola_id, profiles(full_name, email), papeis(nome), escolas(nome)")
+        .in("escola_id", idsDoGrupo)
         .order("criado_em");
       if (error) throw error;
-      return data as unknown as UsuarioEscola[];
+      return data as unknown as UsuarioEscolaRow[];
     },
   });
+
+  const usuarios = useMemo<UsuarioAgrupado[]>(() => {
+    if (!usuariosRaw) return [];
+    const infoEscola = new Map((escolasGrupo ?? []).map((e) => [e.escola_id, e]));
+    const porUsuario = new Map<string, UsuarioAgrupado>();
+    for (const r of usuariosRaw) {
+      let ag = porUsuario.get(r.user_id);
+      if (!ag) {
+        ag = { user_id: r.user_id, nome: r.profiles?.full_name ?? "—", email: r.profiles?.email ?? null, unidades: [] };
+        porUsuario.set(r.user_id, ag);
+      }
+      const info = infoEscola.get(r.escola_id);
+      ag.unidades.push({
+        usuario_escola_id: r.id,
+        escola_id: r.escola_id,
+        escola_nome: r.escolas?.nome ?? "Unidade",
+        eh_matriz: info?.eh_matriz ?? false,
+        papel_nome: r.papeis?.nome ?? "—",
+        ativo: r.ativo,
+        posso_gerenciar: info?.posso_gerenciar ?? false,
+      });
+    }
+    for (const ag of porUsuario.values()) {
+      ag.unidades.sort((a, b) => Number(b.eh_matriz) - Number(a.eh_matriz) || a.escola_nome.localeCompare(b.escola_nome));
+    }
+    return [...porUsuario.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [usuariosRaw, escolasGrupo]);
 
   const criarPapel = useMutation({
     mutationFn: async () => {
@@ -144,8 +198,14 @@ export default function Configuracoes() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const nomeDoPapel = (id: string) => papeis?.find((p) => p.id === id)?.nome ?? "";
+  const escolasParaGravar = () =>
+    grupoTemFiliais ? unidadesSelecionadas : escolaAtivaId ? [escolaAtivaId] : [];
+
   const criarUsuarioNovo = useMutation({
     mutationFn: async () => {
+      const escola_ids = escolasParaGravar();
+      if (escola_ids.length === 0) throw new Error("Selecione ao menos uma unidade");
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-criar-usuario`,
@@ -159,8 +219,8 @@ export default function Configuracoes() {
             email: novoEmail,
             password: novaSenha,
             full_name: novoNome,
-            escola_id: escolaAtivaId,
-            papel_id: novoPapelId,
+            escola_ids,
+            papel_nome: nomeDoPapel(novoPapelId),
           }),
         }
       );
@@ -170,7 +230,7 @@ export default function Configuracoes() {
     },
     onSuccess: () => {
       toast.success("Usuário criado e vinculado com sucesso");
-      qc.invalidateQueries({ queryKey: ["usuarios-escola"] });
+      qc.invalidateQueries({ queryKey: ["usuarios-grupo"] });
       setConvidarOpen(false);
       setNovoNome("");
       setNovoEmail("");
@@ -182,16 +242,18 @@ export default function Configuracoes() {
 
   const convidarUsuario = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc("vincular_usuario_a_escola", {
-        p_escola_id: escolaAtivaId,
+      const escola_ids = escolasParaGravar();
+      if (escola_ids.length === 0) throw new Error("Selecione ao menos uma unidade");
+      const { error } = await supabase.rpc("vincular_usuario_multi_escola", {
+        p_escola_ids: escola_ids,
         p_email: convidarEmail,
-        p_papel_id: convidarPapelId,
+        p_papel_nome: nomeDoPapel(convidarPapelId),
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Usuário vinculado com sucesso");
-      qc.invalidateQueries({ queryKey: ["usuarios-escola"] });
+      qc.invalidateQueries({ queryKey: ["usuarios-grupo"] });
       setConvidarOpen(false);
       setConvidarEmail("");
       setConvidarPapelId("");
@@ -206,10 +268,45 @@ export default function Configuracoes() {
     },
     onSuccess: () => {
       toast.success("Atualizado");
-      qc.invalidateQueries({ queryKey: ["usuarios-escola"] });
+      qc.invalidateQueries({ queryKey: ["usuarios-grupo"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  useEffect(() => {
+    if (convidarOpen) {
+      setUnidadesSelecionadas(escolaAtivaId ? [escolaAtivaId] : []);
+    }
+  }, [convidarOpen, escolaAtivaId]);
+
+  const toggleUnidade = (id: string) =>
+    setUnidadesSelecionadas((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const podeResetarSenha = (u: UsuarioAgrupado) => u.unidades.some((un) => un.posso_gerenciar);
+
+  const unidadesPicker = grupoTemFiliais ? (
+    <div>
+      <Label>Unidades</Label>
+      <div className="mt-1 space-y-1.5 rounded-md border p-3">
+        {unidadesGerenciaveis.map((e) => (
+          <label key={e.escola_id} className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
+              checked={unidadesSelecionadas.includes(e.escola_id)}
+              onCheckedChange={() => toggleUnidade(e.escola_id)}
+            />
+            <span>{e.nome}</span>
+            {e.eh_matriz && <Badge variant="outline" className="text-[10px]">Matriz</Badge>}
+          </label>
+        ))}
+        {unidadesGerenciaveis.length === 0 && (
+          <p className="text-xs text-muted-foreground">Você não gerencia usuários em nenhuma unidade deste grupo.</p>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">O papel escolhido vale para todas as unidades marcadas.</p>
+    </div>
+  ) : null;
 
   const solicitarResetSenha = async (email: string | undefined) => {
     if (!email) return;
@@ -251,7 +348,7 @@ export default function Configuracoes() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Adicionar usuário à escola</DialogTitle>
+                  <DialogTitle>Adicionar usuário</DialogTitle>
                 </DialogHeader>
                 <Tabs value={abaCadastro} onValueChange={(v) => setAbaCadastro(v as "novo" | "existente")}>
                   <TabsList className="grid grid-cols-2 w-full">
@@ -284,10 +381,15 @@ export default function Configuracoes() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {unidadesPicker}
                     <DialogFooter>
                       <Button
                         onClick={() => criarUsuarioNovo.mutate()}
-                        disabled={!novoNome || !novoEmail || novaSenha.length < 6 || !novoPapelId || criarUsuarioNovo.isPending}
+                        disabled={
+                          !novoNome || !novoEmail || novaSenha.length < 6 || !novoPapelId ||
+                          (grupoTemFiliais && unidadesSelecionadas.length === 0) ||
+                          criarUsuarioNovo.isPending
+                        }
                       >
                         {criarUsuarioNovo.isPending ? "Criando..." : "Criar e vincular"}
                       </Button>
@@ -311,8 +413,16 @@ export default function Configuracoes() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {unidadesPicker}
                     <DialogFooter>
-                      <Button onClick={() => convidarUsuario.mutate()} disabled={!convidarEmail || !convidarPapelId || convidarUsuario.isPending}>
+                      <Button
+                        onClick={() => convidarUsuario.mutate()}
+                        disabled={
+                          !convidarEmail || !convidarPapelId ||
+                          (grupoTemFiliais && unidadesSelecionadas.length === 0) ||
+                          convidarUsuario.isPending
+                        }
+                      >
                         {convidarUsuario.isPending ? "Vinculando..." : "Vincular"}
                       </Button>
                     </DialogFooter>
@@ -329,27 +439,49 @@ export default function Configuracoes() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>E-mail</TableHead>
-                    <TableHead>Papel</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Unidades e papéis</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!usuarios?.length && (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum usuário vinculado ainda.</TableCell></TableRow>
+                  {!usuarios.length && (
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhum usuário vinculado ainda.</TableCell></TableRow>
                   )}
-                  {usuarios?.map((u) => (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.profiles?.full_name ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{u.profiles?.email ?? "—"}</TableCell>
-                      <TableCell><Badge variant="outline">{u.papeis?.nome ?? "—"}</Badge></TableCell>
-                      <TableCell><Badge variant={u.ativo ? "default" : "secondary"}>{u.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button size="sm" variant="ghost" onClick={() => solicitarResetSenha(u.profiles?.email)} disabled={!u.profiles?.email}>
+                  {usuarios.map((u) => (
+                    <TableRow key={u.user_id}>
+                      <TableCell className="font-medium align-top">{u.nome}</TableCell>
+                      <TableCell className="text-muted-foreground align-top">{u.email ?? "—"}</TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-1.5">
+                          {u.unidades.map((un) => (
+                            <div key={un.usuario_escola_id} className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant={un.eh_matriz ? "default" : "outline"} className="text-[10px]">
+                                {un.eh_matriz ? "Matriz" : un.escola_nome}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{un.papel_nome}</span>
+                              {!un.ativo && <span className="text-[10px] text-muted-foreground">(inativo)</span>}
+                              {un.posso_gerenciar && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 px-1.5 text-[10px]"
+                                  onClick={() => toggleAtivo.mutate({ id: un.usuario_escola_id, ativo: !un.ativo })}
+                                >
+                                  {un.ativo ? "Desativar" : "Reativar"}
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right align-top">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => solicitarResetSenha(u.email ?? undefined)}
+                          disabled={!u.email || !podeResetarSenha(u)}
+                        >
                           Resetar Senha
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => toggleAtivo.mutate({ id: u.id, ativo: !u.ativo })}>
-                          {u.ativo ? "Desativar" : "Reativar"}
                         </Button>
                       </TableCell>
                     </TableRow>
