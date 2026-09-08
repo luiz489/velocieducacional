@@ -57,6 +57,8 @@ export default function Configuracoes() {
   const [convidarEmail, setConvidarEmail] = useState("");
   const [convidarPapelId, setConvidarPapelId] = useState("");
   const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<string[]>([]);
+  const [addUnidadeUser, setAddUnidadeUser] = useState<UsuarioAgrupado | null>(null);
+  const [addUnidadeForm, setAddUnidadeForm] = useState({ escola_id: "", papel_id: "" });
 
   const { data: papeis } = useQuery({
     queryKey: ["papeis", escolaAtivaId],
@@ -173,6 +175,29 @@ export default function Configuracoes() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const adicionarUnidade = useMutation({
+    mutationFn: async () => {
+      if (!addUnidadeUser) return;
+      const { error } = await supabase.from("usuarios_escolas").insert({
+        user_id: addUnidadeUser.user_id,
+        escola_id: addUnidadeForm.escola_id,
+        papel_id: addUnidadeForm.papel_id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Usuário liberado na unidade.");
+      setAddUnidadeUser(null);
+      setAddUnidadeForm({ escola_id: "", papel_id: "" });
+      qc.invalidateQueries({ queryKey: ["usuarios-grupo"] });
+      qc.invalidateQueries({ queryKey: ["minhas-permissoes"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const unidadesDisponiveisParaAdd = (u: UsuarioAgrupado) =>
+    unidadesGerenciaveis.filter((e) => !u.unidades.some((un) => un.escola_id === e.escola_id));
 
   const usuarios = useMemo<UsuarioAgrupado[]>(() => {
     if (!usuariosRaw) return [];
@@ -538,7 +563,19 @@ export default function Configuracoes() {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right align-top">
+                      <TableCell className="text-right align-top space-x-1">
+                        {grupoTemFiliais && unidadesDisponiveisParaAdd(u).length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setAddUnidadeForm({ escola_id: "", papel_id: "" });
+                              setAddUnidadeUser(u);
+                            }}
+                          >
+                            + Unidade
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -554,6 +591,53 @@ export default function Configuracoes() {
               </Table>
             </CardContent>
           </Card>
+
+          <Dialog open={!!addUnidadeUser} onOpenChange={(o) => !o && setAddUnidadeUser(null)}>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Liberar {addUnidadeUser?.nome} em outra unidade</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label>Unidade</Label>
+                  <Select
+                    value={addUnidadeForm.escola_id}
+                    onValueChange={(v) => setAddUnidadeForm({ escola_id: v, papel_id: "" })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {addUnidadeUser && unidadesDisponiveisParaAdd(addUnidadeUser).map((e) => (
+                        <SelectItem key={e.escola_id} value={e.escola_id}>
+                          {e.nome}{e.eh_matriz ? " (Matriz)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Papel</Label>
+                  <Select
+                    value={addUnidadeForm.papel_id}
+                    onValueChange={(v) => setAddUnidadeForm({ ...addUnidadeForm, papel_id: v })}
+                    disabled={!addUnidadeForm.escola_id}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione o papel" /></SelectTrigger>
+                    <SelectContent>
+                      {(papeisPorEscola ?? []).filter((p) => p.escola_id === addUnidadeForm.escola_id).map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => adicionarUnidade.mutate()}
+                  disabled={!addUnidadeForm.escola_id || !addUnidadeForm.papel_id || adicionarUnidade.isPending}
+                >
+                  {adicionarUnidade.isPending ? "Liberando..." : "Liberar acesso"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="papeis" className="space-y-4 mt-4">
