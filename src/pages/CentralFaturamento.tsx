@@ -51,7 +51,7 @@ export default function CentralFaturamento() {
         .select("id, descricao, valor, data_vencimento, status, matriculas(alunos(nome))")
         .eq("escola_id", escolaAtivaId!)
         .eq("faturado", false)
-        .eq("tipo", "Mensalidade")
+        .in("tipo", ["Mensalidade", "Curso Extra"])
         .order("data_vencimento");
       if (error) throw error;
       return (data ?? []).map((t: any) => ({
@@ -73,7 +73,7 @@ export default function CentralFaturamento() {
         .select("id, descricao, valor, data_vencimento, status, matriculas(alunos(nome))")
         .eq("escola_id", escolaAtivaId!)
         .eq("faturado", true)
-        .eq("tipo", "Mensalidade")
+        .in("tipo", ["Mensalidade", "Curso Extra"])
         .gte("data_vencimento", inicio)
         .lt("data_vencimento", fim)
         .order("data_vencimento");
@@ -155,8 +155,8 @@ export default function CentralFaturamento() {
           <Receipt className="h-6 w-6" /> Central de Faturamento
         </h1>
         <p className="text-sm text-muted-foreground">
-          Mensalidades geradas na matrícula ficam pendentes até serem faturadas. Só depois de faturado o
-          título aparece em Contas a Receber.
+          Mensalidades e parcelas de cursos extracurriculares ficam pendentes até serem faturadas. Só
+          depois de faturado o título aparece em Contas a Receber.
         </p>
       </div>
 
