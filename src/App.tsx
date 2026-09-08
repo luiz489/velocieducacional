@@ -1,5 +1,9 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, Outlet, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { usePermissoes } from "@/hooks/usePermissoes";
+import { ROTA_MODULO } from "@/lib/permissoesRotas";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -53,6 +57,21 @@ import { EscolaProvider } from "@/contexts/EscolaContext";
 
 const queryClient = new QueryClient();
 
+function RotaProtegida() {
+  const location = useLocation();
+  const { can, loading } = usePermissoes();
+  const modulo = ROTA_MODULO[location.pathname];
+  const bloqueado = !loading && !!modulo && !can(modulo);
+
+  useEffect(() => {
+    if (bloqueado) toast.error("Você não tem acesso a essa área.");
+  }, [bloqueado, location.pathname]);
+
+  if (loading && modulo) return null;
+  if (bloqueado) return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
 
@@ -71,6 +90,7 @@ function ProtectedRoutes() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+        <Route element={<RotaProtegida />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/alunos" element={<Alunos />} />
         <Route path="/turmas" element={<Turmas />} />
@@ -104,6 +124,7 @@ function ProtectedRoutes() {
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/filiais" element={<Filiais />} />
             <Route path="/admin" element={<Configuracoes />} />
+        </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

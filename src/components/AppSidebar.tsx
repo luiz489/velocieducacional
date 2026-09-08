@@ -33,6 +33,8 @@ import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { usePermissoes } from "@/hooks/usePermissoes";
+import { ROTA_MODULO } from "@/lib/permissoesRotas";
 import {
   Sidebar,
   SidebarContent,
@@ -127,6 +129,15 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
   const { escolaAtivaId, escolas, filiaisDaEscolaAtiva, isSuperadmin, emModoAdministrador, setEscolaAtivaId } = useEscolaAtiva();
+  const { can } = usePermissoes();
+
+  const podeVerRota = (url: string) => {
+    const modulo = ROTA_MODULO[url];
+    return !modulo || can(modulo);
+  };
+  const gruposVisiveis = menuGroups
+    .map((g) => ({ ...g, items: g.items.filter((i) => podeVerRota(i.url)) }))
+    .filter((g) => g.items.length > 0);
   const escolaAtiva = escolas.find((e) => e.escola_id === escolaAtivaId);
   const escolaNome = escolaAtiva?.nome ?? "Carregando…";
 
@@ -179,7 +190,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-3">
-        {menuGroups.map((group) => (
+        {gruposVisiveis.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel className="text-sidebar-foreground/50 text-[10px] uppercase tracking-wider font-semibold mb-1">
               {group.label}
@@ -223,30 +234,34 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <NavLink
-                to="/filiais"
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-              >
-                <Building2 className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>Filiais</span>}
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <NavLink
-                to="/configuracoes"
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-              >
-                <Settings className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>Configurações</span>}
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {can("configuracoes") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <NavLink
+                  to="/filiais"
+                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                >
+                  <Building2 className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>Filiais</span>}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          {can("configuracoes") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <NavLink
+                  to="/configuracoes"
+                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>Configurações</span>}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={signOut}

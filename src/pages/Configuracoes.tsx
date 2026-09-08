@@ -33,7 +33,7 @@ type UsuarioEscolaRow = {
 type EscolaGrupo = { escola_id: string; nome: string; eh_matriz: boolean; posso_gerenciar: boolean };
 type UnidadeDoUsuario = {
   usuario_escola_id: string; escola_id: string; escola_nome: string;
-  eh_matriz: boolean; papel_nome: string; ativo: boolean; posso_gerenciar: boolean;
+  eh_matriz: boolean; papel_id: string; papel_nome: string; ativo: boolean; posso_gerenciar: boolean;
 };
 type UsuarioAgrupado = {
   user_id: string; nome: string; email: string | null; unidades: UnidadeDoUsuario[];
@@ -134,6 +134,46 @@ export default function Configuracoes() {
     },
   });
 
+  const { data: papeisPorEscola } = useQuery({
+    queryKey: ["papeis-por-escola", idsDoGrupo],
+    enabled: idsDoGrupo.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("papeis")
+        .select("id, nome, escola_id")
+        .in("escola_id", idsDoGrupo)
+        .order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string; escola_id: string }[];
+    },
+  });
+
+  const mudarPapel = useMutation({
+    mutationFn: async ({ id, papel_id }: { id: string; papel_id: string }) => {
+      const { error } = await supabase.from("usuarios_escolas").update({ papel_id }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Papel atualizado.");
+      qc.invalidateQueries({ queryKey: ["usuarios-grupo"] });
+      qc.invalidateQueries({ queryKey: ["minhas-permissoes"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removerVinculo = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("usuarios_escolas").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Vínculo removido.");
+      qc.invalidateQueries({ queryKey: ["usuarios-grupo"] });
+      qc.invalidateQueries({ queryKey: ["minhas-permissoes"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const usuarios = useMemo<UsuarioAgrupado[]>(() => {
     if (!usuariosRaw) return [];
     const infoEscola = new Map((escolasGrupo ?? []).map((e) => [e.escola_id, e]));
@@ -150,6 +190,7 @@ export default function Configuracoes() {
         escola_id: r.escola_id,
         escola_nome: r.escolas?.nome ?? "Unidade",
         eh_matriz: info?.eh_matriz ?? false,
+        papel_id: r.papel_id,
         papel_nome: r.papeis?.nome ?? "—",
         ativo: r.ativo,
         posso_gerenciar: info?.posso_gerenciar ?? false,
@@ -458,17 +499,40 @@ export default function Configuracoes() {
                               <Badge variant={un.eh_matriz ? "default" : "outline"} className="text-[10px]">
                                 {un.eh_matriz ? "Matriz" : un.escola_nome}
                               </Badge>
-                              <span className="text-xs text-muted-foreground">{un.papel_nome}</span>
+                              {un.posso_gerenciar ? (
+                                <Select
+                                  value={un.papel_id}
+                                  onValueChange={(v) => v !== un.papel_id && mudarPapel.mutate({ id: un.usuario_escola_id, papel_id: v })}
+                                >
+                                  <SelectTrigger className="h-6 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {(papeisPorEscola ?? []).filter((p) => p.escola_id === un.escola_id).map((p) => (
+                                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">{un.papel_nome}</span>
+                              )}
                               {!un.ativo && <span className="text-[10px] text-muted-foreground">(inativo)</span>}
                               {un.posso_gerenciar && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-5 px-1.5 text-[10px]"
-                                  onClick={() => toggleAtivo.mutate({ id: un.usuario_escola_id, ativo: !un.ativo })}
-                                >
-                                  {un.ativo ? "Desativar" : "Reativar"}
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]"
+                                    onClick={() => toggleAtivo.mutate({ id: un.usuario_escola_id, ativo: !un.ativo })}
+                                  >
+                                    {un.ativo ? "Desativar" : "Reativar"}
+                                  </Button>
+                                  <Button
+                                    size="sm" variant="ghost" className="h-5 px-1.5 text-[10px] text-destructive"
+                                    onClick={() => {
+                                      if (confirm(`Remover o acesso de ${u.nome} em ${un.eh_matriz ? "Matriz" : un.escola_nome}?`))
+                                        removerVinculo.mutate(un.usuario_escola_id);
+                                    }}
+                                  >
+                                    Remover
+                                  </Button>
+                                </>
                               )}
                             </div>
                           ))}

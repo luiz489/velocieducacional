@@ -5339,6 +5339,10 @@ export type Database = {
         Args: { p_mov_id: string; p_categoria: string; p_descricao: string; p_terceiro: string }
         Returns: string
       }
+      minhas_permissoes: {
+        Args: { p_escola_id: string }
+        Returns: { modulo_codigo: string; acao: string }[]
+      }
       escolas_gerenciaveis_do_grupo: {
         Args: { p_escola_id: string }
         Returns: {
