@@ -12,6 +12,7 @@ export type DadosContratoSaas = {
   dia_vencimento: number;
   data_inicio: string;
   plano_nome: string | null;
+  meses_fidelidade: number;
 };
 
 export type DadosPlataforma = {
@@ -37,16 +38,19 @@ function fmtData(iso: string) {
 /**
  * Gera o texto completo (HTML) do Contrato de Utilização do Veloci Educacional,
  * no padrão de contrato de empresa de desenvolvimento de software (SaaS B2B):
- * licença de uso, implantação parcelada, mensalidade, SLA detalhado com
- * níveis de severidade, disponibilidade garantida, backup/continuidade de
- * negócio, segurança da informação, atualizações/versionamento, propriedade
- * intelectual, limitação de responsabilidade, LGPD, confidencialidade,
- * não aliciamento de equipe, vigência/rescisão e foro.
+ * licença de uso, implantação parcelada (em tabela), mensalidade (em tabela),
+ * fidelidade (prazo variável), SLA detalhado com níveis de severidade,
+ * disponibilidade garantida, backup/continuidade de negócio, segurança da
+ * informação, atualizações/versionamento, propriedade intelectual,
+ * limitação de responsabilidade, LGPD, confidencialidade, não aliciamento
+ * de equipe, vigência/rescisão e foro.
  */
 export function gerarContratoSaas(dados: DadosContratoSaas, plataforma: DadosPlataforma): string {
   const parcelaImplantacao = dados.parcelas_implantacao > 0
     ? dados.valor_implantacao / dados.parcelas_implantacao
     : dados.valor_implantacao;
+
+  const temFidelidade = dados.meses_fidelidade > 0;
 
   return `
 <div style="font-family:Arial, sans-serif; font-size:12px; max-width:800px; margin:auto; line-height:1.5;">
@@ -91,24 +95,35 @@ intransferível e por prazo determinado de uso do software de gestão escolar ${
 desenvolvido e mantido pela CONTRATADA, disponibilizado na modalidade SaaS (Software as a Service), acessível
 via internet, incluindo os módulos e funcionalidades correspondentes ao plano contratado${dados.plano_nome ? ` (<strong>${dados.plano_nome}</strong>)` : ""},
 bem como a prestação dos serviços de hospedagem, manutenção, suporte técnico e evolução da plataforma, nos
-termos do Acordo de Nível de Serviço (SLA) estabelecido na Cláusula 6ª.</p>
+termos do Acordo de Nível de Serviço (SLA) estabelecido na Cláusula 7ª.</p>
 <p><strong>Parágrafo Único.</strong> A licença de uso não implica em cessão, transferência ou venda do software, do
 código-fonte ou de qualquer direito de propriedade intelectual sobre a plataforma, permanecendo estes de
 titularidade exclusiva da CONTRATADA, nos termos da Lei nº 9.609/98 (Lei do Software).</p>
 
 <p><strong>CLÁUSULA 2ª — DA IMPLANTAÇÃO</strong></p>
 <p>Pela implantação do sistema (configuração inicial, migração de dados, treinamento e disponibilização de acesso),
-a CONTRATANTE pagará à CONTRATADA o valor de <strong>R$ ${fmtMoeda(dados.valor_implantacao)}</strong>,
-${dados.parcelas_implantacao > 1
-    ? `podendo ser parcelado em <strong>${dados.parcelas_implantacao}x de R$ ${fmtMoeda(parcelaImplantacao)}</strong>, mensais e consecutivas.`
-    : `pago em parcela única.`}</p>
+a CONTRATANTE pagará à CONTRATADA os valores abaixo:</p>
+<table style="width:100%; border-collapse:collapse; margin:8px 0;">
+  <tr><td colspan="2" style="background:#e8e8e8; padding:4px; border:1px solid #999; text-align:center;"><strong>Valor de Implantação</strong></td></tr>
+  <tr><td style="border:1px solid #999; padding:4px; width:45%;"><strong>Valor Total</strong></td><td style="border:1px solid #999; padding:4px;">R$ ${fmtMoeda(dados.valor_implantacao)}</td></tr>
+  <tr><td style="border:1px solid #999; padding:4px;"><strong>Forma de Pagamento</strong></td><td style="border:1px solid #999; padding:4px;">${
+    dados.parcelas_implantacao > 1
+      ? `${dados.parcelas_implantacao}x de R$ ${fmtMoeda(parcelaImplantacao)}, mensais e consecutivas`
+      : `Parcela única`
+  }</td></tr>
+</table>
 <p><strong>Parágrafo Único.</strong> A não quitação de qualquer parcela do valor de implantação até a data de
 vencimento sujeitará a CONTRATANTE à suspensão do acesso à plataforma, sem prejuízo da cobrança do débito.</p>
 
 <p><strong>CLÁUSULA 3ª — DA MENSALIDADE (SAAS)</strong></p>
-<p>Pela licença de uso e prestação contínua dos serviços SaaS, a CONTRATANTE pagará à CONTRATADA o valor
-mensal de <strong>R$ ${fmtMoeda(dados.valor_mensal)}</strong>, com vencimento todo dia
-<strong>${dados.dia_vencimento}</strong> de cada mês, a partir de ${fmtData(dados.data_inicio)}.</p>
+<p>Pela licença de uso e prestação contínua dos serviços SaaS, a CONTRATANTE pagará à CONTRATADA os valores
+abaixo:</p>
+<table style="width:100%; border-collapse:collapse; margin:8px 0;">
+  <tr><td colspan="2" style="background:#e8e8e8; padding:4px; border:1px solid #999; text-align:center;"><strong>Mensalidade</strong></td></tr>
+  <tr><td style="border:1px solid #999; padding:4px; width:45%;"><strong>Valor Mensal</strong></td><td style="border:1px solid #999; padding:4px;">R$ ${fmtMoeda(dados.valor_mensal)}</td></tr>
+  <tr><td style="border:1px solid #999; padding:4px;"><strong>Vencimento</strong></td><td style="border:1px solid #999; padding:4px;">Todo dia ${dados.dia_vencimento} de cada mês</td></tr>
+  <tr><td style="border:1px solid #999; padding:4px;"><strong>Início da Cobrança</strong></td><td style="border:1px solid #999; padding:4px;">${fmtData(dados.data_inicio)}</td></tr>
+</table>
 <p><strong>Parágrafo 1º.</strong> O valor mensal poderá ser reajustado anualmente, a cada aniversário deste contrato,
 com base na variação acumulada do IGP-M (FGV) ou índice que vier a substituí-lo, ou por negociação entre as partes.</p>
 <p><strong>Parágrafo 2º.</strong> O atraso no pagamento da mensalidade sujeitará a CONTRATANTE à multa de 2% (dois
@@ -120,19 +135,30 @@ monetária, sem prejuízo da suspensão do acesso à plataforma após 15 (quinze
 CONTRATADA, não eximindo a CONTRATANTE do pagamento em caso de não recebimento do respectivo instrumento
 de cobrança.</p>
 
-<p><strong>CLÁUSULA 5ª — DA IMPLANTAÇÃO E ONBOARDING</strong></p>
+${temFidelidade ? `
+<p><strong>CLÁUSULA 5ª — DA FIDELIDADE</strong></p>
+<p>O presente contrato terá um prazo mínimo de permanência (fidelidade) de <strong>${dados.meses_fidelidade} (${dados.meses_fidelidade === 1 ? "um" : dados.meses_fidelidade} ${dados.meses_fidelidade === 1 ? "mês" : "meses"})</strong>,
+contados a partir da data de início da prestação dos serviços indicada na Cláusula 3ª, prazo necessário para
+amortização dos investimentos e custos de implantação, treinamento e disponibilização da plataforma.</p>
+<p><strong>Parágrafo Único.</strong> Caso a CONTRATANTE solicite o cancelamento do contrato antes do término do
+prazo de fidelidade estabelecido nesta cláusula, ficará sujeita ao pagamento de multa rescisória correspondente
+ao valor das mensalidades remanescentes até o término do período de fidelidade, sem prejuízo dos valores já
+devidos até a data do cancelamento.</p>
+` : ""}
+
+<p><strong>CLÁUSULA ${temFidelidade ? "6ª" : "5ª"} — DA IMPLANTAÇÃO E ONBOARDING</strong></p>
 <p>A CONTRATADA disponibilizará à CONTRATANTE um processo estruturado de onboarding, incluindo treinamento
 inicial da equipe da CONTRATANTE para uso da plataforma, migração assistida dos dados existentes (quando
 aplicável) e acompanhamento durante o período inicial de adoção, conforme cronograma acordado entre as partes.</p>
 
-<p><strong>CLÁUSULA 6ª — DO ACORDO DE NÍVEL DE SERVIÇO (SLA)</strong></p>
-<p><strong>6.1. Disponibilidade.</strong> A CONTRATADA garante disponibilidade mensal da plataforma de
+<p><strong>CLÁUSULA ${temFidelidade ? "7ª" : "6ª"} — DO ACORDO DE NÍVEL DE SERVIÇO (SLA)</strong></p>
+<p><strong>${temFidelidade ? "7" : "6"}.1. Disponibilidade.</strong> A CONTRATADA garante disponibilidade mensal da plataforma de
 <strong>99,5% (noventa e nove vírgula cinco por cento)</strong>, calculada sobre o total de horas do mês, excluídas as
 janelas de manutenção programada previamente comunicadas com, no mínimo, 48 (quarenta e oito) horas de
 antecedência, e eventos de força maior, caso fortuito ou falhas de terceiros (provedores de infraestrutura em
 nuvem, conectividade à internet do lado da CONTRATANTE, ataques de negação de serviço de origem externa).</p>
-<p><strong>6.2. Créditos por descumprimento.</strong> Caso a disponibilidade mensal efetiva fique abaixo do garantido no
-item 6.1, a CONTRATANTE fará jus a créditos na mensalidade seguinte, conforme a tabela abaixo:</p>
+<p><strong>${temFidelidade ? "7" : "6"}.2. Créditos por descumprimento.</strong> Caso a disponibilidade mensal efetiva fique abaixo do garantido no
+item ${temFidelidade ? "7" : "6"}.1, a CONTRATANTE fará jus a créditos na mensalidade seguinte, conforme a tabela abaixo:</p>
 <table style="width:100%; border-collapse:collapse; margin:8px 0;">
   <tr>
     <td style="border:1px solid #999; padding:4px; background:#f0f0f0;"><strong>Disponibilidade Mensal</strong></td>
@@ -142,7 +168,7 @@ item 6.1, a CONTRATANTE fará jus a créditos na mensalidade seguinte, conforme 
   <tr><td style="border:1px solid #999; padding:4px;">Entre 97,0% e 98,99%</td><td style="border:1px solid #999; padding:4px;">10%</td></tr>
   <tr><td style="border:1px solid #999; padding:4px;">Abaixo de 97,0%</td><td style="border:1px solid #999; padding:4px;">20%</td></tr>
 </table>
-<p><strong>6.3. Níveis de severidade de chamados.</strong> Os chamados de suporte técnico abertos pela CONTRATANTE
+<p><strong>${temFidelidade ? "7" : "6"}.3. Níveis de severidade de chamados.</strong> Os chamados de suporte técnico abertos pela CONTRATANTE
 serão classificados e atendidos conforme os prazos de primeira resposta e meta de resolução abaixo:</p>
 <table style="width:100%; border-collapse:collapse; margin:8px 0;">
   <tr>
@@ -176,22 +202,22 @@ serão classificados e atendidos conforme os prazos de primeira resposta e meta 
     <td style="border:1px solid #999; padding:4px;">Conforme roadmap</td>
   </tr>
 </table>
-<p><strong>6.4. Horário de atendimento.</strong> O suporte técnico é prestado em horário comercial (dias úteis, das 8h às
+<p><strong>${temFidelidade ? "7" : "6"}.4. Horário de atendimento.</strong> O suporte técnico é prestado em horário comercial (dias úteis, das 8h às
 18h, horário de Brasília), pelos canais disponibilizados pela CONTRATADA (chat, e-mail e/ou telefone). Chamados
 de severidade Crítica (S1) abertos fora do horário comercial serão atendidos no início do próximo dia útil, salvo
 acordo específico de plantão entre as partes.</p>
-<p><strong>6.5. Exclusões do SLA.</strong> Não estão cobertos pelo SLA: lentidão ou indisponibilidade decorrente da
+<p><strong>${temFidelidade ? "7" : "6"}.5. Exclusões do SLA.</strong> Não estão cobertos pelo SLA: lentidão ou indisponibilidade decorrente da
 conexão de internet ou infraestrutura da própria CONTRATANTE; uso da plataforma em desacordo com sua
 finalidade; integrações de terceiros não homologadas pela CONTRATADA; e desenvolvimento de funcionalidades
 personalizadas fora do escopo padrão do plano contratado, que poderá ser objeto de orçamento à parte.</p>
 
-<p><strong>CLÁUSULA 7ª — DE BACKUP E CONTINUIDADE DE NEGÓCIO</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "8ª" : "7ª"} — DE BACKUP E CONTINUIDADE DE NEGÓCIO</strong></p>
 <p>A CONTRATADA realiza rotinas automatizadas de backup dos dados da CONTRATANTE, com periodicidade mínima
 diária, mantendo cópias de segurança por período mínimo de 30 (trinta) dias, com Ponto de Recuperação Objetivo
 (RPO) de até 24 (vinte e quatro) horas e Tempo de Recuperação Objetivo (RTO) de até 24 (vinte e quatro) horas,
 em caso de incidente que demande restauração.</p>
 
-<p><strong>CLÁUSULA 8ª — DA SEGURANÇA DA INFORMAÇÃO</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "9ª" : "8ª"} — DA SEGURANÇA DA INFORMAÇÃO</strong></p>
 <p>A CONTRATADA adota práticas de segurança da informação compatíveis com o mercado, incluindo, sem
 se limitar a: criptografia de dados em trânsito (HTTPS/TLS); controle de acesso por usuário, papel e
 permissão; isolamento lógico dos dados entre diferentes clientes (multi-tenant); e monitoramento de
@@ -200,7 +226,7 @@ disponibilidade e segurança da infraestrutura.</p>
 acesso de seus usuários, respondendo por qualquer dano decorrente de uso indevido, compartilhamento ou
 extravio de senhas por parte de seus colaboradores.</p>
 
-<p><strong>CLÁUSULA 9ª — DAS ATUALIZAÇÕES E EVOLUÇÃO DA PLATAFORMA</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "10ª" : "9ª"} — DAS ATUALIZAÇÕES E EVOLUÇÃO DA PLATAFORMA</strong></p>
 <p>A CONTRATADA poderá, a seu critério, lançar atualizações, correções e novas funcionalidades na plataforma,
 sem custo adicional para a CONTRATANTE, desde que compreendidas no escopo do plano contratado. A CONTRATADA
 não garante a implementação de funcionalidades específicas solicitadas pela CONTRATANTE, ficando estas sujeitas
@@ -208,20 +234,20 @@ não garante a implementação de funcionalidades específicas solicitadas pela 
 <p><strong>Parágrafo Único.</strong> Alterações que impliquem em mudanças relevantes de funcionamento serão
 comunicadas à CONTRATANTE com antecedência razoável, sempre que possível.</p>
 
-<p><strong>CLÁUSULA 10ª — DA PROPRIEDADE INTELECTUAL</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "11ª" : "10ª"} — DA PROPRIEDADE INTELECTUAL</strong></p>
 <p>Todos os direitos de propriedade intelectual sobre o software, seu código-fonte, algoritmos, layout, marca,
 documentação e demais elementos que o compõem pertencem exclusivamente à CONTRATADA, sendo vedada à
 CONTRATANTE qualquer forma de engenharia reversa, descompilação, cópia, distribuição ou sublicenciamento da
 plataforma, ainda que parcial.</p>
 
-<p><strong>CLÁUSULA 11ª — DA LIMITAÇÃO DE RESPONSABILIDADE</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "12ª" : "11ª"} — DA LIMITAÇÃO DE RESPONSABILIDADE</strong></p>
 <p>A responsabilidade civil da CONTRATADA por danos diretos comprovadamente causados à CONTRATANTE em
 decorrência da prestação dos serviços fica limitada ao valor total pago pela CONTRATANTE nos últimos 12 (doze)
 meses anteriores ao evento gerador do dano.</p>
 <p><strong>Parágrafo Único.</strong> Em nenhuma hipótese a CONTRATADA responderá por lucros cessantes, danos
 indiretos, incidentais ou consequenciais, decorrentes do uso ou da impossibilidade de uso da plataforma.</p>
 
-<p><strong>CLÁUSULA 12ª — DA PROTEÇÃO DE DADOS (LGPD)</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "13ª" : "12ª"} — DA PROTEÇÃO DE DADOS (LGPD)</strong></p>
 <p>Para os fins da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais - LGPD), a CONTRATANTE figura
 como <strong>Controladora</strong> dos dados pessoais de seus alunos, responsáveis e colaboradores, e a CONTRATADA
 figura como <strong>Operadora</strong>, processando tais dados exclusivamente conforme as instruções da CONTRATANTE
@@ -238,30 +264,30 @@ hipóteses de guarda obrigatória previstas em lei.</p>
 dos dados pessoais inseridos na plataforma, bem como a obtenção do consentimento ou base legal aplicável junto
 aos titulares (alunos, responsáveis e colaboradores).</p>
 
-<p><strong>CLÁUSULA 13ª — DA CONFIDENCIALIDADE</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "14ª" : "13ª"} — DA CONFIDENCIALIDADE</strong></p>
 <p>As partes se comprometem a manter sigilo sobre todas as informações confidenciais a que tiverem acesso em
 razão deste contrato, obrigação que perdurará mesmo após o seu término, por prazo de 5 (cinco) anos.</p>
 
-<p><strong>CLÁUSULA 14ª — DO NÃO ALICIAMENTO DE COLABORADORES</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "15ª" : "14ª"} — DO NÃO ALICIAMENTO DE COLABORADORES</strong></p>
 <p>As partes se comprometem a não contratar, direta ou indiretamente, colaboradores ou prestadores de serviço
 da outra parte que tenham atuado na execução deste contrato, durante sua vigência e pelo período de 12 (doze)
 meses após seu término, salvo consentimento prévio e por escrito da parte afetada.</p>
 
-<p><strong>CLÁUSULA 15ª — DA VIGÊNCIA E RESCISÃO</strong></p>
-<p>O presente contrato vigorará por prazo indeterminado a partir da data de sua assinatura, podendo ser rescindido
-por qualquer das partes, mediante aviso prévio por escrito com antecedência mínima de 30 (trinta) dias.</p>
+<p><strong>CLÁUSULA ${temFidelidade ? "16ª" : "15ª"} — DA VIGÊNCIA E RESCISÃO</strong></p>
+<p>O presente contrato vigorará por prazo indeterminado a partir da data de sua assinatura${temFidelidade ? ", respeitado o prazo mínimo de fidelidade estabelecido na Cláusula 5ª," : ""}
+podendo ser rescindido por qualquer das partes, mediante aviso prévio por escrito com antecedência mínima de 30 (trinta) dias.</p>
 <p><strong>Parágrafo 1º.</strong> A CONTRATADA poderá rescindir o presente contrato de forma imediata, independentemente
 de aviso prévio, em caso de inadimplência da CONTRATANTE superior a 30 (trinta) dias, ou uso indevido da
 plataforma que viole a legislação vigente ou os termos deste contrato.</p>
 <p><strong>Parágrafo 2º.</strong> O valor de implantação, uma vez pago, não é passível de restituição, salvo acordo em
 contrário entre as partes.</p>
 
-<p><strong>CLÁUSULA 16ª — DAS DISPOSIÇÕES GERAIS</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "17ª" : "16ª"} — DAS DISPOSIÇÕES GERAIS</strong></p>
 <p>O presente contrato obriga as partes e seus sucessores a qualquer título. A tolerância de uma parte para com a
 outra, quanto ao descumprimento de qualquer obrigação aqui prevista, não constituirá novação ou renúncia a
 direito, podendo a parte tolerante exigir o cumprimento da obrigação a qualquer tempo.</p>
 
-<p><strong>CLÁUSULA 17ª — DO FORO</strong></p>
+<p><strong>CLÁUSULA ${temFidelidade ? "18ª" : "17ª"} — DO FORO</strong></p>
 <p>Fica eleito o foro da Comarca de ${plataforma.cidade ?? "___________"}/${plataforma.uf ?? "__"} para dirimir quaisquer
 dúvidas ou controvérsias oriundas do presente contrato, com renúncia expressa a qualquer outro, por mais
 privilegiado que seja.</p>

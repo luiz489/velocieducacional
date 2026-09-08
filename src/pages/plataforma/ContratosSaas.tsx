@@ -38,6 +38,7 @@ const emptyForm = {
   responsavel_nome: "", responsavel_cpf: "",
   plano_id: "", valor_implantacao: "", parcelas_implantacao: "1",
   valor_mensal: "", dia_vencimento: "10", data_inicio: new Date().toISOString().slice(0, 10),
+  meses_fidelidade: "0",
   escola_id: "",
 };
 
@@ -174,6 +175,7 @@ export default function ContratosSaas() {
         valor_mensal: Number(form.valor_mensal || planoSelecionado?.valor_mensal || 0),
         dia_vencimento: Number(form.dia_vencimento || 10),
         data_inicio: form.data_inicio,
+        meses_fidelidade: Number(form.meses_fidelidade || 0),
         escola_id: form.escola_id || null,
       };
       if (editingId) {
@@ -218,6 +220,7 @@ export default function ContratosSaas() {
       valor_mensal: c.valor_mensal != null ? String(c.valor_mensal) : "",
       dia_vencimento: String(c.dia_vencimento ?? 10),
       data_inicio: c.data_inicio ?? new Date().toISOString().slice(0, 10),
+      meses_fidelidade: String(c.meses_fidelidade ?? 0),
       escola_id: c.escola_id ?? "",
     });
     setOpen(true);
@@ -277,6 +280,7 @@ export default function ContratosSaas() {
         dia_vencimento: contrato.dia_vencimento,
         data_inicio: contrato.data_inicio,
         plano_nome: contrato.planos_saas?.nome ?? null,
+        meses_fidelidade: contrato.meses_fidelidade ?? 0,
       },
       {
         nome_empresa: plataformaConfig.nome_empresa,
@@ -419,6 +423,17 @@ export default function ContratosSaas() {
               <div>
                 <Label>Data de Início</Label>
                 <Input type="date" value={form.data_inicio} onChange={(e) => setForm({ ...form, data_inicio: e.target.value })} />
+              </div>
+              <div>
+                <Label>Fidelidade (meses)</Label>
+                <Input
+                  type="number" min="0" value={form.meses_fidelidade}
+                  onChange={(e) => setForm({ ...form, meses_fidelidade: e.target.value })}
+                  placeholder="0 = sem cláusula de fidelidade"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Se maior que 0, o contrato gerado inclui a cláusula de fidelidade com multa proporcional em caso de cancelamento antecipado.
+                </p>
               </div>
               <Button
                 onClick={() => criar.mutate()}

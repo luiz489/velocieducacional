@@ -3842,6 +3842,7 @@ export type Database = {
           valor_mensal: number
           dia_vencimento: number
           data_inicio: string
+          meses_fidelidade: number
           status: string
           texto_contrato: string | null
           criado_em: string
@@ -3865,6 +3866,7 @@ export type Database = {
           valor_mensal: number
           dia_vencimento?: number
           data_inicio?: string
+          meses_fidelidade?: number
           status?: string
           texto_contrato?: string | null
           criado_em?: string
@@ -3888,6 +3890,7 @@ export type Database = {
           valor_mensal?: number
           dia_vencimento?: number
           data_inicio?: string
+          meses_fidelidade?: number
           status?: string
           texto_contrato?: string | null
           criado_em?: string
