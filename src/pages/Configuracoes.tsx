@@ -771,7 +771,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, razao_social, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico, carteirinha_qr_url")
+        .select("id, nome, razao_social, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico, carteirinha_qr_url, carteirinha_validade_meses")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
@@ -785,6 +785,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   const [diaFaturamento, setDiaFaturamento] = useState("");
   const [salvandoFaturamento, setSalvandoFaturamento] = useState(false);
   const [carteirinhaQr, setCarteirinhaQr] = useState("");
+  const [carteirinhaValidade, setCarteirinhaValidade] = useState("12");
   const [salvandoCarteirinha, setSalvandoCarteirinha] = useState(false);
 
   useEffect(() => {
@@ -792,19 +793,25 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
       setCamposMatricula((escola as any).campos_matricula_visiveis ?? {});
       setDiaFaturamento((escola as any).dia_faturamento_automatico ? String((escola as any).dia_faturamento_automatico) : "");
       setCarteirinhaQr((escola as any).carteirinha_qr_url ?? "");
+      setCarteirinhaValidade(String((escola as any).carteirinha_validade_meses ?? 12));
     }
   }, [escola]);
 
   const salvarCarteirinhaQr = async () => {
     if (!escolaId) return;
+    const meses = Number(carteirinhaValidade);
+    if (!Number.isInteger(meses) || meses < 1 || meses > 120) {
+      toast.error("A validade deve ser um número de 1 a 120 meses.");
+      return;
+    }
     setSalvandoCarteirinha(true);
     const { error } = await supabase
       .from("escolas")
-      .update({ carteirinha_qr_url: carteirinhaQr.trim() || null })
+      .update({ carteirinha_qr_url: carteirinhaQr.trim() || null, carteirinha_validade_meses: meses })
       .eq("id", escolaId);
     setSalvandoCarteirinha(false);
     if (error) { toast.error("Erro ao salvar: " + error.message); return; }
-    toast.success("Link do QR da carteirinha salvo. Reemita as carteirinhas para aplicar.");
+    toast.success("Configuração da carteirinha salva. Reemita as carteirinhas para aplicar.");
     qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
   };
 
@@ -1143,6 +1150,15 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
               value={carteirinhaQr}
               onChange={(e) => setCarteirinhaQr(e.target.value)}
               placeholder="https://www.instagram.com/suaescola"
+            />
+          </div>
+          <div className="max-w-[220px]">
+            <Label>Validade (meses)</Label>
+            <Input
+              type="number" min="1" max="120"
+              value={carteirinhaValidade}
+              onChange={(e) => setCarteirinhaValidade(e.target.value)}
+              placeholder="12"
             />
           </div>
           <Button onClick={salvarCarteirinhaQr} disabled={salvandoCarteirinha}>

@@ -1761,6 +1761,7 @@ export type Database = {
           cidade: string | null
           dia_faturamento_automatico: number | null
           carteirinha_qr_url: string | null
+          carteirinha_validade_meses: number
           cnpj: string | null
           criado_em: string
           email: string | null
@@ -1783,6 +1784,7 @@ export type Database = {
           cidade?: string | null
           dia_faturamento_automatico?: number | null
           carteirinha_qr_url?: string | null
+          carteirinha_validade_meses?: number
           cnpj?: string | null
           criado_em?: string
           email?: string | null
@@ -1805,6 +1807,7 @@ export type Database = {
           cidade?: string | null
           dia_faturamento_automatico?: number | null
           carteirinha_qr_url?: string | null
+          carteirinha_validade_meses?: number
           cnpj?: string | null
           criado_em?: string
           email?: string | null

@@ -45,12 +45,13 @@ export default function Carteirinhas() {
     queryKey: ["escola-carteirinha-cfg", escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data } = await supabase.from("escolas").select("logo_url, carteirinha_qr_url").eq("id", escolaAtivaId!).single();
+      const { data } = await supabase.from("escolas").select("logo_url, carteirinha_qr_url, carteirinha_validade_meses").eq("id", escolaAtivaId!).single();
       return data ?? null;
     },
   });
   const { data: escolaLogo } = useSignedUrl("escola-logos", escolaInfo?.logo_url ?? null);
   const carteirinhaQrUrl = (escolaInfo as any)?.carteirinha_qr_url as string | null | undefined;
+  const validadeMeses = ((escolaInfo as any)?.carteirinha_validade_meses as number | null | undefined) ?? 12;
 
   const { data: alunos } = useQuery({
     queryKey: ["alunos-cart", escolaAtivaId],
@@ -85,7 +86,9 @@ export default function Carteirinhas() {
     mutationFn: async (aluno: Aluno) => {
       const existente = cartMap.get(aluno.id);
       const codigo = `${escolaNome.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-8)}`;
-      const validade = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const vd = new Date();
+      vd.setMonth(vd.getMonth() + validadeMeses);
+      const validade = vd.toISOString().slice(0, 10);
       const qr_data = carteirinhaQrUrl?.trim()
         ? carteirinhaQrUrl.trim()
         : JSON.stringify({ codigo, aluno: aluno.nome, cpf: aluno.cpf });
@@ -144,7 +147,10 @@ export default function Carteirinhas() {
       <Card>
         <CardHeader>
           <CardTitle>Alunos</CardTitle>
-          <CardDescription>Clique em "Gerar/Reemitir" para criar uma nova carteirinha válida por 1 ano.</CardDescription>
+          <CardDescription>
+            Clique em "Gerar/Reemitir" para criar uma nova carteirinha válida por{" "}
+            {validadeMeses === 12 ? "1 ano" : `${validadeMeses} ${validadeMeses === 1 ? "mês" : "meses"}`}.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
