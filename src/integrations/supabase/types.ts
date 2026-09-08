@@ -2921,6 +2921,102 @@ export type Database = {
           },
         ]
       }
+      cursos_extra: {
+        Row: {
+          id: string
+          escola_id: string
+          ano_letivo: number
+          nome: string
+          categoria: string
+          sala: string | null
+          vagas: number | null
+          fornecedor_id: string | null
+          contrato_id: string | null
+          professor_nome: string | null
+          valor: number
+          intervalo_meses: number
+          numero_parcelas: number
+          dia_vencimento: number
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          escola_id: string
+          ano_letivo: number
+          nome: string
+          categoria?: string
+          sala?: string | null
+          vagas?: number | null
+          fornecedor_id?: string | null
+          contrato_id?: string | null
+          professor_nome?: string | null
+          valor?: number
+          intervalo_meses?: number
+          numero_parcelas?: number
+          dia_vencimento?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["cursos_extra"]["Insert"]>
+        Relationships: []
+      }
+      cursos_extra_horarios: {
+        Row: {
+          id: string
+          curso_extra_id: string
+          escola_id: string
+          dia_semana: number
+          hora_inicio: string
+          hora_fim: string
+          sala: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          curso_extra_id: string
+          escola_id: string
+          dia_semana: number
+          hora_inicio: string
+          hora_fim: string
+          sala?: string | null
+          created_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["cursos_extra_horarios"]["Insert"]>
+        Relationships: []
+      }
+      cursos_extra_inscricoes: {
+        Row: {
+          id: string
+          curso_extra_id: string
+          aluno_id: string
+          matricula_id: string
+          escola_id: string
+          data_inicio: string
+          data_cancelamento: string | null
+          status: string
+          valor_negociado: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          curso_extra_id: string
+          aluno_id: string
+          matricula_id: string
+          escola_id: string
+          data_inicio: string
+          data_cancelamento?: string | null
+          status?: string
+          valor_negociado?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["cursos_extra_inscricoes"]["Insert"]>
+        Relationships: []
+      }
       valores_opcionais_matricula: {
         Row: {
           id: string
@@ -5115,6 +5211,14 @@ export type Database = {
       }
       vincular_usuario_multi_escola: {
         Args: { p_email: string; p_escola_ids: string[]; p_papel_nome: string }
+        Returns: undefined
+      }
+      cancelar_inscricao_curso_extra: {
+        Args: { p_inscricao_id: string; p_data?: string }
+        Returns: number
+      }
+      gerar_parcelas_curso_extra: {
+        Args: { p_inscricao_id: string }
         Returns: undefined
       }
       escolas_gerenciaveis_do_grupo: {

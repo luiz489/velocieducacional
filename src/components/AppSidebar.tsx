@@ -24,6 +24,7 @@ import {
   FileText,
   FileSignature,
   Wallet,
+  Dumbbell,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -75,6 +76,7 @@ const menuGroups = [
       { title: "Parametrizações Financeiras", url: "/parametrizacoes-financeiras", icon: Landmark },
       { title: "Contas a Pagar", url: "/contas-a-pagar", icon: ClipboardList },
       { title: "Planos por Turma", url: "/planos-financeiros", icon: Wallet },
+      { title: "Cursos Extracurriculares", url: "/cursos-extras", icon: Dumbbell },
       { title: "Contratos", url: "/contratos", icon: ClipboardList },
       { title: "Compras", url: "/compras", icon: ShoppingCart },
     ],

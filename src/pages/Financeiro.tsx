@@ -37,6 +37,7 @@ function getTipoBadge(tipo: string) {
     case "Mensalidade": return <Badge variant="outline">Mensalidade</Badge>;
     case "Material": return <Badge variant="outline" className="border-info text-info">Material</Badge>;
     case "Taxa Extra": return <Badge variant="outline" className="border-warning text-warning">Taxa Extra</Badge>;
+    case "Curso Extra": return <Badge variant="outline" className="border-info text-info">Curso Extra</Badge>;
     default: return <Badge variant="outline">Outros</Badge>;
   }
 }
