@@ -75,6 +75,7 @@ const menuGroups = [
       { title: "Central de Faturamento", url: "/faturamento", icon: Receipt },
       { title: "Parametrizações Financeiras", url: "/parametrizacoes-financeiras", icon: Landmark },
       { title: "Contas a Pagar", url: "/contas-a-pagar", icon: ClipboardList },
+      { title: "Contas Bancárias", url: "/contas-bancarias", icon: Landmark },
       { title: "Planos por Turma", url: "/planos-financeiros", icon: Wallet },
       { title: "Cursos Extracurriculares", url: "/cursos-extras", icon: Dumbbell },
       { title: "Contratos", url: "/contratos", icon: ClipboardList },

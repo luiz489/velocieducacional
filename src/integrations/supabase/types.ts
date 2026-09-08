@@ -2921,6 +2921,108 @@ export type Database = {
           },
         ]
       }
+      contas_bancarias: {
+        Row: {
+          id: string
+          escola_id: string
+          nome: string
+          banco: string | null
+          agencia: string | null
+          conta: string | null
+          chave_pix: string | null
+          saldo_inicial: number
+          data_saldo_inicial: string
+          saldo_atual: number
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          escola_id: string
+          nome: string
+          banco?: string | null
+          agencia?: string | null
+          conta?: string | null
+          chave_pix?: string | null
+          saldo_inicial?: number
+          data_saldo_inicial?: string
+          saldo_atual?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["contas_bancarias"]["Insert"]>
+        Relationships: []
+      }
+      receitas_avulsas: {
+        Row: {
+          id: string
+          escola_id: string
+          pagador: string | null
+          descricao: string
+          categoria: string
+          valor: number
+          data: string
+          status: string
+          data_recebimento: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          escola_id: string
+          pagador?: string | null
+          descricao: string
+          categoria?: string
+          valor: number
+          data?: string
+          status?: string
+          data_recebimento?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["receitas_avulsas"]["Insert"]>
+        Relationships: []
+      }
+      movimentacoes_bancarias: {
+        Row: {
+          id: string
+          conta_bancaria_id: string
+          escola_id: string
+          data: string
+          descricao: string | null
+          valor: number
+          natureza: string
+          origem: string
+          financeiro_id: string | null
+          conta_a_pagar_id: string | null
+          receita_avulsa_id: string | null
+          identificada: boolean
+          gateway_ref: string | null
+          criado_por: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conta_bancaria_id: string
+          escola_id: string
+          data?: string
+          descricao?: string | null
+          valor: number
+          natureza: string
+          origem?: string
+          financeiro_id?: string | null
+          conta_a_pagar_id?: string | null
+          receita_avulsa_id?: string | null
+          identificada?: boolean
+          gateway_ref?: string | null
+          criado_por?: string | null
+          created_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["movimentacoes_bancarias"]["Insert"]>
+        Relationships: []
+      }
       cursos_extra: {
         Row: {
           id: string
@@ -5220,6 +5322,19 @@ export type Database = {
       gerar_parcelas_curso_extra: {
         Args: { p_inscricao_id: string }
         Returns: undefined
+      }
+      mov_bancaria_vincular_titulo: {
+        Args: {
+          p_mov_id: string
+          p_financeiro_id?: string
+          p_conta_a_pagar_id?: string
+          p_receita_avulsa_id?: string
+        }
+        Returns: undefined
+      }
+      mov_bancaria_criar_e_vincular: {
+        Args: { p_mov_id: string; p_categoria: string; p_descricao: string; p_terceiro: string }
+        Returns: string
       }
       escolas_gerenciaveis_do_grupo: {
         Args: { p_escola_id: string }

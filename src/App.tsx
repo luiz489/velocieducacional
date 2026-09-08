@@ -33,6 +33,7 @@ import Documentos from "@/pages/Documentos";
 import GerarDocumento from "@/pages/GerarDocumento";
 import PlanosFinanceirosTurma from "@/pages/PlanosFinanceirosTurma";
 import CursosExtra from "@/pages/CursosExtra";
+import ContasBancarias from "@/pages/ContasBancarias";
 import PagamentosProfessores from "@/pages/PagamentosProfessores";
 import Funcionarios from "@/pages/Funcionarios";
 import PagamentosFuncionarios from "@/pages/PagamentosFuncionarios";
@@ -80,6 +81,7 @@ function ProtectedRoutes() {
         <Route path="/contas-a-pagar" element={<ContasPagar />} />
         <Route path="/planos-financeiros" element={<PlanosFinanceirosTurma />} />
         <Route path="/cursos-extras" element={<CursosExtra />} />
+        <Route path="/contas-bancarias" element={<ContasBancarias />} />
         <Route path="/pagamentos-professores" element={<PagamentosProfessores />} />
         <Route path="/funcionarios" element={<Funcionarios />} />
         <Route path="/pagamentos-funcionarios" element={<PagamentosFuncionarios />} />
