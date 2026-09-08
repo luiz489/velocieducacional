@@ -1760,6 +1760,7 @@ export type Database = {
           cep: string | null
           cidade: string | null
           dia_faturamento_automatico: number | null
+          carteirinha_qr_url: string | null
           cnpj: string | null
           criado_em: string
           email: string | null
@@ -1781,6 +1782,7 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           dia_faturamento_automatico?: number | null
+          carteirinha_qr_url?: string | null
           cnpj?: string | null
           criado_em?: string
           email?: string | null
@@ -1802,6 +1804,7 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           dia_faturamento_automatico?: number | null
+          carteirinha_qr_url?: string | null
           cnpj?: string | null
           criado_em?: string
           email?: string | null

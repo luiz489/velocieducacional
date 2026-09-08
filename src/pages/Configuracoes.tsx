@@ -771,7 +771,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, razao_social, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico")
+        .select("id, nome, razao_social, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico, carteirinha_qr_url")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
@@ -784,13 +784,29 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   const [salvandoCampos, setSalvandoCampos] = useState(false);
   const [diaFaturamento, setDiaFaturamento] = useState("");
   const [salvandoFaturamento, setSalvandoFaturamento] = useState(false);
+  const [carteirinhaQr, setCarteirinhaQr] = useState("");
+  const [salvandoCarteirinha, setSalvandoCarteirinha] = useState(false);
 
   useEffect(() => {
     if (escola) {
       setCamposMatricula((escola as any).campos_matricula_visiveis ?? {});
       setDiaFaturamento((escola as any).dia_faturamento_automatico ? String((escola as any).dia_faturamento_automatico) : "");
+      setCarteirinhaQr((escola as any).carteirinha_qr_url ?? "");
     }
   }, [escola]);
+
+  const salvarCarteirinhaQr = async () => {
+    if (!escolaId) return;
+    setSalvandoCarteirinha(true);
+    const { error } = await supabase
+      .from("escolas")
+      .update({ carteirinha_qr_url: carteirinhaQr.trim() || null })
+      .eq("id", escolaId);
+    setSalvandoCarteirinha(false);
+    if (error) { toast.error("Erro ao salvar: " + error.message); return; }
+    toast.success("Link do QR da carteirinha salvo. Reemita as carteirinhas para aplicar.");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+  };
 
   const salvarDiaFaturamento = async () => {
     if (!escolaId) return;
@@ -1107,6 +1123,30 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
           </div>
           <Button onClick={salvarDiaFaturamento} disabled={salvandoFaturamento}>
             {salvandoFaturamento ? "Salvando…" : "Salvar"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Carteirinha do Aluno</CardTitle>
+          <CardDescription>
+            Endereço (URL) que o QR Code da carteirinha vai abrir quando escaneado — ex: o Instagram da
+            escola. Deixe em branco para o QR carregar os dados de verificação padrão. O número exibido
+            na carteirinha é o RA (Censo Escolar) do aluno.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>Link do QR Code</Label>
+            <Input
+              value={carteirinhaQr}
+              onChange={(e) => setCarteirinhaQr(e.target.value)}
+              placeholder="https://www.instagram.com/suaescola"
+            />
+          </div>
+          <Button onClick={salvarCarteirinhaQr} disabled={salvandoCarteirinha}>
+            {salvandoCarteirinha ? "Salvando…" : "Salvar"}
           </Button>
         </CardContent>
       </Card>

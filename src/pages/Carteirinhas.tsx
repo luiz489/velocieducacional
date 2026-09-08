@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { IdCard, RefreshCw, Eye, Upload, Printer, GraduationCap } from "lucide-react";
 import QRCode from "qrcode";
 
-type Aluno = { id: string; nome: string; cpf: string; data_nascimento: string; foto_url: string | null };
+type Aluno = { id: string; nome: string; cpf: string; data_nascimento: string; foto_url: string | null; ra_censo: string | null };
 type Carteirinha = {
   id: string;
   aluno_id: string;
@@ -41,21 +41,22 @@ export default function Carteirinhas() {
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [qrImg, setQrImg] = useState<string | null>(null);
 
-  const { data: escolaLogoPath } = useQuery({
-    queryKey: ["escola-logo-carteirinha", escolaAtivaId],
+  const { data: escolaInfo } = useQuery({
+    queryKey: ["escola-carteirinha-cfg", escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data } = await supabase.from("escolas").select("logo_url").eq("id", escolaAtivaId!).single();
-      return data?.logo_url ?? null;
+      const { data } = await supabase.from("escolas").select("logo_url, carteirinha_qr_url").eq("id", escolaAtivaId!).single();
+      return data ?? null;
     },
   });
-  const { data: escolaLogo } = useSignedUrl("escola-logos", escolaLogoPath);
+  const { data: escolaLogo } = useSignedUrl("escola-logos", escolaInfo?.logo_url ?? null);
+  const carteirinhaQrUrl = (escolaInfo as any)?.carteirinha_qr_url as string | null | undefined;
 
   const { data: alunos } = useQuery({
     queryKey: ["alunos-cart", escolaAtivaId],
     enabled: !!escolaAtivaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("alunos").select("id, nome, cpf, data_nascimento, foto_url").eq("escola_id", escolaAtivaId!).order("nome");
+      const { data, error } = await supabase.from("alunos").select("id, nome, cpf, data_nascimento, foto_url, ra_censo").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Aluno[];
     },
@@ -85,7 +86,9 @@ export default function Carteirinhas() {
       const existente = cartMap.get(aluno.id);
       const codigo = `${escolaNome.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-8)}`;
       const validade = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const qr_data = JSON.stringify({ codigo, aluno: aluno.nome, cpf: aluno.cpf });
+      const qr_data = carteirinhaQrUrl?.trim()
+        ? carteirinhaQrUrl.trim()
+        : JSON.stringify({ codigo, aluno: aluno.nome, cpf: aluno.cpf });
       if (existente) {
         const { error } = await supabase.from("carteirinhas").update({
           codigo, validade, qr_data, status: "Ativa", emitida_em: new Date().toISOString().slice(0, 10),
@@ -148,7 +151,7 @@ export default function Carteirinhas() {
             <TableHeader>
               <TableRow>
                 <TableHead>Aluno</TableHead>
-                <TableHead>Código</TableHead>
+                <TableHead>RA</TableHead>
                 <TableHead>Validade</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -163,7 +166,7 @@ export default function Carteirinhas() {
                       <AvatarFoto path={a.foto_url} alt={a.nome} />
                       {a.nome}
                     </TableCell>
-                    <TableCell>{c?.codigo ?? "—"}</TableCell>
+                    <TableCell>{a.ra_censo || "—"}</TableCell>
                     <TableCell>{formatarDataBR(c?.validade)}</TableCell>
                     <TableCell>
                       {c ? <Badge variant={c.status === "Ativa" ? "default" : "destructive"}>{c.status}</Badge> : <Badge variant="outline">Sem carteirinha</Badge>}
@@ -217,9 +220,9 @@ export default function Carteirinhas() {
                   <AvatarFoto path={preview.aluno.foto_url} className="h-24 w-24 rounded-lg" iconSize="h-8 w-8" />
                   <div className="flex-1 min-w-0 space-y-1 text-sm">
                     <div className="font-bold text-base leading-tight truncate">{preview.aluno.nome}</div>
+                    <div className="text-xs text-muted-foreground">RA: <code>{preview.aluno.ra_censo || "não informado"}</code></div>
                     <div className="text-xs text-muted-foreground">CPF: {preview.aluno.cpf}</div>
                     <div className="text-xs text-muted-foreground">Nasc: {formatarDataBR(preview.aluno.data_nascimento)}</div>
-                    <div className="text-xs text-muted-foreground">Código: <code>{preview.carteira.codigo}</code></div>
                     <div className="text-xs text-muted-foreground">Válida até: {formatarDataBR(preview.carteira.validade)}</div>
                   </div>
                 </div>
@@ -233,7 +236,9 @@ export default function Carteirinhas() {
                 </div>
 
                 <div className="border-t px-4 py-2 text-[10px] text-muted-foreground text-center">
-                  Documento digital — escaneie o QR Code para verificar autenticidade
+                  {carteirinhaQrUrl?.trim()
+                    ? "Documento digital — aponte a câmera no QR Code"
+                    : "Documento digital — escaneie o QR Code para verificar autenticidade"}
                 </div>
               </div>
 
