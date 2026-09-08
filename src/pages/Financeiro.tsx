@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dataBR } from "@/lib/utils";
 import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -255,7 +256,7 @@ export default function Financeiro() {
                     <TableCell>{getTipoBadge(l.tipo)}</TableCell>
                     <TableCell className="font-medium">R$ {l.valor.toFixed(2)}</TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {new Date(l.data_vencimento).toLocaleDateString("pt-BR")}
+                      {dataBR(l.data_vencimento)}
                     </TableCell>
                     <TableCell>{getStatusBadge(l.status)}</TableCell>
                     <TableCell>

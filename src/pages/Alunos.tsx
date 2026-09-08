@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dataBR } from "@/lib/utils";
 import { Search, Plus, MoreHorizontal, Filter, FileText, BookOpen, Pencil, GraduationCap, UserX } from "lucide-react";
 import { gerarFichaAluno, gerarBoletim } from "@/lib/relatorios";
 import { supabase } from "@/integrations/supabase/client";
@@ -225,7 +226,7 @@ export default function Alunos() {
                 <TableCell className="font-medium">{aluno.nome}</TableCell>
                 <TableCell className="text-muted-foreground">{aluno.cpf}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">
-                  {new Date(aluno.data_nascimento).toLocaleDateString("pt-BR")}
+                  {dataBR(aluno.data_nascimento)}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-muted-foreground">{aluno.responsavel_financeiro}</TableCell>
                 <TableCell>

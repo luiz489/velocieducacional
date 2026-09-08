@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dataBR } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, MoreHorizontal, ClipboardList, DollarSign, CheckCircle, UserPlus, UserCheck, FileSignature } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -666,7 +667,7 @@ export default function Matriculas() {
                 <TableCell className="font-medium">{m.aluno_nome}</TableCell>
                 <TableCell>{m.turma_nome}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">
-                  {new Date(m.data_ingresso).toLocaleDateString("pt-BR")}
+                  {dataBR(m.data_ingresso)}
                 </TableCell>
                 <TableCell className="font-medium">
                   {m.valor_mensal != null ? `R$ ${m.valor_mensal.toFixed(2)}` : "—"}
@@ -864,7 +865,7 @@ export default function Matriculas() {
                 {carneParcelas.map((p, i) => (
                   <TableRow key={i}>
                     <TableCell className="text-muted-foreground">{p.descricao}</TableCell>
-                    <TableCell>{new Date(p.data_vencimento).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell>{dataBR(p.data_vencimento)}</TableCell>
                     <TableCell>
                       R$ {Number(p.valor).toFixed(2)}
                       {p.valor_integral != null && Number(p.valor_integral) > Number(p.valor) && (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dataBR } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -135,7 +136,7 @@ export default function PagamentosFuncionarios() {
       p.tipo_conta || "",
       p.chave_pix || "",
       p.valor.toFixed(2).replace(".", ","),
-      new Date(p.data_vencimento).toLocaleDateString("pt-BR"),
+      dataBR(p.data_vencimento),
     ]);
 
     const csv = [cabecalho, ...linhasCSV]
@@ -274,7 +275,7 @@ export default function PagamentosFuncionarios() {
                       )}
                     </TableCell>
                     <TableCell className="font-medium">R$ {Number(p.valor).toFixed(2)}</TableCell>
-                    <TableCell>{new Date(p.data_vencimento).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell>{dataBR(p.data_vencimento)}</TableCell>
                     <TableCell>
                       <Badge variant={p.status === "Pago" ? "default" : "secondary"}>{p.status}</Badge>
                     </TableCell>

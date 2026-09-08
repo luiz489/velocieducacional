@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dataBR } from "@/lib/utils";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -133,8 +134,8 @@ export default function Faturamento() {
                   <TableCell>{MESES[f.competencia_mes - 1]}/{f.competencia_ano}</TableCell>
                   <TableCell>{formatCurrency(f.valor)}</TableCell>
                   <TableCell>{statusBadge(f.status)}</TableCell>
-                  <TableCell>{new Date(f.data_vencimento).toLocaleDateString("pt-BR")}</TableCell>
-                  <TableCell>{f.data_pagamento ? new Date(f.data_pagamento).toLocaleDateString("pt-BR") : "—"}</TableCell>
+                  <TableCell>{dataBR(f.data_vencimento)}</TableCell>
+                  <TableCell>{f.data_pagamento ? dataBR(f.data_pagamento) : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

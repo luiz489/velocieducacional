@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { dataBR } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -375,7 +376,7 @@ export default function Ocorrencias() {
                   <TableCell className="text-muted-foreground text-sm">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" />
-                      {new Date(oc.data_ocorrencia).toLocaleDateString("pt-BR")}
+                      {dataBR(oc.data_ocorrencia)}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">{alunoMap.get(oc.aluno_id) || "—"}</TableCell>
