@@ -18,7 +18,7 @@ export function useDashboardData(refMonth: number, refYear: number, escolaIds: s
         supabase.from("alunos").select("id, status, data_nascimento").in("escola_id", escolaIds),
         supabase.from("turmas").select("id, turno").in("escola_id", escolaIds),
         supabase.from("matriculas").select("id, data_ingresso, turma_id, aluno_id, status_pagamento").in("escola_id", escolaIds),
-        supabase.from("financeiro").select("id, valor, status, data_vencimento, data_pagamento, tipo").in("escola_id", escolaIds),
+        supabase.from("financeiro").select("id, valor, status, data_vencimento, data_pagamento, tipo, faturado").in("escola_id", escolaIds),
         supabase.from("ocorrencias").select("id, tipo, data_ocorrencia, aluno_id, descricao, created_at").in("escola_id", escolaIds),
       ]);
 
@@ -42,6 +42,7 @@ export function useDashboardData(refMonth: number, refYear: number, escolaIds: s
       const recebido = financeiroMes.filter(f => f.status === "Pago").reduce((s, f) => s + Number(f.valor), 0);
       const aReceber = financeiroMes.filter(f => f.status === "Pendente" && f.data_vencimento >= today).reduce((s, f) => s + Number(f.valor), 0);
       const emAtraso = financeiroMes.filter(f => f.status === "Pendente" && f.data_vencimento < today).reduce((s, f) => s + Number(f.valor), 0);
+      const aFaturar = financeiroMes.filter(f => !f.faturado && f.status !== "Pago" && f.status !== "Cancelado").reduce((s, f) => s + Number(f.valor), 0);
       const inadimplencia = totalPrevisto > 0 ? (emAtraso / totalPrevisto) * 100 : 0;
 
       const turmaMap = new Map(turmas.map(t => [t.id, t.turno]));
@@ -97,7 +98,7 @@ export function useDashboardData(refMonth: number, refYear: number, escolaIds: s
         matriculasMensais,
         inadimplenciaData,
         ocorrenciasTipo,
-        resumoFinanceiro: { recebido, aReceber, emAtraso, totalPrevisto },
+        resumoFinanceiro: { recebido, aReceber, emAtraso, aFaturar, totalPrevisto },
       };
     },
   });

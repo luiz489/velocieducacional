@@ -287,6 +287,10 @@ export default function Dashboard() {
                   <span className="text-sm text-muted-foreground">Em atraso</span>
                   <span className="text-sm font-semibold text-destructive">{formatCurrencyFull(data?.resumoFinanceiro.emAtraso || 0)}</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">A faturar (ainda não faturado)</span>
+                  <span className="text-sm font-semibold text-info">{formatCurrencyFull(data?.resumoFinanceiro.aFaturar || 0)}</span>
+                </div>
                 <div className="pt-3 border-t border-border flex justify-between items-center">
                   <span className="text-sm font-medium">Total previsto</span>
                   <span className="text-sm font-bold">{formatCurrencyFull(data?.resumoFinanceiro.totalPrevisto || 0)}</span>
