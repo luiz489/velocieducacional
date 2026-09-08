@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { Fragment, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,13 +84,27 @@ export default function Clientes() {
 
   const [grupoExpandidoId, setGrupoExpandidoId] = useState<string | null>(null);
   const timeoutFecharRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Enquanto o menu de ações (⋮) de uma linha está aberto, não deixamos o grupo
+  // recolher no hover — recolher desmonta as filiais e o layout pula por baixo do
+  // menu portalado, o que fechava o menu / disparava o item errado.
+  const [menuAbertoId, setMenuAbertoId] = useState<string | null>(null);
+  const menuAbertoRef = useRef<string | null>(null);
 
   const expandirGrupo = (grupoId: string) => {
     if (timeoutFecharRef.current) clearTimeout(timeoutFecharRef.current);
     setGrupoExpandidoId(grupoId);
   };
   const agendarFecharGrupo = () => {
-    timeoutFecharRef.current = setTimeout(() => setGrupoExpandidoId(null), 200);
+    if (timeoutFecharRef.current) clearTimeout(timeoutFecharRef.current);
+    timeoutFecharRef.current = setTimeout(() => {
+      if (menuAbertoRef.current) return;
+      setGrupoExpandidoId(null);
+    }, 200);
+  };
+  const setMenuAberto = (escolaId: string, aberto: boolean) => {
+    menuAbertoRef.current = aberto ? escolaId : null;
+    setMenuAbertoId(aberto ? escolaId : null);
+    if (!aberto) agendarFecharGrupo();
   };
 
   const excluirCliente = useMutation({
@@ -257,7 +271,8 @@ export default function Clientes() {
                 const temFiliais = grupo.escolas.length > 1;
                 const matriz = grupo.escolas.find((e) => e.eh_matriz) ?? grupo.escolas[0];
                 const filiais = grupo.escolas.filter((e) => e.escola_id !== matriz.escola_id);
-                const expandido = grupoExpandidoId === grupo.grupoId;
+                const menuNesteGrupo = grupo.escolas.some((e) => e.escola_id === menuAbertoId);
+                const expandido = grupoExpandidoId === grupo.grupoId || menuNesteGrupo;
 
                 const renderLinha = (c: (typeof grupo.escolas)[number], ehFilial: boolean) => {
                   const noLimiteUsuarios = (c.usuarios_ativos ?? 0) >= (c.limite_usuarios ?? Infinity);
@@ -292,7 +307,10 @@ export default function Clientes() {
                       </TableCell>
                       <TableCell>{formatCurrency(c.valor_mensal)}</TableCell>
                       <TableCell>
-                        <DropdownMenu>
+                        <DropdownMenu
+                          open={menuAbertoId === c.escola_id}
+                          onOpenChange={(open) => setMenuAberto(c.escola_id!, open)}
+                        >
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                           </DropdownMenuTrigger>
@@ -343,10 +361,10 @@ export default function Clientes() {
                 };
 
                 return (
-                  <>
+                  <Fragment key={grupo.grupoId}>
                     {renderLinha(matriz, false)}
                     {temFiliais && expandido && filiais.map((f) => renderLinha(f, true))}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>
