@@ -1,13 +1,15 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { ShieldAlert } from "lucide-react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function AppLayout() {
   const { emModoAdministrador, escolas, escolaAtivaId } = useEscolaAtiva();
   const escolaAtiva = escolas.find((e) => e.escola_id === escolaAtivaId);
   const escolaNome = escolaAtiva?.nome;
+  const location = useLocation();
 
   return (
     <SidebarProvider>
@@ -29,7 +31,9 @@ export function AppLayout() {
             <div className="flex-1" />
           </header>
           <main className="flex-1 overflow-auto p-6">
-            <Outlet />
+            <ErrorBoundary key={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>

@@ -63,7 +63,14 @@ export default function Matriculas() {
 
   const emitirContrato = (templateId: string) => {
     if (!alunoParaContrato) return;
-    navigate("/documentos/gerar", { state: { templateId, alunoId: alunoParaContrato } });
+    const alunoId = alunoParaContrato;
+    // Fecha o diálogo ANTES de trocar de rota. Navegar com o Dialog do Radix
+    // ainda aberto deixa `pointer-events: none` preso no <body> e a próxima
+    // tela fica "morta" / em branco até dar F5.
+    setAlunoParaContrato(null);
+    setTimeout(() => {
+      navigate("/documentos/gerar", { state: { templateId, alunoId } });
+    }, 0);
   };
 
   const { escolaAtivaId } = useEscolaAtiva();
