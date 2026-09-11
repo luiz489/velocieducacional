@@ -7,6 +7,8 @@ type EscolaVinculada = {
   nome: string;
   razao_social: string | null;
   grupo_economico_id: string | null;
+  /** Código EEUU (empresa+unidade) - usado pra amarrar customizações específicas de um colégio. */
+  codigo: string | null;
   /** true = vínculo real em usuarios_escolas. false = acesso só por ser superadmin (modo administrador). */
   membroReal: boolean;
 };
@@ -21,6 +23,8 @@ type EscolaContextValue = {
   /** true quando a escola ativa não é um vínculo real (você está "entrando como administrador"). */
   emModoAdministrador: boolean;
   setEscolaAtivaId: (id: string) => void;
+  /** Código EEUU da escola ativa (ou null). Atalho para customizações específicas. */
+  codigoEscolaAtiva: string | null;
   /** Recarrega a lista de escolas (chame depois de criar uma filial, por exemplo). */
   refetchEscolas: (selecionarId?: string) => Promise<void>;
 };
@@ -47,7 +51,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
 
     const { data: vinculos, error: errVinculos } = await supabase
       .from("usuarios_escolas")
-      .select("escola_id, escolas(id, nome, razao_social, grupo_economico_id)")
+      .select("escola_id, escolas(id, nome, razao_social, grupo_economico_id, codigo)")
       .eq("user_id", user.id)
       .eq("ativo", true);
 
@@ -60,6 +64,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
       nome: r.escolas?.nome ?? "Escola",
       razao_social: r.escolas?.razao_social ?? null,
       grupo_economico_id: r.escolas?.grupo_economico_id ?? null,
+      codigo: r.escolas?.codigo ?? null,
       membroReal: true,
     }));
 
@@ -75,14 +80,14 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
       setIsSuperadmin(true);
       const { data: todasEscolas, error: errTodas } = await supabase
         .from("escolas")
-        .select("id, nome, razao_social, grupo_economico_id")
+        .select("id, nome, razao_social, grupo_economico_id, codigo")
         .order("nome");
 
       if (!errTodas) {
         const idsReais = new Set(reais.map((e) => e.escola_id));
         const extras: EscolaVinculada[] = (todasEscolas ?? [])
           .filter((e) => !idsReais.has(e.id))
-          .map((e) => ({ escola_id: e.id, nome: e.nome, razao_social: e.razao_social ?? null, grupo_economico_id: e.grupo_economico_id, membroReal: false }));
+          .map((e) => ({ escola_id: e.id, nome: e.nome, razao_social: e.razao_social ?? null, grupo_economico_id: e.grupo_economico_id, codigo: (e as any).codigo ?? null, membroReal: false }));
         listaFinal = [...reais, ...extras];
       }
     }
@@ -140,6 +145,7 @@ export function EscolaProvider({ children }: { children: ReactNode }) {
         isSuperadmin,
         emModoAdministrador,
         setEscolaAtivaId,
+        codigoEscolaAtiva: escolaAtivaObj?.codigo ?? null,
         refetchEscolas,
       }}
     >

@@ -1763,6 +1763,7 @@ export type Database = {
           carteirinha_qr_url: string | null
           carteirinha_validade_meses: number
           cnpj: string | null
+          codigo: string | null
           criado_em: string
           email: string | null
           endereco: string | null
@@ -1771,6 +1772,8 @@ export type Database = {
           logo_url: string | null
           modelo_avaliacao: string
           nome: string
+          numero_empresa: number | null
+          numero_unidade: number | null
           razao_social: string | null
           telefone: string | null
           uf: string | null
@@ -1786,6 +1789,7 @@ export type Database = {
           carteirinha_qr_url?: string | null
           carteirinha_validade_meses?: number
           cnpj?: string | null
+          codigo?: string | null
           criado_em?: string
           email?: string | null
           endereco?: string | null
@@ -1794,6 +1798,8 @@ export type Database = {
           logo_url?: string | null
           modelo_avaliacao?: string
           nome: string
+          numero_empresa?: number | null
+          numero_unidade?: number | null
           razao_social?: string | null
           telefone?: string | null
           uf?: string | null
@@ -1809,6 +1815,7 @@ export type Database = {
           carteirinha_qr_url?: string | null
           carteirinha_validade_meses?: number
           cnpj?: string | null
+          codigo?: string | null
           criado_em?: string
           email?: string | null
           endereco?: string | null
@@ -1817,6 +1824,8 @@ export type Database = {
           logo_url?: string | null
           modelo_avaliacao?: string
           nome?: string
+          numero_empresa?: number | null
+          numero_unidade?: number | null
           razao_social?: string | null
           telefone?: string | null
           uf?: string | null
@@ -2621,21 +2630,27 @@ export type Database = {
       grupos_economicos: {
         Row: {
           cnpj_mantenedora: string | null
+          codigo: string | null
           criado_em: string
           id: string
           nome: string
+          numero: number | null
         }
         Insert: {
           cnpj_mantenedora?: string | null
+          codigo?: string | null
           criado_em?: string
           id?: string
           nome: string
+          numero?: number | null
         }
         Update: {
           cnpj_mantenedora?: string | null
+          codigo?: string | null
           criado_em?: string
           id?: string
           nome?: string
+          numero?: number | null
         }
         Relationships: []
       }
@@ -5094,6 +5109,18 @@ export type Database = {
       excluir_cliente_saas: {
         Args: { p_escola_id: string }
         Returns: undefined
+      }
+      montar_codigo_escola: {
+        Args: { p_empresa: number; p_unidade: number }
+        Returns: string
+      }
+      plataforma_definir_codigo_escola: {
+        Args: { p_codigo: string; p_escola_id: string }
+        Returns: undefined
+      }
+      proximo_numero_empresa: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       fn_data_por_extenso: { Args: { p_data?: string }; Returns: string }
       fn_numero_por_extenso: { Args: { n: number }; Returns: string }

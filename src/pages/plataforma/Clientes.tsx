@@ -53,6 +53,8 @@ export default function Clientes() {
 
   const queryClient = useQueryClient();
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
+  const [editCodigo, setEditCodigo] = useState<{ id: string; nome: string } | null>(null);
+  const [codigoInput, setCodigoInput] = useState("");
   const [trocarPlanoEscolaId, setTrocarPlanoEscolaId] = useState<string | null>(null);
   const [nomeEscola, setNomeEscola] = useState("");
   const [planoSelecionado, setPlanoSelecionado] = useState<string>("");
@@ -172,6 +174,19 @@ export default function Clientes() {
     onError: (err: any) => toast({ title: "Erro ao suspender", description: err.message, variant: "destructive" }),
   });
 
+  const salvarCodigo = useMutation({
+    mutationFn: async () => {
+      if (!editCodigo) return;
+      const { error } = await supabase.rpc("plataforma_definir_codigo_escola", {
+        p_escola_id: editCodigo.id,
+        p_codigo: codigoInput,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: "Código atualizado" }); setEditCodigo(null); invalidateClientes(); },
+    onError: (err: any) => toast({ title: "Não foi possível salvar o código", description: err.message, variant: "destructive" }),
+  });
+
   const reativar = useMutation({
     mutationFn: async (escolaId: string) => {
       const { error } = await supabase.rpc("reativar_cliente_saas", { p_escola_id: escolaId });
@@ -252,6 +267,7 @@ export default function Clientes() {
             <TableHeader>
               <TableRow>
                 <TableHead>Escola</TableHead>
+                <TableHead>Código</TableHead>
                 <TableHead>Plano</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Usuários</TableHead>
@@ -262,10 +278,10 @@ export default function Clientes() {
             </TableHeader>
             <TableBody>
               {isLoading && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
               )}
               {!isLoading && (!clientes || clientes.length === 0) && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cliente ainda.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum cliente ainda.</TableCell></TableRow>
               )}
               {gruposOrdenados.map((grupo) => {
                 const temFiliais = grupo.escolas.length > 1;
@@ -297,6 +313,11 @@ export default function Clientes() {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {c.escola_codigo
+                          ? <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{c.escola_codigo}</code>
+                          : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell>{c.plano_atual ?? "—"}</TableCell>
                       <TableCell>{statusBadge(c.status_assinatura)}</TableCell>
                       <TableCell className={noLimiteUsuarios ? "text-destructive font-semibold" : ""}>
@@ -317,6 +338,14 @@ export default function Clientes() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => entrarComoAdmin(c.escola_id!)}>
                               Entrar como Administrador
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditCodigo({ id: c.escola_id!, nome: c.escola_nome! });
+                                setCodigoInput(c.escola_codigo ?? "");
+                              }}
+                            >
+                              Editar código
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
@@ -371,6 +400,32 @@ export default function Clientes() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editCodigo} onOpenChange={(open) => !open && setEditCodigo(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Código de {editCodigo?.nome}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Código (formato EEUU)</Label>
+              <Input
+                value={codigoInput}
+                onChange={(e) => setCodigoInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="Ex: 0101"
+                inputMode="numeric"
+              />
+              <p className="text-xs text-muted-foreground">
+                EE = empresa (grupo), UU = unidade (01 = matriz). Deixe em branco para o sistema
+                gerar automático.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button disabled={salvarCodigo.isPending} onClick={() => salvarCodigo.mutate()}>
+              {salvarCodigo.isPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!trocarPlanoEscolaId} onOpenChange={(open) => !open && setTrocarPlanoEscolaId(null)}>
         <DialogContent>
