@@ -21,6 +21,10 @@ import { usePlanosFinanceirosTurma, type TurmaComPlano } from "@/hooks/usePlanos
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { toast } from "sonner";
 
+/** Regimes fixos de modalidade financeira - também usados no gráfico "Alunos
+ * por Regime" do Dashboard, por isso não é mais texto livre. */
+export const REGIMES_MODALIDADE = ["Parcial", "Parcial Estendido", "Semi Integral", "Integral"] as const;
+
 export default function PlanosFinanceirosTurma() {
   const { turmas, loading, salvarPlano } = usePlanosFinanceirosTurma();
   const { escolaAtivaId } = useEscolaAtiva();
@@ -261,9 +265,9 @@ export default function PlanosFinanceirosTurma() {
           <DialogHeader>
             <DialogTitle>Modalidades — {modalidadesDe?.turma_nome}</DialogTitle>
             <DialogDescription>
-              Variações de valor pra essa turma (ex: Mensal R$ {modalidadesDe?.valor_mensalidade}, Integral, Com
-              Almoço). Na matrícula, a família escolhe uma delas; se nenhuma for escolhida, usa o valor padrão
-              do plano acima.
+              Regime e valor pra essa turma (Parcial, Parcial Estendido, Semi Integral, Integral). Na
+              matrícula, a família escolhe uma delas; se nenhuma for escolhida, usa o valor padrão do plano
+              acima. O regime aparece no gráfico "Alunos por Regime" do Dashboard.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -288,7 +292,16 @@ export default function PlanosFinanceirosTurma() {
             <div className="border-t pt-3 space-y-2">
               <Label>Nova modalidade</Label>
               <div className="flex gap-2">
-                <Input placeholder="Ex: Integral com Almoço" value={novaModNome} onChange={(e) => setNovaModNome(e.target.value)} />
+                <Select value={novaModNome} onValueChange={setNovaModNome}>
+                  <SelectTrigger><SelectValue placeholder="Regime" /></SelectTrigger>
+                  <SelectContent>
+                    {REGIMES_MODALIDADE.filter(
+                      (r) => !modalidades?.some((m) => m.nome === r)
+                    ).map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
                   type="number" step="0.01" min="0" placeholder="R$" className="w-28"
                   value={novaModValor} onChange={(e) => setNovaModValor(e.target.value)}

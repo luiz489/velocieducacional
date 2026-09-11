@@ -165,8 +165,8 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-sm">
+      <div className="grid gap-6 lg:grid-cols-4">
+        <Card className="shadow-sm lg:col-span-2">
           <CardHeader><CardTitle className="text-base">Receita Mensal</CardTitle></CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-[260px] w-full" /> : (
@@ -198,6 +198,25 @@ export default function Dashboard() {
                 <PieChart>
                   <Pie data={data?.alunosPorTurno || []} cx="50%" cy="50%" innerRadius={60} outerRadius={95} paddingAngle={4} dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {(data?.alunosPorTurno || []).map((_, i) => (
+                      <Cell key={i} fill={TURNO_COLORS[i % TURNO_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Legend verticalAlign="bottom" height={36} />
+                  <Tooltip formatter={(value: number) => `${value} alunos`} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader><CardTitle className="text-base">Alunos por Regime</CardTitle></CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-[260px] w-full" /> : (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={data?.alunosPorRegime || []} cx="50%" cy="50%" innerRadius={60} outerRadius={95} paddingAngle={4} dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {(data?.alunosPorRegime || []).map((_, i) => (
                       <Cell key={i} fill={TURNO_COLORS[i % TURNO_COLORS.length]} />
                     ))}
                   </Pie>

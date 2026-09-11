@@ -14,12 +14,13 @@ export function useDashboardData(refMonth: number, refYear: number, escolaIds: s
       const startOfMonth = `${refYear}-${mesStr}-01`;
       const endOfMonth = `${refYear}-${mesStr}-31`;
 
-      const [alunosRes, turmasRes, matriculasRes, financeiroRes, ocorrenciasRes] = await Promise.all([
+      const [alunosRes, turmasRes, matriculasRes, financeiroRes, ocorrenciasRes, modalidadesRes] = await Promise.all([
         supabase.from("alunos").select("id, status, data_nascimento").in("escola_id", escolaIds),
         supabase.from("turmas").select("id, turno").in("escola_id", escolaIds),
-        supabase.from("matriculas").select("id, data_ingresso, turma_id, aluno_id, status_pagamento").in("escola_id", escolaIds),
+        supabase.from("matriculas").select("id, data_ingresso, turma_id, aluno_id, status_pagamento, modalidade_financeira_id").in("escola_id", escolaIds),
         supabase.from("financeiro").select("id, valor, status, data_vencimento, data_pagamento, tipo, faturado").in("escola_id", escolaIds),
         supabase.from("ocorrencias").select("id, tipo, data_ocorrencia, aluno_id, descricao, created_at").in("escola_id", escolaIds),
+        supabase.from("modalidades_financeiras_turma").select("id, nome").in("escola_id", escolaIds),
       ]);
 
       const alunos = alunosRes.data || [];
@@ -27,6 +28,7 @@ export function useDashboardData(refMonth: number, refYear: number, escolaIds: s
       const matriculas = matriculasRes.data || [];
       const financeiro = financeiroRes.data || [];
       const ocorrencias = ocorrenciasRes.data || [];
+      const modalidades = modalidadesRes.data || [];
 
       const totalAlunos = alunos.filter(a => a.status === "Ativo").length;
       const totalTurmas = turmas.length;
@@ -52,6 +54,14 @@ export function useDashboardData(refMonth: number, refYear: number, escolaIds: s
         turnoCount[turno] = (turnoCount[turno] || 0) + 1;
       });
       const alunosPorTurno = Object.entries(turnoCount).map(([name, value]) => ({ name, value }));
+
+      const modalidadeMap = new Map(modalidades.map(m => [m.id, m.nome]));
+      const regimeCount: Record<string, number> = {};
+      matriculas.forEach(m => {
+        const regime = (m.modalidade_financeira_id && modalidadeMap.get(m.modalidade_financeira_id)) || "Sem regime definido";
+        regimeCount[regime] = (regimeCount[regime] || 0) + 1;
+      });
+      const alunosPorRegime = Object.entries(regimeCount).map(([name, value]) => ({ name, value }));
 
       const matriculasMensais = [];
       for (let i = 5; i >= 0; i--) {
@@ -95,6 +105,7 @@ export function useDashboardData(refMonth: number, refYear: number, escolaIds: s
         kpis: { totalAlunos, totalTurmas, turnosDistintos, inadimplencia, recebido, matriculasEsteMes, aniversariantes },
         receitaMensal,
         alunosPorTurno,
+        alunosPorRegime,
         matriculasMensais,
         inadimplenciaData,
         ocorrenciasTipo,
