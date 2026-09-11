@@ -439,7 +439,7 @@ export default function Turmas() {
                 {alunosDaTurma.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell className="font-medium">{a.nome}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{a.cpf}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{a.cpf || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={
                         a.status_pagamento === "Pago" ? "default" :

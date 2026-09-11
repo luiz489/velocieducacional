@@ -251,15 +251,17 @@ export default function Matriculas() {
         const fd = new FormData(e.currentTarget);
         const campos = lerAlunoCamposDeFormData(fd);
 
-        if (!campos.nome || !campos.cpf || !campos.data_nascimento || !campos.responsavel_financeiro) {
-          toast.error("Preencha nome, CPF, data de nascimento e responsável do novo aluno.");
+        if (!campos.nome || !campos.data_nascimento || !campos.responsavel_financeiro) {
+          toast.error("Preencha nome, data de nascimento e responsável do novo aluno.");
           return;
         }
         const cpfLimpo = limparCPF(campos.cpf);
-        const cpfErro = validarCPF(cpfLimpo);
-        if (cpfErro) {
-          toast.error(cpfErro);
-          return;
+        if (cpfLimpo) {
+          const cpfErro = validarCPF(cpfLimpo);
+          if (cpfErro) {
+            toast.error(cpfErro);
+            return;
+          }
         }
 
         const { data: novoAluno, error } = await supabase
@@ -267,15 +269,15 @@ export default function Matriculas() {
           .insert({
             escola_id: escolaAtivaId,
             ...campos,
-            cpf: cpfLimpo,
+            cpf: cpfLimpo || null,
             responsavel_cpf: campos.responsavel_cpf ? limparCPF(campos.responsavel_cpf) : null,
           })
           .select("id")
           .single();
 
         if (error) {
-          if (error.code === "23505" || error.message.toLowerCase().includes("alunos_cpf_unique")) {
-            toast.error("CPF já cadastrado no sistema.");
+          if (error.code === "23505") {
+            toast.error("Já existe um aluno com esse CPF nesta escola.");
           } else {
             toast.error("Erro ao cadastrar aluno: " + error.message);
           }

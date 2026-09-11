@@ -98,7 +98,7 @@ export default function Alunos() {
   const filtered = alunos.filter((a) => {
     const matchSearch =
       a.nome.toLowerCase().includes(search.toLowerCase()) ||
-      a.cpf.includes(search) ||
+      (a.cpf ?? "").includes(search) ||
       a.responsavel_financeiro.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "todos" || a.status === statusFilter;
     return matchSearch && matchStatus;
@@ -114,7 +114,7 @@ export default function Alunos() {
     const ok = await createAluno({
       escola_id: escolaAtivaId,
       ...campos,
-      cpf: limparCPF(campos.cpf),
+      cpf: limparCPF(campos.cpf) || null,
       responsavel_cpf: campos.responsavel_cpf ? limparCPF(campos.responsavel_cpf) : null,
     });
     if (ok) setDialogOpen(false);
@@ -127,7 +127,7 @@ export default function Alunos() {
     const campos = lerAlunoCamposDeFormData(fd);
     const ok = await updateAluno(editAluno.id, {
       ...campos,
-      cpf: limparCPF(campos.cpf),
+      cpf: limparCPF(campos.cpf) || null,
       responsavel_cpf: campos.responsavel_cpf ? limparCPF(campos.responsavel_cpf) : null,
     });
     if (ok) {
@@ -224,7 +224,7 @@ export default function Alunos() {
             {filtered.map((aluno) => (
               <TableRow key={aluno.id}>
                 <TableCell className="font-medium">{aluno.nome}</TableCell>
-                <TableCell className="text-muted-foreground">{aluno.cpf}</TableCell>
+                <TableCell className="text-muted-foreground">{aluno.cpf || "—"}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">
                   {dataBR(aluno.data_nascimento)}
                 </TableCell>

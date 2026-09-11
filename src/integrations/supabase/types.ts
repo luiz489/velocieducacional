@@ -388,7 +388,7 @@ export type Database = {
       alunos: {
         Row: {
           cor_raca: string | null
-          cpf: string
+          cpf: string | null
           created_at: string
           data_nascimento: string
           email_responsavel: string | null
@@ -430,7 +430,7 @@ export type Database = {
         }
         Insert: {
           cor_raca?: string | null
-          cpf: string
+          cpf?: string | null
           created_at?: string
           data_nascimento: string
           email_responsavel?: string | null
@@ -472,7 +472,7 @@ export type Database = {
         }
         Update: {
           cor_raca?: string | null
-          cpf?: string
+          cpf?: string | null
           created_at?: string
           data_nascimento?: string
           email_responsavel?: string | null

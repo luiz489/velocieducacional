@@ -48,8 +48,8 @@ export type AlunoCamposDefaultValues = {
 /**
  * Chaves dos campos/seções opcionais que a escola pode esconder no formulário
  * de "novo aluno" de Nova Matrícula (Configurações → Parâmetros → Campos da
- * Matrícula). Nome, CPF, nascimento e nome do responsável são sempre
- * obrigatórios e não aparecem aqui.
+ * Matrícula). Nome, nascimento e nome do responsável são sempre obrigatórios e
+ * não aparecem aqui. O CPF do aluno é opcional (criança sem CPF próprio).
  */
 export const CAMPOS_MATRICULA_CONFIGURAVEIS = [
   { chave: "responsavel_endereco", rotulo: "Endereço (CEP, bairro, cidade, UF, rua)" },
@@ -207,8 +207,8 @@ export function AlunoCamposFieldset({
           <Input id="nome" name="nome" placeholder="Nome do aluno" className="mt-1" defaultValue={defaultValues?.nome} required />
         </div>
         <div>
-          <Label htmlFor="cpf">CPF</Label>
-          <Input id="cpf" name="cpf" placeholder="000.000.000-00" className="mt-1" value={cpf} onChange={(e) => setCpf(mascaraCPF(e.target.value))} required />
+          <Label htmlFor="cpf">CPF <span className="text-muted-foreground font-normal">(se tiver)</span></Label>
+          <Input id="cpf" name="cpf" placeholder="000.000.000-00" className="mt-1" value={cpf} onChange={(e) => setCpf(mascaraCPF(e.target.value))} />
         </div>
         <div>
           <Label htmlFor="nascimento">Data de Nascimento</Label>

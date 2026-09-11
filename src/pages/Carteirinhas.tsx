@@ -227,7 +227,7 @@ export default function Carteirinhas() {
                   <div className="flex-1 min-w-0 space-y-1 text-sm">
                     <div className="font-bold text-base leading-tight truncate">{preview.aluno.nome}</div>
                     <div className="text-xs text-muted-foreground">RA: <code>{preview.aluno.ra_censo || "não informado"}</code></div>
-                    <div className="text-xs text-muted-foreground">CPF: {preview.aluno.cpf}</div>
+                    <div className="text-xs text-muted-foreground">CPF: {preview.aluno.cpf || "não informado"}</div>
                     <div className="text-xs text-muted-foreground">Nasc: {formatarDataBR(preview.aluno.data_nascimento)}</div>
                     <div className="text-xs text-muted-foreground">Válida até: {formatarDataBR(preview.carteira.validade)}</div>
                   </div>

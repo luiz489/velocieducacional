@@ -43,29 +43,29 @@ export function useAlunos() {
   }, [fetchAlunos, fetchTurmas]);
 
   const createAluno = async (aluno: TablesInsert<"alunos">) => {
-    // Validação de formato e dígitos verificadores do CPF
+    // CPF é opcional. Quando informado: valida os dígitos e checa duplicidade
+    // dentro da mesma escola.
     if (aluno.cpf) {
       const cpfErro = validarCPF(aluno.cpf);
       if (cpfErro) {
         toast.error(cpfErro);
         return false;
       }
-    }
-    // Validação client-side de CPF duplicado (dentro da mesma escola)
-    const { data: existente } = await supabase
-      .from("alunos")
-      .select("id, nome")
-      .eq("cpf", aluno.cpf)
-      .eq("escola_id", aluno.escola_id)
-      .maybeSingle();
-    if (existente) {
-      toast.error(`CPF já cadastrado para o aluno "${existente.nome}".`);
-      return false;
+      const { data: existente } = await supabase
+        .from("alunos")
+        .select("id, nome")
+        .eq("cpf", aluno.cpf)
+        .eq("escola_id", aluno.escola_id)
+        .maybeSingle();
+      if (existente) {
+        toast.error(`CPF já cadastrado para o aluno "${existente.nome}".`);
+        return false;
+      }
     }
     const { error } = await supabase.from("alunos").insert(aluno);
     if (error) {
-      if (error.code === "23505" || error.message.toLowerCase().includes("alunos_cpf_unique")) {
-        toast.error("CPF já cadastrado no sistema.");
+      if (error.code === "23505") {
+        toast.error("Já existe um aluno com esse CPF nesta escola.");
       } else {
         toast.error("Erro ao cadastrar aluno: " + error.message);
       }
@@ -97,8 +97,8 @@ export function useAlunos() {
     }
     const { error } = await supabase.from("alunos").update(updates).eq("id", id);
     if (error) {
-      if (error.code === "23505" || error.message.toLowerCase().includes("alunos_cpf_unique")) {
-        toast.error("CPF já cadastrado no sistema.");
+      if (error.code === "23505") {
+        toast.error("Já existe um aluno com esse CPF nesta escola.");
       } else {
         toast.error("Erro ao atualizar aluno: " + error.message);
       }
