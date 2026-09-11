@@ -179,7 +179,7 @@ export default function Alunos() {
           <DialogTrigger asChild>
             <Button disabled={!escolaAtivaId}><Plus className="h-4 w-4 mr-2" />Novo Aluno</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Cadastrar Novo Aluno</DialogTitle>
               <DialogDescription>Preencha os dados do aluno para cadastrá-lo no sistema.</DialogDescription>
@@ -274,7 +274,7 @@ export default function Alunos() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditAluno(null); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Aluno</DialogTitle>
             <DialogDescription>Atualize os dados do aluno.</DialogDescription>
@@ -349,7 +349,7 @@ function AlunoForm({
   submitLabel?: string;
 }) {
   return (
-    <form className="space-y-5 mt-2 max-h-[70vh] overflow-y-auto pr-1" onSubmit={onSubmit}>
+    <form className="space-y-5 mt-2" onSubmit={onSubmit}>
       <AlunoCamposFieldset defaultValues={defaultValues} />
       <div className="flex justify-end gap-3 pt-2 border-t">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>

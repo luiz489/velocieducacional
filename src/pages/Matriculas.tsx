@@ -740,7 +740,7 @@ export default function Matriculas() {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Matrícula</DialogTitle>
             <DialogDescription>
