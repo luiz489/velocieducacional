@@ -74,6 +74,9 @@ export default function Financeiro() {
   const [statusFilter, setStatusFilter] = useState("todos");
   const [tipoFilter, setTipoFilter] = useState("todos");
   const [confirmDialog, setConfirmDialog] = useState<LancamentoRow | null>(null);
+  const [dataPagamento, setDataPagamento] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState("");
+  const [manterDesconto, setManterDesconto] = useState<boolean | null>(null);
 
   const filtered = lancamentos.filter((l) => {
     const matchSearch =
@@ -93,9 +96,33 @@ export default function Financeiro() {
 
   const inadimplentes = getInadimplentes(lancamentos);
 
+  const abrirConfirmDialog = (l: LancamentoRow) => {
+    setConfirmDialog(l);
+    setDataPagamento(new Date().toISOString().slice(0, 10));
+    setFormaPagamento("");
+    setManterDesconto(null);
+  };
+
+  const atrasado = !!confirmDialog && !!dataPagamento && dataPagamento > confirmDialog.data_vencimento;
+  const temDesconto =
+    !!confirmDialog && confirmDialog.valor_integral != null && confirmDialog.valor_integral > confirmDialog.valor;
+  const precisaPerguntarDesconto = atrasado && temDesconto && formaPagamento !== "" && formaPagamento !== "Boleto";
+  const valorPrevisto = confirmDialog
+    ? precisaPerguntarDesconto && manterDesconto === false
+      ? confirmDialog.valor_integral ?? confirmDialog.valor
+      : confirmDialog.valor
+    : 0;
+  const podeConfirmar =
+    !!confirmDialog && !!dataPagamento && formaPagamento !== "" && (!precisaPerguntarDesconto || manterDesconto !== null);
+
   const handleConfirmPagamento = async () => {
-    if (confirmDialog) {
-      const ok = await confirmarPagamento(confirmDialog.id);
+    if (confirmDialog && podeConfirmar) {
+      const ok = await confirmarPagamento(
+        confirmDialog.id,
+        dataPagamento,
+        formaPagamento,
+        precisaPerguntarDesconto ? !!manterDesconto : false
+      );
       if (ok) setConfirmDialog(null);
     }
   };
@@ -268,7 +295,7 @@ export default function Financeiro() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {l.status !== "Pago" && (
-                            <DropdownMenuItem onClick={() => setConfirmDialog(l)}>
+                            <DropdownMenuItem onClick={() => abrirConfirmDialog(l)}>
                               Confirmar Pagamento
                             </DropdownMenuItem>
                           )}
@@ -378,11 +405,70 @@ export default function Financeiro() {
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <p className="text-sm"><span className="text-muted-foreground">Aluno:</span> <span className="font-medium">{confirmDialog.aluno_nome}</span></p>
                 <p className="text-sm"><span className="text-muted-foreground">Descrição:</span> <span className="font-medium">{confirmDialog.descricao}</span></p>
-                <p className="text-sm"><span className="text-muted-foreground">Valor:</span> <span className="font-bold text-lg">R$ {confirmDialog.valor.toFixed(2)}</span></p>
+                <p className="text-sm"><span className="text-muted-foreground">Vencimento:</span> <span className="font-medium">{dataBR(confirmDialog.data_vencimento)}</span></p>
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm text-muted-foreground">Data do pagamento</label>
+                <Input
+                  type="date"
+                  value={dataPagamento}
+                  onChange={(e) => { setDataPagamento(e.target.value); setManterDesconto(null); }}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm text-muted-foreground">Forma de pagamento</label>
+                <Select
+                  value={formaPagamento}
+                  onValueChange={(v) => { setFormaPagamento(v); setManterDesconto(null); }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Boleto">Boleto</SelectItem>
+                    <SelectItem value="Pix">Pix</SelectItem>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="Cartão">Cartão</SelectItem>
+                    <SelectItem value="Transferência">Transferência</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {precisaPerguntarDesconto && (
+                <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 space-y-2">
+                  <p className="text-sm flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                    A data do pagamento é posterior ao vencimento. Como o pagamento não foi por boleto, o cliente pode ter pago pontualmente mesmo com a baixa em atraso. Deseja manter o desconto aplicado?
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={manterDesconto === true ? "default" : "outline"}
+                      onClick={() => setManterDesconto(true)}
+                    >
+                      Sim, manter desconto
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={manterDesconto === false ? "default" : "outline"}
+                      onClick={() => setManterDesconto(false)}
+                    >
+                      Não, cobrar valor integral
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-lg border bg-muted/50 p-4">
+                <p className="text-sm"><span className="text-muted-foreground">Valor a confirmar:</span> <span className="font-bold text-lg">R$ {valorPrevisto.toFixed(2)}</span></p>
+              </div>
+
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancelar</Button>
-                <Button onClick={handleConfirmPagamento}>
+                <Button onClick={handleConfirmPagamento} disabled={!podeConfirmar}>
                   <CheckCircle className="h-4 w-4 mr-2" />Confirmar
                 </Button>
               </div>

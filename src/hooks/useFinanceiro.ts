@@ -10,9 +10,11 @@ export type LancamentoRow = {
   descricao: string;
   tipo: string;
   valor: number;
+  valor_integral: number | null;
   data_vencimento: string;
   data_pagamento: string | null;
   status: string;
+  forma_pagamento: string | null;
 };
 
 export function useFinanceiro() {
@@ -25,7 +27,7 @@ export function useFinanceiro() {
     const { data, error } = await supabase
       .from("financeiro")
       .select(`
-        id, descricao, valor, data_vencimento, data_pagamento, status, tipo,
+        id, descricao, valor, valor_integral, data_vencimento, data_pagamento, status, tipo, forma_pagamento,
         matriculas ( alunos ( nome, responsavel_financeiro ) )
       `)
       .eq("escola_id", escolaAtivaId)
@@ -46,9 +48,11 @@ export function useFinanceiro() {
         descricao: l.descricao,
         tipo: l.tipo,
         valor: Number(l.valor),
+        valor_integral: l.valor_integral != null ? Number(l.valor_integral) : null,
         data_vencimento: l.data_vencimento,
         data_pagamento: l.data_pagamento,
         status: l.status,
+        forma_pagamento: l.forma_pagamento,
       }))
     );
     setLoading(false);
@@ -58,11 +62,18 @@ export function useFinanceiro() {
     fetchLancamentos();
   }, [fetchLancamentos]);
 
-  const confirmarPagamento = async (id: string) => {
-    const { error } = await supabase
-      .from("financeiro")
-      .update({ status: "Pago", data_pagamento: new Date().toISOString().slice(0, 10) })
-      .eq("id", id);
+  const confirmarPagamento = async (
+    id: string,
+    dataPagamento: string,
+    formaPagamento: string,
+    manterDesconto: boolean
+  ) => {
+    const { error } = await supabase.rpc("confirmar_pagamento_financeiro", {
+      p_id: id,
+      p_data_pagamento: dataPagamento,
+      p_forma_pagamento: formaPagamento,
+      p_manter_desconto: manterDesconto,
+    });
     if (error) {
       toast.error("Erro ao confirmar pagamento: " + error.message);
       return false;
