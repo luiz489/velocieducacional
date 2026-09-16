@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Landmark, CheckCircle2, Settings, Trash2, Plus, ListChecks } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Landmark, CheckCircle2, Settings, Trash2, Plus, ListChecks, Timer } from "lucide-react";
 
 /**
  * Catálogo de bancos com integração disponível no sistema. Pra adicionar um
@@ -95,8 +96,101 @@ export default function ParametrizacoesFinanceiras() {
         escolaId={escolaAtivaId}
       />
 
+      <RegraPontualidade escolaId={escolaAtivaId} />
+
       <ValoresOpcionaisMatricula escolaId={escolaAtivaId} />
     </div>
+  );
+}
+
+function RegraPontualidade({ escolaId }: { escolaId: string | null }) {
+  const qc = useQueryClient();
+  const [ativa, setAtiva] = useState(true);
+  const [tolerancia, setTolerancia] = useState("0");
+
+  const { data } = useQuery({
+    queryKey: ["regra-pontualidade", escolaId],
+    enabled: !!escolaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("escolas")
+        .select("pontualidade_ativa, pontualidade_dias_tolerancia")
+        .eq("id", escolaId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (!data) return;
+    setAtiva(data.pontualidade_ativa);
+    setTolerancia(String(data.pontualidade_dias_tolerancia));
+  }, [data]);
+
+  const salvar = useMutation({
+    mutationFn: async () => {
+      if (!escolaId) return;
+      const dias = Math.max(0, Number(tolerancia) || 0);
+      const { error } = await supabase
+        .from("escolas")
+        .update({ pontualidade_ativa: ativa, pontualidade_dias_tolerancia: dias })
+        .eq("id", escolaId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Regra de pontualidade salva!");
+      qc.invalidateQueries({ queryKey: ["regra-pontualidade", escolaId] });
+    },
+    onError: (e: any) => toast.error("Erro: " + e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Timer className="h-4 w-4" /> Regra de Pontualidade
+        </CardTitle>
+        <CardDescription>
+          Define se um título com desconto perde o desconto (passa a cobrar o valor integral) quando pago
+          depois do vencimento, e quantos dias de tolerância a escola dá antes disso acontecer.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div>
+            <p className="text-sm font-medium">Aplicar regra de pontualidade</p>
+            <p className="text-xs text-muted-foreground">
+              Se desligada, o desconto nunca é removido por atraso no pagamento.
+            </p>
+          </div>
+          <Switch checked={ativa} onCheckedChange={setAtiva} />
+        </div>
+
+        {ativa && (
+          <div className="flex items-end gap-3">
+            <div className="w-40">
+              <Label>Dias de tolerância</Label>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={tolerancia}
+                onChange={(e) => setTolerancia(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground pb-2">
+              0 = perde o desconto assim que passar 1 dia do vencimento.
+            </p>
+          </div>
+        )}
+
+        <Button onClick={() => salvar.mutate()} disabled={salvar.isPending}>
+          {salvar.isPending ? "Salvando…" : "Salvar"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

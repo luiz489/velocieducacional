@@ -2174,6 +2174,8 @@ export type Database = {
           nome: string
           numero_empresa: number | null
           numero_unidade: number | null
+          pontualidade_ativa: boolean
+          pontualidade_dias_tolerancia: number
           razao_social: string | null
           telefone: string | null
           uf: string | null
@@ -2200,6 +2202,8 @@ export type Database = {
           nome: string
           numero_empresa?: number | null
           numero_unidade?: number | null
+          pontualidade_ativa?: boolean
+          pontualidade_dias_tolerancia?: number
           razao_social?: string | null
           telefone?: string | null
           uf?: string | null
@@ -2226,6 +2230,8 @@ export type Database = {
           nome?: string
           numero_empresa?: number | null
           numero_unidade?: number | null
+          pontualidade_ativa?: boolean
+          pontualidade_dias_tolerancia?: number
           razao_social?: string | null
           telefone?: string | null
           uf?: string | null
