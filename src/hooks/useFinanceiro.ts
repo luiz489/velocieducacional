@@ -83,5 +83,16 @@ export function useFinanceiro() {
     return true;
   };
 
-  return { lancamentos, loading, confirmarPagamento, refetch: fetchLancamentos };
+  const desfazerConfirmacao = async (id: string) => {
+    const { error } = await supabase.rpc("desfazer_confirmacao_pagamento", { p_id: id });
+    if (error) {
+      toast.error("Erro ao desfazer a confirmação: " + error.message);
+      return false;
+    }
+    toast.success("Confirmação de pagamento desfeita!");
+    await fetchLancamentos();
+    return true;
+  };
+
+  return { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, refetch: fetchLancamentos };
 }

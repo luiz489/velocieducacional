@@ -2551,6 +2551,7 @@ export type Database = {
           tipo: string
           updated_at: string
           valor: number
+          valor_antes_pagamento: number | null
           valor_integral: number | null
         }
         Insert: {
@@ -2573,6 +2574,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           valor: number
+          valor_antes_pagamento?: number | null
           valor_integral?: number | null
         }
         Update: {
@@ -2595,6 +2597,7 @@ export type Database = {
           tipo?: string
           updated_at?: string
           valor?: number
+          valor_antes_pagamento?: number | null
           valor_integral?: number | null
         }
         Relationships: [
@@ -5959,6 +5962,7 @@ export type Database = {
           tipo: string
           updated_at: string
           valor: number
+          valor_antes_pagamento: number | null
           valor_integral: number | null
         }
         SetofOptions: {
@@ -6028,6 +6032,38 @@ export type Database = {
           p_plano_id: string
         }
         Returns: string
+      }
+      desfazer_confirmacao_pagamento: {
+        Args: { p_id: string }
+        Returns: {
+          boleto_linha_digitavel: string | null
+          created_at: string
+          curso_extra_inscricao_id: string | null
+          data_pagamento: string | null
+          data_vencimento: string
+          descricao: string
+          escola_id: string
+          faturado: boolean
+          faturado_em: string | null
+          forma_pagamento: string | null
+          gateway_cobranca_id: string | null
+          id: string
+          link_pagamento: string | null
+          matricula_id: string
+          pix_qr_code: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          valor: number
+          valor_antes_pagamento: number | null
+          valor_integral: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "financeiro"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       escolas_gerenciaveis_do_grupo: {
         Args: { p_escola_id: string }

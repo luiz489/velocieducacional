@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { dataBR } from "@/lib/utils";
-import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter, Undo2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ function getInadimplentes(lancamentos: LancamentoRow[]): Inadimplente[] {
 }
 
 export default function Financeiro() {
-  const { lancamentos, loading, confirmarPagamento } = useFinanceiro();
+  const { lancamentos, loading, confirmarPagamento, desfazerConfirmacao } = useFinanceiro();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [tipoFilter, setTipoFilter] = useState("todos");
@@ -77,6 +77,8 @@ export default function Financeiro() {
   const [dataPagamento, setDataPagamento] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("");
   const [manterDesconto, setManterDesconto] = useState<boolean | null>(null);
+  const [desfazerDialog, setDesfazerDialog] = useState<LancamentoRow | null>(null);
+  const [desfazendo, setDesfazendo] = useState(false);
 
   const filtered = lancamentos.filter((l) => {
     const matchSearch =
@@ -125,6 +127,14 @@ export default function Financeiro() {
       );
       if (ok) setConfirmDialog(null);
     }
+  };
+
+  const handleDesfazerConfirmacao = async () => {
+    if (!desfazerDialog) return;
+    setDesfazendo(true);
+    const ok = await desfazerConfirmacao(desfazerDialog.id);
+    setDesfazendo(false);
+    if (ok) setDesfazerDialog(null);
   };
 
   if (loading) {
@@ -299,6 +309,11 @@ export default function Financeiro() {
                               Confirmar Pagamento
                             </DropdownMenuItem>
                           )}
+                          {l.status === "Pago" && (
+                            <DropdownMenuItem onClick={() => setDesfazerDialog(l)}>
+                              Desfazer Confirmação
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -470,6 +485,39 @@ export default function Financeiro() {
                 <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancelar</Button>
                 <Button onClick={handleConfirmPagamento} disabled={!podeConfirmar}>
                   <CheckCircle className="h-4 w-4 mr-2" />Confirmar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!desfazerDialog} onOpenChange={(open) => !open && setDesfazerDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Desfazer Confirmação de Pagamento</DialogTitle>
+            <DialogDescription>
+              Use isso quando a baixa foi feita errada (título errado, valor ou data errados).
+            </DialogDescription>
+          </DialogHeader>
+          {desfazerDialog && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+                <p className="text-sm"><span className="text-muted-foreground">Aluno:</span> <span className="font-medium">{desfazerDialog.aluno_nome}</span></p>
+                <p className="text-sm"><span className="text-muted-foreground">Descrição:</span> <span className="font-medium">{desfazerDialog.descricao}</span></p>
+                <p className="text-sm"><span className="text-muted-foreground">Pago em:</span> <span className="font-medium">{desfazerDialog.data_pagamento ? dataBR(desfazerDialog.data_pagamento) : "—"}</span></p>
+                <p className="text-sm"><span className="text-muted-foreground">Valor confirmado:</span> <span className="font-medium">R$ {desfazerDialog.valor.toFixed(2)}</span></p>
+              </div>
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
+                <p className="text-sm flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  O título volta para Pendente ou Atrasado (conforme o vencimento), a data e a forma de pagamento são apagadas, e o valor volta ao que era antes da baixa (com o desconto de pontualidade recalculado, se for o caso).
+                </p>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setDesfazerDialog(null)}>Cancelar</Button>
+                <Button variant="destructive" onClick={handleDesfazerConfirmacao} disabled={desfazendo}>
+                  <Undo2 className="h-4 w-4 mr-2" />{desfazendo ? "Desfazendo…" : "Desfazer"}
                 </Button>
               </div>
             </div>
