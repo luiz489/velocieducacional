@@ -98,6 +98,8 @@ export default function ParametrizacoesFinanceiras() {
 
       <RegraPontualidade escolaId={escolaAtivaId} />
 
+      <ToleranciaStatusAtrasado escolaId={escolaAtivaId} />
+
       <ValoresOpcionaisMatricula escolaId={escolaAtivaId} />
     </div>
   );
@@ -186,6 +188,83 @@ function RegraPontualidade({ escolaId }: { escolaId: string | null }) {
           </div>
         )}
 
+        <Button onClick={() => salvar.mutate()} disabled={salvar.isPending}>
+          {salvar.isPending ? "Salvando…" : "Salvar"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ToleranciaStatusAtrasado({ escolaId }: { escolaId: string | null }) {
+  const qc = useQueryClient();
+  const [tolerancia, setTolerancia] = useState("0");
+
+  const { data } = useQuery({
+    queryKey: ["tolerancia-status-atrasado", escolaId],
+    enabled: !!escolaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("escolas")
+        .select("atraso_dias_tolerancia")
+        .eq("id", escolaId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (!data) return;
+    setTolerancia(String(data.atraso_dias_tolerancia));
+  }, [data]);
+
+  const salvar = useMutation({
+    mutationFn: async () => {
+      if (!escolaId) return;
+      const dias = Math.max(0, Number(tolerancia) || 0);
+      const { error } = await supabase
+        .from("escolas")
+        .update({ atraso_dias_tolerancia: dias })
+        .eq("id", escolaId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Tolerância salva!");
+      qc.invalidateQueries({ queryKey: ["tolerancia-status-atrasado", escolaId] });
+    },
+    onError: (e: any) => toast.error("Erro: " + e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Timer className="h-4 w-4" /> Tolerância pra Status "Atrasado"
+        </CardTitle>
+        <CardDescription>
+          Quantos dias após o vencimento um título ainda conta como Pendente antes de virar Atrasado (afeta
+          o painel de inadimplência e os relatórios). Não tem relação com o desconto — isso é configurado na
+          Regra de Pontualidade, acima.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-end gap-3">
+          <div className="w-40">
+            <Label>Dias de tolerância</Label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={tolerancia}
+              onChange={(e) => setTolerancia(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground pb-2">
+            0 = vira Atrasado assim que passar 1 dia do vencimento (comportamento atual).
+          </p>
+        </div>
         <Button onClick={() => salvar.mutate()} disabled={salvar.isPending}>
           {salvar.isPending ? "Salvando…" : "Salvar"}
         </Button>

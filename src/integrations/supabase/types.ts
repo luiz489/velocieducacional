@@ -2154,6 +2154,7 @@ export type Database = {
       escolas: {
         Row: {
           ativo: boolean
+          atraso_dias_tolerancia: number
           atualizado_em: string
           bairro: string | null
           campos_matricula_visiveis: Json
@@ -2182,6 +2183,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          atraso_dias_tolerancia?: number
           atualizado_em?: string
           bairro?: string | null
           campos_matricula_visiveis?: Json
@@ -2210,6 +2212,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          atraso_dias_tolerancia?: number
           atualizado_em?: string
           bairro?: string | null
           campos_matricula_visiveis?: Json
