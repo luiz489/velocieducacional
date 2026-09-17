@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { GraduationCap, BookOpen, Users, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +87,8 @@ function EditableCell({ value, onCommit }: { value: number | null; onCommit: (v:
 export default function Pedagogico() {
   const qc = useQueryClient();
   const { escolaAtivaId } = useEscolaAtiva();
+  const [searchParams] = useSearchParams();
+  const [aba, setAba] = useState(searchParams.get("tab") === "frequencia" ? "frequencia" : "notas");
   const [turmaId, setTurmaId] = useState<string>("");
   const [disciplinaId, setDisciplinaId] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -313,7 +316,7 @@ export default function Pedagogico() {
             </Card>
           </div>
 
-          <Tabs defaultValue="notas" className="space-y-4">
+          <Tabs value={aba} onValueChange={setAba} className="space-y-4">
             <TabsList>
               <TabsTrigger value="notas">Notas</TabsTrigger>
               <TabsTrigger value="frequencia">Frequência</TabsTrigger>
