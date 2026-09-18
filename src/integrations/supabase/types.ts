@@ -3266,6 +3266,7 @@ export type Database = {
           created_at: string
           data_ingresso: string
           data_vencimento_matricula: string | null
+          dia_vencimento_mensalidade: number | null
           escola_id: string
           id: string
           modalidade_financeira_id: string | null
@@ -3281,6 +3282,7 @@ export type Database = {
           created_at?: string
           data_ingresso?: string
           data_vencimento_matricula?: string | null
+          dia_vencimento_mensalidade?: number | null
           escola_id: string
           id?: string
           modalidade_financeira_id?: string | null
@@ -3296,6 +3298,7 @@ export type Database = {
           created_at?: string
           data_ingresso?: string
           data_vencimento_matricula?: string | null
+          dia_vencimento_mensalidade?: number | null
           escola_id?: string
           id?: string
           modalidade_financeira_id?: string | null

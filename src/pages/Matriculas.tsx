@@ -105,6 +105,7 @@ export default function Matriculas() {
   const [formOpcionaisIds, setFormOpcionaisIds] = useState<string[]>([]);
   const [formDataIngresso, setFormDataIngresso] = useState(new Date().toISOString().split("T")[0]);
   const [formDataVencimentoMatricula, setFormDataVencimentoMatricula] = useState("");
+  const [formDiaVencimentoMensalidade, setFormDiaVencimentoMensalidade] = useState("");
   const [formParcelasTaxa, setFormParcelasTaxa] = useState("1");
   const [formDesconto, setFormDesconto] = useState("0");
   const [formValorNegociado, setFormValorNegociado] = useState("");
@@ -117,6 +118,7 @@ export default function Matriculas() {
   const [editOpcionaisIds, setEditOpcionaisIds] = useState<string[]>([]);
   const [editDataIngresso, setEditDataIngresso] = useState("");
   const [editDataVencimentoMatricula, setEditDataVencimentoMatricula] = useState("");
+  const [editDiaVencimentoMensalidade, setEditDiaVencimentoMensalidade] = useState("");
   const [editParcelasTaxa, setEditParcelasTaxa] = useState("1");
   const [editDesconto, setEditDesconto] = useState("0");
   const [editBolsa, setEditBolsa] = useState(false);
@@ -225,6 +227,7 @@ export default function Matriculas() {
     setFormTurmaId("");
     setFormDataIngresso(new Date().toISOString().split("T")[0]);
     setFormDataVencimentoMatricula("");
+    setFormDiaVencimentoMensalidade("");
     setFormParcelasTaxa("1");
     setFormDesconto("0");
     setFormValorNegociado("");
@@ -294,6 +297,7 @@ export default function Matriculas() {
       const novaMatriculaId = await matricularAluno(alunoId, formTurmaId, escolaAtivaId, {
         data_ingresso: formDataIngresso,
         data_vencimento_matricula: formDataVencimentoMatricula || undefined,
+        dia_vencimento_mensalidade: formDiaVencimentoMensalidade ? Number(formDiaVencimentoMensalidade) : undefined,
         percentual_desconto: formBolsa ? 0 : Number(formDesconto || 0),
         bolsa_100: formBolsa,
         parcelas_taxa_matricula: Number(formParcelasTaxa || 1),
@@ -322,6 +326,7 @@ export default function Matriculas() {
     setEditModalidadeId(m.modalidade_financeira_id ?? "");
     setEditDataIngresso(m.data_ingresso);
     setEditDataVencimentoMatricula(m.data_vencimento_matricula ?? "");
+    setEditDiaVencimentoMensalidade(m.dia_vencimento_mensalidade != null ? String(m.dia_vencimento_mensalidade) : "");
     setEditParcelasTaxa(String(m.parcelas_taxa_matricula ?? 1));
     setEditDesconto(String(m.percentual_desconto ?? 0));
     setEditValorNegociado("");
@@ -351,12 +356,14 @@ export default function Matriculas() {
       editModalidadeId !== (editingMatricula.modalidade_financeira_id ?? "") ||
       opcionaisMudaram ||
       Number(editDesconto || 0) !== (editingMatricula.percentual_desconto ?? 0) ||
-      editBolsa !== editingMatricula.bolsa_100;
+      editBolsa !== editingMatricula.bolsa_100 ||
+      (editDiaVencimentoMensalidade ? Number(editDiaVencimentoMensalidade) : null) !== (editingMatricula.dia_vencimento_mensalidade ?? null);
 
     const ok = await updateMatricula(editingMatricula.id, {
       turma_id: editTurmaId,
       data_ingresso: editDataIngresso,
       data_vencimento_matricula: editDataVencimentoMatricula || null,
+      dia_vencimento_mensalidade: editDiaVencimentoMensalidade ? Number(editDiaVencimentoMensalidade) : null,
       percentual_desconto: Number(editDesconto || 0),
       bolsa_100: editBolsa,
       parcelas_taxa_matricula: Number(editParcelasTaxa || 1),
@@ -378,7 +385,7 @@ export default function Matriculas() {
 
       if (dadosAlteraramFinanceiro) {
         const quer = confirm(
-          "Você alterou dados que afetam o valor/vencimento das parcelas (turma, data de ingresso, desconto ou bolsa).\n\n" +
+          "Você alterou dados que afetam o valor/vencimento das parcelas (turma, data de ingresso, desconto, bolsa ou dia de vencimento negociado).\n\n" +
           "Quer recalcular as parcelas financeiras com os dados novos agora?\n\n" +
           "Parcelas já pagas serão mantidas como estão - só as pendentes/atrasadas são recriadas."
         );
@@ -528,6 +535,18 @@ export default function Matriculas() {
                   <Input type="number" min="1" value={formParcelasTaxa} onChange={(e) => setFormParcelasTaxa(e.target.value)} className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-1">
                     1 = à vista. Mais de 1 divide o valor em parcelas mensais.
+                  </p>
+                </div>
+                <div>
+                  <Label>Dia de vencimento da mensalidade negociado (opcional)</Label>
+                  <Input
+                    type="number" min="1" max="28"
+                    value={formDiaVencimentoMensalidade}
+                    onChange={(e) => setFormDiaVencimentoMensalidade(e.target.value)}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Se não preencher, usa o dia padrão do plano da turma. Preencha só quando a família negociou um dia diferente.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 items-end">
@@ -803,6 +822,18 @@ export default function Matriculas() {
             <div>
               <Label>Parcelas da Taxa de Matrícula</Label>
               <Input type="number" min="1" value={editParcelasTaxa} onChange={(e) => setEditParcelasTaxa(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Dia de vencimento da mensalidade negociado (opcional)</Label>
+              <Input
+                type="number" min="1" max="28"
+                value={editDiaVencimentoMensalidade}
+                onChange={(e) => setEditDiaVencimentoMensalidade(e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Se não preencher, usa o dia padrão do plano da turma.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-3 items-end">
               <div>
