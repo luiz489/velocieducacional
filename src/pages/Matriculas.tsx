@@ -173,13 +173,17 @@ export default function Matriculas() {
   });
   const valorBaseEditSemOpcionais = modalidadesEdit?.find((m) => m.id === editModalidadeId)?.valor_mensalidade
     ?? planoTurmaEdit?.valor_mensalidade ?? null;
+  const somaOpcionaisEdit = somaOpcionais(editOpcionaisIds);
   const valorBaseEdit = valorBaseEditSemOpcionais != null
-    ? valorBaseEditSemOpcionais + somaOpcionais(editOpcionaisIds)
+    ? valorBaseEditSemOpcionais + somaOpcionaisEdit
     : null;
-  const valorDescontoEdit = valorBaseEdit != null
-    ? (editBolsa ? valorBaseEdit : valorBaseEdit * (Number(editDesconto || 0) / 100))
+  // Desconto/bolsa incide só na mensalidade - valores opcionais (ex: Almoço) sempre somam no valor cheio.
+  const valorDescontoEdit = valorBaseEditSemOpcionais != null
+    ? (editBolsa ? valorBaseEditSemOpcionais : valorBaseEditSemOpcionais * (Number(editDesconto || 0) / 100))
     : null;
-  const valorFinalEdit = valorBaseEdit != null && valorDescontoEdit != null ? valorBaseEdit - valorDescontoEdit : null;
+  const valorFinalEdit = valorBaseEditSemOpcionais != null
+    ? (valorBaseEditSemOpcionais - (valorDescontoEdit ?? 0)) + somaOpcionaisEdit
+    : null;
 
   const { data: modalidadesForm } = useQuery({
     queryKey: ["modalidades-turma", formTurmaId],
@@ -210,11 +214,15 @@ export default function Matriculas() {
 
   const valorBaseSemOpcionais = modalidadesForm?.find((m) => m.id === formModalidadeId)?.valor_mensalidade
     ?? planoTurma?.valor_mensalidade ?? null;
-  const valorBase = valorBaseSemOpcionais != null ? valorBaseSemOpcionais + somaOpcionais(formOpcionaisIds) : null;
-  const valorDesconto = valorBase != null
-    ? (formBolsa ? valorBase : valorBase * (Number(formDesconto || 0) / 100))
+  const somaOpcionaisForm = somaOpcionais(formOpcionaisIds);
+  const valorBase = valorBaseSemOpcionais != null ? valorBaseSemOpcionais + somaOpcionaisForm : null;
+  // Desconto/bolsa incide só na mensalidade - valores opcionais (ex: Almoço) sempre somam no valor cheio.
+  const valorDesconto = valorBaseSemOpcionais != null
+    ? (formBolsa ? valorBaseSemOpcionais : valorBaseSemOpcionais * (Number(formDesconto || 0) / 100))
     : null;
-  const valorFinal = valorBase != null && valorDesconto != null ? valorBase - valorDesconto : null;
+  const valorFinal = valorBaseSemOpcionais != null
+    ? (valorBaseSemOpcionais - (valorDesconto ?? 0)) + somaOpcionaisForm
+    : null;
 
   const filtered = matriculas.filter((m) => {
     const matchSearch =
@@ -575,15 +583,15 @@ export default function Matriculas() {
                   <Input
                     type="number" min="0" step="0.01"
                     value={formValorNegociado}
-                    disabled={formBolsa || valorBase == null}
+                    disabled={formBolsa || valorBaseSemOpcionais == null}
                     onChange={(e) => {
                       setFormValorNegociado(e.target.value);
-                      if (valorBase && e.target.value) {
-                        const desconto = ((valorBase - Number(e.target.value)) / valorBase) * 100;
+                      if (valorBaseSemOpcionais && e.target.value) {
+                        const desconto = ((valorBaseSemOpcionais - Number(e.target.value)) / valorBaseSemOpcionais) * 100;
                         setFormDesconto(desconto > 0 ? desconto.toFixed(2) : "0");
                       }
                     }}
-                    placeholder={valorBase ? `Ex: ${(valorBase * 0.7).toFixed(2)}` : "Selecione uma turma com plano configurado"}
+                    placeholder={valorBaseSemOpcionais ? `Ex: ${(valorBaseSemOpcionais * 0.7).toFixed(2)}` : "Selecione uma turma com plano configurado"}
                     className="mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -861,15 +869,15 @@ export default function Matriculas() {
               <Input
                 type="number" min="0" step="0.01"
                 value={editValorNegociado}
-                disabled={editBolsa || valorBaseEdit == null}
+                disabled={editBolsa || valorBaseEditSemOpcionais == null}
                 onChange={(e) => {
                   setEditValorNegociado(e.target.value);
-                  if (valorBaseEdit && e.target.value) {
-                    const desconto = ((valorBaseEdit - Number(e.target.value)) / valorBaseEdit) * 100;
+                  if (valorBaseEditSemOpcionais && e.target.value) {
+                    const desconto = ((valorBaseEditSemOpcionais - Number(e.target.value)) / valorBaseEditSemOpcionais) * 100;
                     setEditDesconto(desconto > 0 ? desconto.toFixed(2) : "0");
                   }
                 }}
-                placeholder={valorBaseEdit ? `Ex: ${(valorBaseEdit * 0.7).toFixed(2)}` : undefined}
+                placeholder={valorBaseEditSemOpcionais ? `Ex: ${(valorBaseEditSemOpcionais * 0.7).toFixed(2)}` : undefined}
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
