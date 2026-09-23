@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Landmark, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Plus, Landmark, ArrowDownRight, ArrowUpRight, Upload } from "lucide-react";
+import { parseArquivoExtrato, type LinhaExtratoImportada } from "@/lib/extratoImport";
 
 const brl = (n: number | string | null | undefined) =>
   Number(n ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -36,6 +37,11 @@ export default function ContasBancarias() {
   const [novaContaOpen, setNovaContaOpen] = useState(false);
   const [lancOpen, setLancOpen] = useState(false);
   const [resolverMov, setResolverMov] = useState<Mov | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importLinhas, setImportLinhas] = useState<(LinhaExtratoImportada & { marcada: boolean; jaImportada: boolean })[]>([]);
+  const [importOrigem, setImportOrigem] = useState<"importacao_ofx" | "importacao_csv">("importacao_ofx");
+  const [lendoArquivo, setLendoArquivo] = useState(false);
+  const [importando, setImportando] = useState(false);
 
   const [contaForm, setContaForm] = useState({ nome: "", banco: "", agencia: "", conta: "", chave_pix: "", saldo_inicial: "", data_saldo_inicial: hoje() });
   const [lanc, setLanc] = useState({ data: hoje(), descricao: "", valor: "", natureza: "credito" as "credito" | "debito", aClassificar: false });
@@ -121,6 +127,75 @@ export default function ContasBancarias() {
     onError: (e: any) => toast.error("Erro: " + e.message),
   });
 
+  const handleArquivoSelecionado = async (file: File) => {
+    setLendoArquivo(true);
+    try {
+      const conteudo = await file.text();
+      const linhas = parseArquivoExtrato(file.name, conteudo);
+      if (linhas.length === 0) {
+        toast.error("Não encontrei nenhuma movimentação nesse arquivo.");
+        return;
+      }
+      setImportOrigem(file.name.toLowerCase().endsWith(".ofx") ? "importacao_ofx" : "importacao_csv");
+
+      const refs = linhas.map((l) => l.referenciaExterna);
+      const { data: existentes } = await supabase
+        .from("movimentacoes_bancarias")
+        .select("gateway_ref")
+        .eq("conta_bancaria_id", contaSelId!)
+        .in("gateway_ref", refs);
+      const refsExistentes = new Set((existentes ?? []).map((r) => r.gateway_ref));
+
+      setImportLinhas(
+        linhas.map((l) => ({
+          ...l,
+          jaImportada: refsExistentes.has(l.referenciaExterna),
+          marcada: !refsExistentes.has(l.referenciaExterna),
+        }))
+      );
+    } catch (e: any) {
+      toast.error("Erro ao ler o arquivo: " + e.message);
+    } finally {
+      setLendoArquivo(false);
+    }
+  };
+
+  const confirmarImportacao = useMutation({
+    mutationFn: async () => {
+      const linhasMarcadas = importLinhas.filter((l) => l.marcada);
+      if (linhasMarcadas.length === 0) throw new Error("Nenhuma linha selecionada.");
+      const { error } = await supabase.from("movimentacoes_bancarias").insert(
+        linhasMarcadas.map((l) => ({
+          conta_bancaria_id: contaSelId,
+          escola_id: escolaAtivaId,
+          data: l.data,
+          descricao: l.descricao,
+          valor: l.valor,
+          natureza: l.natureza,
+          origem: importOrigem,
+          identificada: false,
+          gateway_ref: l.referenciaExterna,
+        }))
+      );
+      if (error) throw error;
+      return linhasMarcadas.length;
+    },
+    onSuccess: (qtd) => {
+      toast.success(`${qtd} movimentação(ões) importada(s) — confira em "A classificar".`);
+      setImportOpen(false);
+      setImportLinhas([]);
+      qc.invalidateQueries({ queryKey: ["mov-bancarias", contaSelId] });
+      qc.invalidateQueries({ queryKey: ["contas-bancarias"] });
+    },
+    onError: (e: any) => {
+      if (e.code === "23505") {
+        toast.error("Alguma linha já tinha sido importada antes (foi detectada na hora de salvar). Reabra o arquivo pra ver a lista atualizada.");
+      } else {
+        toast.error("Erro ao importar: " + e.message);
+      }
+    },
+  });
+
   const aClassificar = (movs ?? []).filter((m) => !m.identificada);
   const extrato = (movs ?? []).filter((m) => m.identificada);
 
@@ -192,7 +267,93 @@ export default function ContasBancarias() {
                 <p className="text-xs text-muted-foreground">Saldo atual</p>
                 <p className="text-3xl font-bold">{brl(conta.saldo_atual)}</p>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex gap-2">
+                <Dialog
+                  open={importOpen}
+                  onOpenChange={(o) => { setImportOpen(o); if (!o) setImportLinhas([]); }}
+                >
+                  <DialogTrigger asChild><Button variant="outline"><Upload className="h-4 w-4 mr-1" />Importar Extrato</Button></DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader><DialogTitle>Importar Extrato (OFX/CSV)</DialogTitle></DialogHeader>
+                    <DialogDescription>
+                      Envie o arquivo baixado do Internet Banking. As linhas caem em "A classificar" — nada é
+                      dado como pago automaticamente, você confere e vincula cada uma ao título certo depois.
+                    </DialogDescription>
+
+                    {importLinhas.length === 0 ? (
+                      <div className="py-6">
+                        <Label htmlFor="arquivo-extrato" className="cursor-pointer inline-flex items-center gap-2 text-sm px-4 py-3 rounded-md border hover:bg-muted">
+                          <Upload className="h-4 w-4" /> {lendoArquivo ? "Lendo arquivo..." : "Selecionar arquivo .ofx ou .csv"}
+                        </Label>
+                        <input
+                          id="arquivo-extrato"
+                          type="file"
+                          accept=".ofx,.csv"
+                          className="hidden"
+                          disabled={lendoArquivo}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleArquivoSelecionado(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          {importLinhas.filter((l) => l.jaImportada).length > 0 && (
+                            <>Linhas em cinza já foram importadas antes (mesma referência) — vêm desmarcadas. </>
+                          )}
+                          {importLinhas.filter((l) => l.marcada).length} de {importLinhas.length} marcadas para importar.
+                        </p>
+                        <div className="border rounded-md max-h-[45vh] overflow-y-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-10" />
+                                <TableHead>Data</TableHead>
+                                <TableHead>Descrição</TableHead>
+                                <TableHead className="text-right">Valor</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {importLinhas.map((l, i) => (
+                                <TableRow key={i} className={l.jaImportada ? "opacity-50" : ""}>
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={l.marcada}
+                                      onCheckedChange={(v) =>
+                                        setImportLinhas((prev) => prev.map((x, xi) => (xi === i ? { ...x, marcada: !!v } : x)))
+                                      }
+                                    />
+                                  </TableCell>
+                                  <TableCell>{dt(l.data)}</TableCell>
+                                  <TableCell>
+                                    {l.descricao}
+                                    {l.jaImportada && <Badge variant="outline" className="ml-2 text-[10px]">já importado</Badge>}
+                                  </TableCell>
+                                  <TableCell className={`text-right ${l.natureza === "credito" ? "text-success" : "text-destructive"}`}>
+                                    {l.natureza === "credito" ? "+" : "−"}{brl(l.valor)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        <div className="flex justify-between">
+                          <Button variant="ghost" size="sm" onClick={() => setImportLinhas([])}>Escolher outro arquivo</Button>
+                          <Button
+                            onClick={() => confirmarImportacao.mutate()}
+                            disabled={!importLinhas.some((l) => l.marcada) || confirmarImportacao.isPending}
+                          >
+                            {confirmarImportacao.isPending ? "Importando..." : `Importar ${importLinhas.filter((l) => l.marcada).length} movimentação(ões)`}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
                 <Dialog open={lancOpen} onOpenChange={setLancOpen}>
                   <DialogTrigger asChild><Button variant="outline"><Plus className="h-4 w-4 mr-1" />Lançamento manual</Button></DialogTrigger>
                   <DialogContent>
@@ -266,7 +427,7 @@ export default function ContasBancarias() {
                     <TableRow key={m.id}>
                       <TableCell>{dt(m.data)}</TableCell>
                       <TableCell>{m.descricao ?? "—"}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[10px]">{m.origem === "ajuste_manual" ? "ajuste" : m.origem === "api_recebimento" ? "recebimento" : "pagamento"}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{m.origem === "ajuste_manual" ? "ajuste" : m.origem === "api_recebimento" ? "recebimento" : m.origem === "importacao_ofx" || m.origem === "importacao_csv" ? "importado" : "pagamento"}</Badge></TableCell>
                       <TableCell className={`text-right font-medium ${m.natureza === "credito" ? "text-success" : "text-destructive"}`}>
                         <span className="inline-flex items-center gap-1">
                           {m.natureza === "credito" ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
