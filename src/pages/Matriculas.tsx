@@ -171,8 +171,15 @@ export default function Matriculas() {
       return data;
     },
   });
-  const valorBaseEdit = (modalidadesEdit?.find((m) => m.id === editModalidadeId)?.valor_mensalidade
-    ?? planoTurmaEdit?.valor_mensalidade ?? null);
+  const valorBaseEditSemOpcionais = modalidadesEdit?.find((m) => m.id === editModalidadeId)?.valor_mensalidade
+    ?? planoTurmaEdit?.valor_mensalidade ?? null;
+  const valorBaseEdit = valorBaseEditSemOpcionais != null
+    ? valorBaseEditSemOpcionais + somaOpcionais(editOpcionaisIds)
+    : null;
+  const valorDescontoEdit = valorBaseEdit != null
+    ? (editBolsa ? valorBaseEdit : valorBaseEdit * (Number(editDesconto || 0) / 100))
+    : null;
+  const valorFinalEdit = valorBaseEdit != null && valorDescontoEdit != null ? valorBaseEdit - valorDescontoEdit : null;
 
   const { data: modalidadesForm } = useQuery({
     queryKey: ["modalidades-turma", formTurmaId],
@@ -869,6 +876,32 @@ export default function Matriculas() {
                 Ao digitar o valor fixo negociado, o desconto (%) acima é calculado automaticamente.
               </p>
             </div>
+
+            {editTurmaId && (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+                {valorBaseEdit == null ? (
+                  <p className="text-muted-foreground">
+                    Esta turma ainda não tem um plano financeiro configurado — nenhuma parcela será gerada automaticamente.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Mensalidade da turma</span>
+                      <span className="font-medium">R$ {valorBaseEdit.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Valor do desconto</span>
+                      <span className="font-medium text-destructive">- R$ {(valorDescontoEdit ?? 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1 mt-1">
+                      <span className="font-medium">Mensalidade após desconto</span>
+                      <span className="font-bold text-success">R$ {(valorFinalEdit ?? 0).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 pt-2 border-t">
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
               <Button onClick={handleSaveEdit} disabled={savingEdit}>
