@@ -359,7 +359,10 @@ export async function contratarWebhook(
     try { const j = JSON.parse(criar.texto); if (j?.idContrato) return String(j.idContrato); } catch { /* segue */ }
     throw new ErroSicredi("Sicredi criou o contrato mas não devolveu o idContrato.");
   }
-  if (criar.status !== 422) throw new ErroSicredi(mensagemDeErro(criar.status, criar.texto), criar.status);
+  // 422 também é usado pra "beneficiário não encontrado" etc.: só é "já existe" se a mensagem disser isso
+  if (criar.status !== 422 || !/j[áa] existe|existente/i.test(criar.texto)) {
+    throw new ErroSicredi(mensagemDeErro(criar.status, criar.texto), criar.status);
+  }
 
   // já existe: acha o id e altera
   const params = `cooperativa=${corpo.cooperativa}&posto=${corpo.posto}&beneficiario=${corpo.codBeneficiario}`;
