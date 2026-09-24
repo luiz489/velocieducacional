@@ -304,9 +304,14 @@ export async function registrarParcela(admin: SupabaseClient, financeiroId: stri
   try {
     // Se uma tentativa anterior falhou de forma ambígua (timeout etc.), o boleto pode já existir no banco.
     let registro: RegistroBoleto | null = null;
+    // (não vale se este título já teve um boleto baixado por nós: o que existe no banco é o boleto morto)
     if (t.gateway_status === "erro") {
-      const existente = await consultarPorIdTitulo(admin, cfg, idTituloEmpresaDe(t.id));
-      if (existente?.nossoNumero && existente?.linhaDigitavel) registro = parseRespostaRegistro(existente);
+      const { count: baixas } = await admin.from("cobranca_fila").select("id", { count: "exact", head: true })
+        .eq("financeiro_id", t.id).eq("operacao", "baixar");
+      if (!baixas) {
+        const existente = await consultarPorIdTitulo(admin, cfg, idTituloEmpresaDe(t.id));
+        if (existente?.nossoNumero && existente?.linhaDigitavel) registro = parseRespostaRegistro(existente);
+      }
     }
     if (!registro) registro = await registrarBoleto(admin, cfg, montado.payload);
 
