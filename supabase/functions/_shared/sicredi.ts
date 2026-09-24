@@ -416,7 +416,8 @@ export async function listarLiquidadosDoDia(
   admin: SupabaseClient, cfg: ConfigIntegracao, dia: string
 ): Promise<BoletoLiquidado[]> {
   const todos: BoletoLiquidado[] = [];
-  for (let pagina = 0; pagina < 20; pagina++) {
+  const vistos = new Set<string>();
+  for (let pagina = 0; pagina < 10; pagina++) {
     const url = `${urlBoletos(cfg.ambiente)}/liquidados/dia?codigoBeneficiario=${beneficiarioDe(cfg.codigo_beneficiario)}` +
       `&dia=${encodeURIComponent(dia)}&pagina=${pagina}`;
     const r = await chamar(admin, cfg, { metodo: "GET", url });
@@ -425,8 +426,11 @@ export async function listarLiquidadosDoDia(
     // deno-lint-ignore no-explicit-any
     let j: any;
     try { j = JSON.parse(r.texto); } catch { throw new ErroSicredi("Resposta de liquidados não é JSON."); }
+    let novos = 0;
     for (const it of (j?.items ?? [])) {
-      if (!it?.nossoNumero) continue;
+      if (!it?.nossoNumero || vistos.has(String(it.nossoNumero))) continue;
+      vistos.add(String(it.nossoNumero));
+      novos++;
       todos.push({
         nossoNumero: String(it.nossoNumero),
         valorLiquidado: Number(it.valorLiquidado ?? it.valor ?? 0),
@@ -434,7 +438,8 @@ export async function listarLiquidadosDoDia(
         tipoLiquidacao: String(it.tipoLiquidacao ?? ""),
       });
     }
-    if (String(j?.hasNext) !== "true") break;
+    // página sem nenhum boleto novo = fim (protege contra paginação que repete a mesma página)
+    if (String(j?.hasNext) !== "true" || novos === 0) break;
   }
   return todos;
 }

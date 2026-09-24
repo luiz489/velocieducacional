@@ -45,28 +45,29 @@ Deno.serve(async (req: Request) => {
   const resumo: Record<string, unknown>[] = [];
 
   for (const { escola_id } of escolas ?? []) {
-    const item = { escola_id, consultados: 0, baixados: 0, ja_baixados_ou_desconhecidos: 0, erro: null as string | null };
+    const item = { escola_id, consultados: 0, baixados: 0, erro: null as string | null };
     try {
       const cfg: ConfigIntegracao = await carregarConfig(admin, escola_id);
       const chave = `${cfg.agencia.replace(/\D/g, "")}-${cfg.posto.replace(/\D/g, "")}-${cfg.codigo_beneficiario.replace(/\D/g, "")}`;
 
+      // 1) tudo que o banco liquidou nos últimos dias (sem repetir nosso número)
+      const porNN = new Map<string, { nossoNumero: string; valorLiquidado: number; dataPagamento: string; tipoLiquidacao: string }>();
       for (let i = 0; i < DIAS_PARA_TRAS; i++) {
         const dia = ddmmyyyy(new Date(Date.now() - i * 86_400_000));
-        for (const b of await listarLiquidadosDoDia(admin, cfg, dia)) {
-          item.consultados++;
+        for (const b of await listarLiquidadosDoDia(admin, cfg, dia)) porNN.set(b.nossoNumero, b);
+      }
+      item.consultados = porNN.size;
+
+      // 2) só interessa o que existe aqui e ainda NÃO está pago (consulta em lote, 200 por vez)
+      const nns = [...porNN.keys()];
+      for (let i = 0; i < nns.length; i += 200) {
+        const { data: abertos, error: errT } = await admin.from("financeiro").select("id, gateway_cobranca_id")
+          .eq("escola_id", escola_id).in("gateway_cobranca_id", nns.slice(i, i + 200)).neq("status", "Pago");
+        if (errT) { item.erro = errT.message.slice(0, 200); continue; }
+
+        for (const t of abertos ?? []) {
+          const b = porNN.get(t.gateway_cobranca_id as string)!;
           const idEvento = `poll:${b.nossoNumero}:${b.dataPagamento}`;
-
-          // já processado antes (por webhook ou por uma consulta anterior)? então só segue
-          const { data: visto } = await admin.from("cobranca_eventos").select("id")
-            .eq("chave_beneficiario", chave).eq("id_evento", idEvento).maybeSingle();
-          if (visto) continue;
-
-          // título desconhecido nesta escola (boleto de outro sistema) ou já Pago (o webhook entregou): nada a fazer
-          const { data: t } = await admin.from("financeiro").select("id, status")
-            .eq("escola_id", escola_id).eq("gateway_cobranca_id", b.nossoNumero).maybeSingle();
-          if (!t) { item.ja_baixados_ou_desconhecidos++; continue; }
-          if (t.status === "Pago") continue;
-
           const { data: tituloId, error: errBaixa } = await admin.rpc("baixar_titulo_por_cobranca_bancaria", {
             p_escola_id: escola_id,
             p_gateway_cobranca_id: b.nossoNumero,
@@ -77,13 +78,13 @@ Deno.serve(async (req: Request) => {
             p_ref_evento: `sicredi:${idEvento}`,
           });
           if (errBaixa) { item.erro = errBaixa.message.slice(0, 200); continue; } // tenta de novo na próxima rodada
-
-          if (tituloId) item.baixados++;
-          await admin.from("cobranca_eventos").insert({
+          if (!tituloId) continue;
+          item.baixados++;
+          await admin.from("cobranca_eventos").upsert({
             escola_id, chave_beneficiario: chave, id_evento: idEvento, movimento: `CONSULTA_${b.tipoLiquidacao || "LIQUIDADO"}`,
-            nosso_numero: b.nossoNumero, payload: b, status: tituloId ? "processado" : "ignorado",
-            detalhe: tituloId ? "Baixa pela consulta diária (o webhook não entregou)." : "Sem título correspondente nesta escola.",
-          });
+            nosso_numero: b.nossoNumero, payload: b, status: "processado",
+            detalhe: "Baixa pela consulta diária (o webhook não entregou).",
+          }, { onConflict: "chave_beneficiario,id_evento", ignoreDuplicates: true });
         }
       }
     } catch (e) {
