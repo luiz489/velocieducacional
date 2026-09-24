@@ -35,7 +35,11 @@ export default function ParametrizacoesFinanceiras() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas_integracao_bancaria")
-        .select("banco, agencia, conta_corrente, ambiente, ativo")
+        .select(
+          "banco, agencia, conta_corrente, codigo_beneficiario, posto, chave_pix, ambiente, ativo, conta_bancaria_id, " +
+          "multa_percentual, juros_mensal_percentual, tipo_cobranca, especie_documento, registrar_na_matricula, " +
+          "webhook_status, tem_credenciais"
+        )
         .eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       return data ?? [];
@@ -94,6 +98,7 @@ export default function ParametrizacoesFinanceiras() {
         open={bancoAberto === "sicredi"}
         onOpenChange={(open) => setBancoAberto(open ? "sicredi" : null)}
         escolaId={escolaAtivaId}
+        config={statusDoBanco("sicredi") ?? null}
       />
 
       <RegraPontualidade escolaId={escolaAtivaId} />
@@ -273,55 +278,119 @@ function ToleranciaStatusAtrasado({ escolaId }: { escolaId: string | null }) {
   );
 }
 
+type ConfigSicredi = {
+  agencia: string; conta_corrente: string; codigo_beneficiario: string; posto: string; chave_pix: string;
+  ambiente: string; conta_bancaria_id: string | null; multa_percentual: number; juros_mensal_percentual: number;
+  tipo_cobranca: string; especie_documento: string; registrar_na_matricula: boolean; tem_credenciais: boolean | null;
+};
+
+const FORM_VAZIO = {
+  agencia: "", conta_corrente: "", codigo_beneficiario: "", posto: "",
+  codigo_acesso: "", x_api_key: "", chave_pix: "", ambiente: "homologacao",
+  conta_bancaria_id: "", multa_percentual: "2", juros_mensal_percentual: "1",
+  tipo_cobranca: "HIBRIDO", especie_documento: "DUPLICATA_MERCANTIL_INDICACAO",
+};
+
 function SicrediDialog({
   open,
   onOpenChange,
   escolaId,
+  config,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   escolaId: string | null;
+  config: ConfigSicredi | null;
 }) {
   const qc = useQueryClient();
   const [salvando, setSalvando] = useState(false);
-  const [form, setForm] = useState({
-    agencia: "", conta_corrente: "", codigo_beneficiario: "", posto: "",
-    codigo_acesso: "", x_api_key: "", chave_pix: "", ambiente: "homologacao",
+  const [testando, setTestando] = useState(false);
+  const [form, setForm] = useState(FORM_VAZIO);
+  const jaConfigurado = !!config?.tem_credenciais;
+
+  // Ao abrir, pré-preenche com o que já está salvo (os segredos nunca voltam do banco -
+  // ficam em branco e, em branco, a função de salvar mantém o valor atual).
+  useEffect(() => {
+    if (!open) return;
+    setForm(
+      config
+        ? {
+            agencia: config.agencia, conta_corrente: config.conta_corrente,
+            codigo_beneficiario: config.codigo_beneficiario, posto: config.posto,
+            codigo_acesso: "", x_api_key: "", chave_pix: config.chave_pix, ambiente: config.ambiente,
+            conta_bancaria_id: config.conta_bancaria_id ?? "",
+            multa_percentual: String(config.multa_percentual), juros_mensal_percentual: String(config.juros_mensal_percentual),
+            tipo_cobranca: config.tipo_cobranca, especie_documento: config.especie_documento,
+          }
+        : FORM_VAZIO
+    );
+  }, [open, config]);
+
+  const { data: contas } = useQuery({
+    queryKey: ["contas-bancarias-select", escolaId],
+    enabled: !!escolaId && open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("contas_bancarias").select("id, nome").eq("escola_id", escolaId!).order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const salvar = async () => {
     if (!escolaId) return;
-    if (!form.agencia || !form.conta_corrente || !form.codigo_beneficiario || !form.posto || !form.codigo_acesso || !form.x_api_key || !form.chave_pix) {
-      toast.error("Preencha todos os campos.");
+    if (!form.agencia || !form.conta_corrente || !form.codigo_beneficiario || !form.posto || !form.chave_pix) {
+      toast.error("Preencha agência, posto, conta, beneficiário e chave Pix.");
+      return;
+    }
+    if (!jaConfigurado && (!form.codigo_acesso || !form.x_api_key)) {
+      toast.error("Informe o código de acesso e a x-api-key.");
       return;
     }
     setSalvando(true);
-    const { error } = await supabase.from("escolas_integracao_bancaria").upsert({
-      escola_id: escolaId,
-      banco: "sicredi",
-      agencia: form.agencia,
-      conta_corrente: form.conta_corrente,
-      codigo_beneficiario: form.codigo_beneficiario,
-      posto: form.posto,
-      codigo_acesso: form.codigo_acesso,
-      x_api_key: form.x_api_key,
-      chave_pix: form.chave_pix,
-      ambiente: form.ambiente,
-    }, { onConflict: "escola_id" });
+    const { error } = await supabase.rpc("salvar_integracao_sicredi", {
+      p_escola_id: escolaId,
+      p_agencia: form.agencia,
+      p_conta_corrente: form.conta_corrente,
+      p_codigo_beneficiario: form.codigo_beneficiario,
+      p_posto: form.posto,
+      p_chave_pix: form.chave_pix,
+      p_ambiente: form.ambiente,
+      p_codigo_acesso: form.codigo_acesso || null,
+      p_x_api_key: form.x_api_key || null,
+      p_conta_bancaria_id: form.conta_bancaria_id || null,
+      p_multa_percentual: Number(form.multa_percentual || 0),
+      p_juros_mensal_percentual: Number(form.juros_mensal_percentual || 0),
+      p_tipo_cobranca: form.tipo_cobranca,
+      p_especie_documento: form.especie_documento,
+      p_registrar_na_matricula: config?.registrar_na_matricula ?? false,
+    });
     setSalvando(false);
     if (error) {
       toast.error("Erro ao salvar: " + error.message);
       return;
     }
     toast.success("Integração Sicredi salva!");
-    setForm({ agencia: "", conta_corrente: "", codigo_beneficiario: "", posto: "", codigo_acesso: "", x_api_key: "", chave_pix: "", ambiente: "homologacao" });
     qc.invalidateQueries({ queryKey: ["integracoes-bancarias", escolaId] });
     onOpenChange(false);
   };
 
+  const testarConexao = async () => {
+    if (!escolaId) return;
+    setTestando(true);
+    const { data, error } = await supabase.functions.invoke("sicredi-testar", { body: { escola_id: escolaId } });
+    setTestando(false);
+    if (error || !data?.ok) {
+      toast.error("Falha na conexão: " + (data?.erro ?? error?.message ?? "erro desconhecido"));
+      return;
+    }
+    toast.success(`Conexão OK (${data.ambiente === "producao" ? "produção" : "homologação"}) — o Sicredi autenticou as credenciais salvas.`);
+  };
+
+  const selectCls = "mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Integração Bancária — Sicredi</DialogTitle>
           <DialogDescription>
@@ -332,8 +401,8 @@ function SicrediDialog({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Agência</Label>
-              <Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} placeholder="00000" />
+              <Label>Agência (código da cooperativa)</Label>
+              <Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} placeholder="0000" />
             </div>
             <div>
               <Label>Posto</Label>
@@ -345,15 +414,23 @@ function SicrediDialog({
             </div>
             <div>
               <Label>Código do Beneficiário (Convênio)</Label>
-              <Input value={form.codigo_beneficiario} onChange={(e) => setForm({ ...form, codigo_beneficiario: e.target.value })} />
+              <Input value={form.codigo_beneficiario} onChange={(e) => setForm({ ...form, codigo_beneficiario: e.target.value })} placeholder="00000" />
             </div>
             <div className="col-span-2">
               <Label>Código de Acesso (gerado no Internet Banking do Sicredi)</Label>
-              <Input type="password" value={form.codigo_acesso} onChange={(e) => setForm({ ...form, codigo_acesso: e.target.value })} />
+              <Input
+                type="password" value={form.codigo_acesso}
+                onChange={(e) => setForm({ ...form, codigo_acesso: e.target.value })}
+                placeholder={jaConfigurado ? "•••••••• salvo — deixe em branco pra manter" : ""}
+              />
             </div>
             <div className="col-span-2">
-              <Label>X-API-KEY (Portal do Desenvolvedor Sicredi)</Label>
-              <Input type="password" value={form.x_api_key} onChange={(e) => setForm({ ...form, x_api_key: e.target.value })} />
+              <Label>X-API-KEY (Portal do Desenvolvedor Sicredi — muda entre homologação e produção)</Label>
+              <Input
+                type="password" value={form.x_api_key}
+                onChange={(e) => setForm({ ...form, x_api_key: e.target.value })}
+                placeholder={jaConfigurado ? "•••••••• salva — deixe em branco pra manter" : ""}
+              />
             </div>
             <div className="col-span-2">
               <Label>Chave Pix da conta (pra emissão do boleto híbrido)</Label>
@@ -361,19 +438,66 @@ function SicrediDialog({
             </div>
             <div>
               <Label>Ambiente</Label>
-              <select
-                value={form.ambiente}
-                onChange={(e) => setForm({ ...form, ambiente: e.target.value })}
-                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
+              <select value={form.ambiente} onChange={(e) => setForm({ ...form, ambiente: e.target.value })} className={selectCls}>
                 <option value="homologacao">Homologação (testes)</option>
                 <option value="producao">Produção</option>
               </select>
             </div>
+            <div>
+              <Label>Conta bancária que recebe</Label>
+              <select value={form.conta_bancaria_id} onChange={(e) => setForm({ ...form, conta_bancaria_id: e.target.value })} className={selectCls}>
+                <option value="">— não vincular —</option>
+                {(contas ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
           </div>
-          <Button onClick={salvar} disabled={salvando} className="w-full">
-            {salvando ? "Salvando…" : "Salvar Integração"}
-          </Button>
+
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-sm font-medium">Cobrança</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo de boleto</Label>
+                <select value={form.tipo_cobranca} onChange={(e) => setForm({ ...form, tipo_cobranca: e.target.value })} className={selectCls}>
+                  <option value="HIBRIDO">Híbrido (boleto + Pix)</option>
+                  <option value="NORMAL">Tradicional (sem Pix)</option>
+                </select>
+              </div>
+              <div>
+                <Label>Espécie do documento</Label>
+                <Input value={form.especie_documento} onChange={(e) => setForm({ ...form, especie_documento: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label>Multa por atraso (%)</Label>
+                <Input type="number" min="0" max="20" step="0.01" value={form.multa_percentual}
+                  onChange={(e) => setForm({ ...form, multa_percentual: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label>Juros (% ao mês)</Label>
+                <Input type="number" min="0" max="20" step="0.01" value={form.juros_mensal_percentual}
+                  onChange={(e) => setForm({ ...form, juros_mensal_percentual: e.target.value })} className="mt-1" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Multa e juros valem depois do vencimento e são cobrados pelo próprio banco. O desconto de pontualidade
+              vira desconto no boleto até a data de vencimento.
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={salvar} disabled={salvando} className="flex-1">
+              {salvando ? "Salvando…" : "Salvar Integração"}
+            </Button>
+            {jaConfigurado && (
+              <Button variant="outline" onClick={testarConexao} disabled={testando}>
+                {testando ? "Testando…" : "Testar conexão"}
+              </Button>
+            )}
+          </div>
+          {jaConfigurado && (
+            <p className="text-xs text-muted-foreground">
+              "Testar conexão" usa as credenciais já salvas — salve antes se acabou de alterar algo.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -928,6 +928,141 @@ export type Database = {
           },
         ]
       }
+      cobranca_eventos: {
+        Row: {
+          chave_beneficiario: string
+          detalhe: string | null
+          escola_id: string | null
+          headers: Json | null
+          id: string
+          id_evento: string
+          movimento: string | null
+          nosso_numero: string | null
+          payload: Json
+          recebido_em: string
+          status: string
+        }
+        Insert: {
+          chave_beneficiario: string
+          detalhe?: string | null
+          escola_id?: string | null
+          headers?: Json | null
+          id?: string
+          id_evento: string
+          movimento?: string | null
+          nosso_numero?: string | null
+          payload: Json
+          recebido_em?: string
+          status?: string
+        }
+        Update: {
+          chave_beneficiario?: string
+          detalhe?: string | null
+          escola_id?: string | null
+          headers?: Json | null
+          id?: string
+          id_evento?: string
+          movimento?: string | null
+          nosso_numero?: string | null
+          payload?: Json
+          recebido_em?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cobranca_eventos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobranca_eventos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "cobranca_eventos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      cobranca_fila: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          escola_id: string
+          financeiro_id: string | null
+          id: string
+          nosso_numero: string | null
+          operacao: string
+          processado_em: string | null
+          status: string
+          tentativas: number
+          ultimo_erro: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          escola_id: string
+          financeiro_id?: string | null
+          id?: string
+          nosso_numero?: string | null
+          operacao: string
+          processado_em?: string | null
+          status?: string
+          tentativas?: number
+          ultimo_erro?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          escola_id?: string
+          financeiro_id?: string | null
+          id?: string
+          nosso_numero?: string | null
+          operacao?: string
+          processado_em?: string | null
+          status?: string
+          tentativas?: number
+          ultimo_erro?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cobranca_fila_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobranca_fila_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "cobranca_fila_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "cobranca_fila_financeiro_id_fkey"
+            columns: ["financeiro_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conselho_classe: {
         Row: {
           acoes_desenvolvidas: string | null
@@ -2266,11 +2401,21 @@ export type Database = {
           chave_pix: string
           codigo_acesso: string
           codigo_beneficiario: string
+          conta_bancaria_id: string | null
           conta_corrente: string
           criado_em: string
           escola_id: string
+          especie_documento: string
           id: string
+          juros_mensal_percentual: number
+          multa_percentual: number
           posto: string
+          registrar_na_matricula: boolean
+          tem_credenciais: boolean | null
+          tipo_cobranca: string
+          webhook_contrato_id: string | null
+          webhook_segredo: string | null
+          webhook_status: string | null
           x_api_key: string
         }
         Insert: {
@@ -2282,11 +2427,21 @@ export type Database = {
           chave_pix: string
           codigo_acesso: string
           codigo_beneficiario: string
+          conta_bancaria_id?: string | null
           conta_corrente: string
           criado_em?: string
           escola_id: string
+          especie_documento?: string
           id?: string
+          juros_mensal_percentual?: number
+          multa_percentual?: number
           posto: string
+          registrar_na_matricula?: boolean
+          tem_credenciais?: boolean | null
+          tipo_cobranca?: string
+          webhook_contrato_id?: string | null
+          webhook_segredo?: string | null
+          webhook_status?: string | null
           x_api_key: string
         }
         Update: {
@@ -2298,14 +2453,31 @@ export type Database = {
           chave_pix?: string
           codigo_acesso?: string
           codigo_beneficiario?: string
+          conta_bancaria_id?: string | null
           conta_corrente?: string
           criado_em?: string
           escola_id?: string
+          especie_documento?: string
           id?: string
+          juros_mensal_percentual?: number
+          multa_percentual?: number
           posto?: string
+          registrar_na_matricula?: boolean
+          tem_credenciais?: boolean | null
+          tipo_cobranca?: string
+          webhook_contrato_id?: string | null
+          webhook_segredo?: string | null
+          webhook_status?: string | null
           x_api_key?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "escolas_integracao_bancaria_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "escolas_integracao_bancaria_escola_id_fkey"
             columns: ["escola_id"]
@@ -2543,6 +2715,10 @@ export type Database = {
           faturado_em: string | null
           forma_pagamento: string | null
           gateway_cobranca_id: string | null
+          gateway_erro: string | null
+          gateway_registrado_em: string | null
+          gateway_status: string | null
+          gateway_txid: string | null
           id: string
           link_pagamento: string | null
           matricula_id: string
@@ -2566,6 +2742,10 @@ export type Database = {
           faturado_em?: string | null
           forma_pagamento?: string | null
           gateway_cobranca_id?: string | null
+          gateway_erro?: string | null
+          gateway_registrado_em?: string | null
+          gateway_status?: string | null
+          gateway_txid?: string | null
           id?: string
           link_pagamento?: string | null
           matricula_id: string
@@ -2589,6 +2769,10 @@ export type Database = {
           faturado_em?: string | null
           forma_pagamento?: string | null
           gateway_cobranca_id?: string | null
+          gateway_erro?: string | null
+          gateway_registrado_em?: string | null
+          gateway_status?: string | null
+          gateway_txid?: string | null
           id?: string
           link_pagamento?: string | null
           matricula_id?: string
@@ -4823,6 +5007,55 @@ export type Database = {
           },
         ]
       }
+      sicredi_tokens: {
+        Row: {
+          access_expires_at: string
+          access_token: string
+          atualizado_em: string
+          escola_id: string
+          refresh_expires_at: string | null
+          refresh_token: string | null
+        }
+        Insert: {
+          access_expires_at: string
+          access_token: string
+          atualizado_em?: string
+          escola_id: string
+          refresh_expires_at?: string | null
+          refresh_token?: string | null
+        }
+        Update: {
+          access_expires_at?: string
+          access_token?: string
+          atualizado_em?: string
+          escola_id?: string
+          refresh_expires_at?: string | null
+          refresh_token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sicredi_tokens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sicredi_tokens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "sicredi_tokens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       solicitacoes_compra: {
         Row: {
           aprovador_id: string | null
@@ -5916,7 +6149,10 @@ export type Database = {
         Args: {
           p_conta_bancaria_id?: string
           p_data_pagamento: string
+          p_escola_id: string
+          p_forma_pagamento?: string
           p_gateway_cobranca_id: string
+          p_ref_evento?: string
           p_valor_pago: number
         }
         Returns: string
@@ -5957,6 +6193,10 @@ export type Database = {
           faturado_em: string | null
           forma_pagamento: string | null
           gateway_cobranca_id: string | null
+          gateway_erro: string | null
+          gateway_registrado_em: string | null
+          gateway_status: string | null
+          gateway_txid: string | null
           id: string
           link_pagamento: string | null
           matricula_id: string
@@ -6050,6 +6290,10 @@ export type Database = {
           faturado_em: string | null
           forma_pagamento: string | null
           gateway_cobranca_id: string | null
+          gateway_erro: string | null
+          gateway_registrado_em: string | null
+          gateway_status: string | null
+          gateway_txid: string | null
           id: string
           link_pagamento: string | null
           matricula_id: string
@@ -6315,6 +6559,26 @@ export type Database = {
       }
       recalcular_saldo_conta_bancaria: {
         Args: { p_conta_id: string }
+        Returns: undefined
+      }
+      salvar_integracao_sicredi: {
+        Args: {
+          p_agencia: string
+          p_ambiente: string
+          p_chave_pix: string
+          p_codigo_acesso?: string
+          p_codigo_beneficiario: string
+          p_conta_bancaria_id?: string
+          p_conta_corrente: string
+          p_escola_id: string
+          p_especie_documento?: string
+          p_juros_mensal_percentual?: number
+          p_multa_percentual?: number
+          p_posto: string
+          p_registrar_na_matricula?: boolean
+          p_tipo_cobranca?: string
+          p_x_api_key?: string
+        }
         Returns: undefined
       }
       suspender_cliente_saas: {
