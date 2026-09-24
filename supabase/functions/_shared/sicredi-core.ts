@@ -10,6 +10,9 @@ const prefixo = (ambiente: string) => (ambiente === "producao" ? "" : "/sb");
 export const urlToken = (ambiente: string) => `${HOST}${prefixo(ambiente)}/auth/openapi/token`;
 export const urlBoletos = (ambiente: string) => `${HOST}${prefixo(ambiente)}/cobranca/boleto/v1/boletos`;
 
+export const urlWebhookContrato = (ambiente: string) => `${HOST}${prefixo(ambiente)}/cobranca/boleto/v1/webhook/contrato`;
+export const urlWebhookContratos = (ambiente: string) => `${HOST}${prefixo(ambiente)}/cobranca/boleto/v1/webhook/contratos`;
+
 export const somenteDigitos = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
 
 function padDigitos(valor: string, tamanho: number, rotulo: string): string {

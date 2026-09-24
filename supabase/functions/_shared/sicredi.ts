@@ -3,7 +3,7 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cooperativaDe, postoDe, beneficiarioDe, usernameSicredi, urlToken, urlBoletos,
-  montarPayloadBoleto, parseRespostaRegistro, idTituloEmpresaDe,
+  montarPayloadBoleto, parseRespostaRegistro, idTituloEmpresaDe, urlWebhookContrato, urlWebhookContratos,
   type RegistroBoleto,
 } from "./sicredi-core.ts";
 
@@ -176,7 +176,7 @@ export async function obterAccessToken(
 }
 
 type OpcoesChamada = {
-  metodo: "GET" | "POST" | "PATCH";
+  metodo: "GET" | "POST" | "PATCH" | "PUT";
   url: string;
   corpo?: unknown;
   incluirBeneficiario?: boolean; // instruções (baixa) exigem o header codigoBeneficiario
@@ -331,4 +331,49 @@ export async function registrarParcela(admin: SupabaseClient, financeiroId: stri
     await gravarErro(admin, t.id, erro);
     return { ok: false, erro };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Contrato de webhook (o Sicredi passa a chamar a nossa URL a cada liquidação)
+// ---------------------------------------------------------------------------
+/** Cria o contrato; se já existir um pra este beneficiário (422), consulta o id e altera. Devolve o idContrato. */
+export async function contratarWebhook(
+  admin: SupabaseClient, cfg: ConfigIntegracao,
+  dados: { url: string; header: string; token: string }
+): Promise<string> {
+  const corpo = {
+    cooperativa: cooperativaDe(cfg.agencia),
+    posto: postoDe(cfg.posto),
+    codBeneficiario: beneficiarioDe(cfg.codigo_beneficiario),
+    eventos: ["LIQUIDACAO"],
+    url: dados.url,
+    urlStatus: "ATIVO",
+    contratoStatus: "ATIVO",
+    enviarIdTituloEmpresa: true,
+    header: dados.header,
+    token: dados.token,
+  };
+
+  const criar = await chamar(admin, cfg, { metodo: "POST", url: urlWebhookContrato(cfg.ambiente) + "/", corpo });
+  if (criar.ok) {
+    try { const j = JSON.parse(criar.texto); if (j?.idContrato) return String(j.idContrato); } catch { /* segue */ }
+    throw new ErroSicredi("Sicredi criou o contrato mas não devolveu o idContrato.");
+  }
+  if (criar.status !== 422) throw new ErroSicredi(mensagemDeErro(criar.status, criar.texto), criar.status);
+
+  // já existe: acha o id e altera
+  const params = `cooperativa=${corpo.cooperativa}&posto=${corpo.posto}&beneficiario=${corpo.codBeneficiario}`;
+  const lista = await chamar(admin, cfg, { metodo: "GET", url: `${urlWebhookContratos(cfg.ambiente)}/?${params}` });
+  if (!lista.ok) throw new ErroSicredi(mensagemDeErro(lista.status, lista.texto), lista.status);
+  let id: string | undefined;
+  try {
+    const j = JSON.parse(lista.texto);
+    const item = Array.isArray(j) ? j[0] : (j?.contratos?.[0] ?? j?.content?.[0] ?? j);
+    id = item?.idContrato ? String(item.idContrato) : undefined;
+  } catch { /* cai no erro abaixo */ }
+  if (!id) throw new ErroSicredi("Já existe contrato de webhook, mas não consegui descobrir o id dele.");
+
+  const alterar = await chamar(admin, cfg, { metodo: "PUT", url: `${urlWebhookContrato(cfg.ambiente)}/${encodeURIComponent(id)}`, corpo });
+  if (!alterar.ok) throw new ErroSicredi(mensagemDeErro(alterar.status, alterar.texto), alterar.status);
+  return id;
 }

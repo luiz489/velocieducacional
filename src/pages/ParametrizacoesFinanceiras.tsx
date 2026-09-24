@@ -305,6 +305,7 @@ function SicrediDialog({
   const qc = useQueryClient();
   const [salvando, setSalvando] = useState(false);
   const [testando, setTestando] = useState(false);
+  const [ativandoWebhook, setAtivandoWebhook] = useState(false);
   const [form, setForm] = useState(FORM_VAZIO);
   const jaConfigurado = !!config?.tem_credenciais;
 
@@ -384,6 +385,19 @@ function SicrediDialog({
       return;
     }
     toast.success(`Conexão OK (${data.ambiente === "producao" ? "produção" : "homologação"}) — o Sicredi autenticou as credenciais salvas.`);
+  };
+
+  const ativarRecebimento = async () => {
+    if (!escolaId) return;
+    setAtivandoWebhook(true);
+    const { data, error } = await supabase.functions.invoke("sicredi-configurar-webhook", { body: { escola_id: escolaId } });
+    setAtivandoWebhook(false);
+    qc.invalidateQueries({ queryKey: ["integracoes-bancarias", escolaId] });
+    if (error || !data?.ok) {
+      toast.error("Não foi possível ativar o recebimento automático: " + (data?.erro ?? error?.message ?? "erro desconhecido"));
+      return;
+    }
+    toast.success("Recebimento automático ativado: os pagamentos passam a dar baixa sozinhos.");
   };
 
   const selectCls = "mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
@@ -493,6 +507,24 @@ function SicrediDialog({
               </Button>
             )}
           </div>
+          {jaConfigurado && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium">Baixa automática de pagamentos</p>
+                  <p className="text-xs text-muted-foreground">
+                    Situação: {config?.webhook_status === "ativo" ? "ativa" : config?.webhook_status ? config.webhook_status : "não ativada"}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={ativarRecebimento} disabled={ativandoWebhook}>
+                  {ativandoWebhook ? "Ativando…" : config?.webhook_status === "ativo" ? "Reativar" : "Ativar"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O Sicredi avisa o sistema quando um boleto ou Pix é pago; a parcela vira "Paga" e entra na conta bancária.
+              </p>
+            </div>
+          )}
           {jaConfigurado && (
             <p className="text-xs text-muted-foreground">
               "Testar conexão" usa as credenciais já salvas — salve antes se acabou de alterar algo.
