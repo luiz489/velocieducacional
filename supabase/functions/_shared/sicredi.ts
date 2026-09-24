@@ -400,3 +400,41 @@ export async function contratarWebhook(
   if (!alterar.ok) throw new ErroSicredi(mensagemDeErro(alterar.status, alterar.texto), alterar.status);
   return id;
 }
+
+// ---------------------------------------------------------------------------
+// Boletos liquidados (rede de segurança do webhook)
+// ---------------------------------------------------------------------------
+export type BoletoLiquidado = {
+  nossoNumero: string;
+  valorLiquidado: number;
+  dataPagamento: string; // YYYY-MM-DD
+  tipoLiquidacao: string;
+};
+
+/** Lista tudo que o banco liquidou num dia (DD/MM/YYYY), percorrendo as páginas de 500 registros. */
+export async function listarLiquidadosDoDia(
+  admin: SupabaseClient, cfg: ConfigIntegracao, dia: string
+): Promise<BoletoLiquidado[]> {
+  const todos: BoletoLiquidado[] = [];
+  for (let pagina = 0; pagina < 20; pagina++) {
+    const url = `${urlBoletos(cfg.ambiente)}/liquidados/dia?codigoBeneficiario=${beneficiarioDe(cfg.codigo_beneficiario)}` +
+      `&dia=${encodeURIComponent(dia)}&pagina=${pagina}`;
+    const r = await chamar(admin, cfg, { metodo: "GET", url });
+    if (r.status === 404) break;
+    if (!r.ok) throw new ErroSicredi(mensagemDeErro(r.status, r.texto), r.status);
+    // deno-lint-ignore no-explicit-any
+    let j: any;
+    try { j = JSON.parse(r.texto); } catch { throw new ErroSicredi("Resposta de liquidados não é JSON."); }
+    for (const it of (j?.items ?? [])) {
+      if (!it?.nossoNumero) continue;
+      todos.push({
+        nossoNumero: String(it.nossoNumero),
+        valorLiquidado: Number(it.valorLiquidado ?? it.valor ?? 0),
+        dataPagamento: String(it.dataPagamento ?? "").slice(0, 10),
+        tipoLiquidacao: String(it.tipoLiquidacao ?? ""),
+      });
+    }
+    if (String(j?.hasNext) !== "true") break;
+  }
+  return todos;
+}
