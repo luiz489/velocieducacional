@@ -35,11 +35,7 @@ export default function ParametrizacoesFinanceiras() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas_integracao_bancaria")
-        .select(
-          "banco, agencia, conta_corrente, codigo_beneficiario, posto, chave_pix, ambiente, ativo, conta_bancaria_id, " +
-          "multa_percentual, juros_mensal_percentual, tipo_cobranca, especie_documento, registrar_na_matricula, " +
-          "webhook_status, tem_credenciais"
-        )
+        .select("banco, agencia, conta_corrente, codigo_beneficiario, posto, chave_pix, ambiente, ativo, conta_bancaria_id, multa_percentual, juros_mensal_percentual, tipo_cobranca, especie_documento, registrar_na_matricula, webhook_status, tem_credenciais")
         .eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       return data ?? [];
@@ -281,7 +277,7 @@ function ToleranciaStatusAtrasado({ escolaId }: { escolaId: string | null }) {
 type ConfigSicredi = {
   agencia: string; conta_corrente: string; codigo_beneficiario: string; posto: string; chave_pix: string;
   ambiente: string; conta_bancaria_id: string | null; multa_percentual: number; juros_mensal_percentual: number;
-  tipo_cobranca: string; especie_documento: string; registrar_na_matricula: boolean; tem_credenciais: boolean | null;
+  tipo_cobranca: string; especie_documento: string; registrar_na_matricula: boolean; tem_credenciais: boolean | null; webhook_status: string | null;
 };
 
 const FORM_VAZIO = {

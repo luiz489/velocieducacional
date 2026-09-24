@@ -152,10 +152,10 @@ describe("montarPayloadBoleto", () => {
       { nome: "", documento: "123", cep: "1", cidade: "", uf: "" }, config
     );
     expect(r.ok).toBe(false);
-    if (r.ok) return;
-    expect(r.erros.length).toBeGreaterThanOrEqual(5);
-    expect(r.erros.join(" ")).toMatch(/CPF/);
-    expect(r.erros.join(" ")).toMatch(/CEP/);
+    const erros = (r as { erros: string[] }).erros;
+    expect(erros.length).toBeGreaterThanOrEqual(5);
+    expect(erros.join(" ")).toMatch(/CPF/);
+    expect(erros.join(" ")).toMatch(/CEP/);
   });
 
   it("bolsa integral (valor 0) não gera boleto", () => {
@@ -163,7 +163,7 @@ describe("montarPayloadBoleto", () => {
       { id: UUID, valor: 0, valor_integral: 1057.1, data_vencimento: "2027-01-05" }, pagadorOk, config
     );
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.erros.join(" ")).toMatch(/bolsa/i);
+    expect((r as { erros: string[] }).erros.join(" ")).toMatch(/bolsa/i);
   });
 
   it("limita endereço a 40 chars, mensagens a 4 e informativos a 5", () => {
