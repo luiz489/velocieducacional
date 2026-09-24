@@ -3,7 +3,7 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cooperativaDe, postoDe, beneficiarioDe, usernameSicredi, urlToken, urlBoletos,
-  montarPayloadBoleto, parseRespostaRegistro, idTituloEmpresaDe, urlWebhookContrato, urlWebhookContratos,
+  montarPayloadBoleto, parseRespostaRegistro, idTituloEmpresaDe, urlsWebhookContrato,
   type RegistroBoleto,
 } from "./sicredi-core.ts";
 
@@ -359,7 +359,22 @@ export async function contratarWebhook(
     token: dados.token,
   };
 
-  const criar = await chamar(admin, cfg, { metodo: "POST", url: urlWebhookContrato(cfg.ambiente) + "/", corpo });
+  // tenta os endereços conhecidos; 404/erro de rede = endereço errado, passa pro próximo
+  let base = "";
+  let criar: { status: number; ok: boolean; texto: string } | null = null;
+  const falhas: string[] = [];
+  for (const candidato of urlsWebhookContrato(cfg.ambiente)) {
+    try {
+      const r = await chamar(admin, cfg, { metodo: "POST", url: candidato + "/", corpo });
+      if (r.status === 404) { falhas.push(`${candidato}: 404`); continue; }
+      base = candidato; criar = r; break;
+    } catch (e) {
+      if (e instanceof ErroSicredi && e.status === 0) { falhas.push(`${candidato}: ${e.message}`); continue; }
+      throw e;
+    }
+  }
+  if (!criar) throw new ErroSicredi("Nenhum endereço de webhook do Sicredi respondeu (" + falhas.join("; ") + ").");
+
   if (criar.ok) {
     try { const j = JSON.parse(criar.texto); if (j?.idContrato) return String(j.idContrato); } catch { /* segue */ }
     throw new ErroSicredi("Sicredi criou o contrato mas não devolveu o idContrato.");
@@ -371,7 +386,7 @@ export async function contratarWebhook(
 
   // já existe: acha o id e altera
   const params = `cooperativa=${corpo.cooperativa}&posto=${corpo.posto}&beneficiario=${corpo.codBeneficiario}`;
-  const lista = await chamar(admin, cfg, { metodo: "GET", url: `${urlWebhookContratos(cfg.ambiente)}/?${params}` });
+  const lista = await chamar(admin, cfg, { metodo: "GET", url: `${base.replace(/contrato$/, "contratos")}/?${params}` });
   if (!lista.ok) throw new ErroSicredi(mensagemDeErro(lista.status, lista.texto), lista.status);
   let id: string | undefined;
   try {
@@ -381,7 +396,7 @@ export async function contratarWebhook(
   } catch { /* cai no erro abaixo */ }
   if (!id) throw new ErroSicredi("Já existe contrato de webhook, mas não consegui descobrir o id dele.");
 
-  const alterar = await chamar(admin, cfg, { metodo: "PUT", url: `${urlWebhookContrato(cfg.ambiente)}/${encodeURIComponent(id)}`, corpo });
+  const alterar = await chamar(admin, cfg, { metodo: "PUT", url: `${base}/${encodeURIComponent(id)}`, corpo });
   if (!alterar.ok) throw new ErroSicredi(mensagemDeErro(alterar.status, alterar.texto), alterar.status);
   return id;
 }

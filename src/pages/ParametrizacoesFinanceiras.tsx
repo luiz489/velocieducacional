@@ -393,7 +393,7 @@ function SicrediDialog({
       toast.error("Não foi possível ativar o recebimento automático: " + (data?.erro ?? error?.message ?? "erro desconhecido"));
       return;
     }
-    toast.success("Recebimento automático ativado: os pagamentos passam a dar baixa sozinhos.");
+    toast.success(data.ambiente === "producao" ? "Recebimento automático ativado: os pagamentos passam a dar baixa sozinhos." : "Comunicação com o webhook do Sicredi validada em homologação (contrato fictício). O contrato real é criado em produção.");
   };
 
   const selectCls = "mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
@@ -509,7 +509,7 @@ function SicrediDialog({
                 <div>
                   <p className="text-sm font-medium">Baixa automática de pagamentos</p>
                   <p className="text-xs text-muted-foreground">
-                    Situação: {config?.webhook_status === "ativo" ? "ativa" : config?.webhook_status ? config.webhook_status : "não ativada"}
+                    Situação: {config?.webhook_status === "ativo" ? "ativa" : config?.webhook_status === "homologacao" ? "testada em homologação (contrato fictício — o real só existe em produção)" : config?.webhook_status ? config.webhook_status : "não ativada"}
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={ativarRecebimento} disabled={ativandoWebhook}>

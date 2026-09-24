@@ -10,8 +10,17 @@ const prefixo = (ambiente: string) => (ambiente === "producao" ? "" : "/sb");
 export const urlToken = (ambiente: string) => `${HOST}${prefixo(ambiente)}/auth/openapi/token`;
 export const urlBoletos = (ambiente: string) => `${HOST}${prefixo(ambiente)}/cobranca/boleto/v1/boletos`;
 
-export const urlWebhookContrato = (ambiente: string) => `${HOST}${prefixo(ambiente)}/cobranca/boleto/v1/webhook/contrato`;
-export const urlWebhookContratos = (ambiente: string) => `${HOST}${prefixo(ambiente)}/cobranca/boleto/v1/webhook/contratos`;
+// Endereços do contrato de webhook. O manual v3.9.1 e o suporte do Sicredi (24/09/2026) divergem:
+// o suporte indica .../cobranca/webhook/v1/api/contrato/ e informou que em homologação o webhook só
+// valida credenciais e cria um contrato fictício (o real só existe em produção). Tentamos na ordem.
+export const urlsWebhookContrato = (ambiente: string): string[] =>
+  ambiente === "producao"
+    ? [`${HOST}/cobranca/boleto/v1/webhook/contrato`, `${HOST}/cobranca/webhook/v1/api/contrato`]
+    : [
+        `${HOST}/sb/cobranca/webhook/v1/api/contrato`,
+        `https://parceiro.sicredi.com.br/sb/cobranca/webhook/v1/api/contrato`,
+        `${HOST}/sb/cobranca/boleto/v1/webhook/contrato`,
+      ];
 
 export const somenteDigitos = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
 

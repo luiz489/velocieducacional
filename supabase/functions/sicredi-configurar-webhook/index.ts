@@ -30,8 +30,8 @@ Deno.serve(async (req: Request) => {
     try {
       const idContrato = await contratarWebhook(admin, cfg, { url, header: HEADER_SEGREDO, token: segredo });
       await admin.from("escolas_integracao_bancaria")
-        .update({ webhook_contrato_id: idContrato, webhook_status: "ativo" }).eq("escola_id", escola_id);
-      return json({ ok: true, idContrato });
+        .update({ webhook_contrato_id: idContrato, webhook_status: cfg.ambiente === "producao" ? "ativo" : "homologacao" }).eq("escola_id", escola_id);
+      return json({ ok: true, idContrato, ambiente: cfg.ambiente });
     } catch (e) {
       const erro = e instanceof Error ? e.message : String(e);
       await admin.from("escolas_integracao_bancaria")
