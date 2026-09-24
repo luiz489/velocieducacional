@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { dataBR } from "@/lib/utils";
-import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter, Undo2, Copy, QrCode } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter, Undo2, Copy, QrCode, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useFinanceiro, type LancamentoRow } from "@/hooks/useFinanceiro";
 import { exportarFinanceiroPDF } from "@/lib/relatorios";
+import { gerarCarnePDF } from "@/lib/carne";
 import { supabase } from "@/integrations/supabase/client";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
@@ -81,9 +82,35 @@ function getInadimplentes(lancamentos: LancamentoRow[]): Inadimplente[] {
 
 export default function Financeiro() {
   const { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, registrarBoleto, refetch } = useFinanceiro();
-  const { escolaAtivaId } = useEscolaAtiva();
+  const { escolaAtivaId, escolas } = useEscolaAtiva();
   const [reprocessando, setReprocessando] = useState(false);
   const boletosComErro = lancamentos.filter((l) => l.gateway_status === "erro" && l.status !== "Pago");
+
+  const gerarCarne = async (base: LancamentoRow) => {
+    const doAluno = lancamentos
+      .filter((l) => l.matricula_id && l.matricula_id === base.matricula_id && (l.status === "Pendente" || l.status === "Atrasado"))
+      .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+    if (doAluno.length === 0) { toast.error("Este aluno não tem parcelas em aberto."); return; }
+
+    // multa/juros só aparecem no carnê se a escola tiver a integração configurada
+    const { data: cfg } = await supabase.from("escolas_integracao_bancaria")
+      .select("multa_percentual, juros_mensal_percentual").eq("escola_id", escolaAtivaId!).maybeSingle();
+
+    await gerarCarnePDF(
+      { nome: base.aluno_nome, turma: base.turma, responsavel: base.responsavel },
+      doAluno.map((l) => ({
+        id: l.id, descricao: l.descricao, vencimento: dataBR(l.data_vencimento), valor: l.valor,
+        valorIntegral: l.valor_integral, linhaDigitavel: l.boleto_linha_digitavel, pixCopiaECola: l.pix_qr_code,
+      })),
+      {
+        escola: escolas.find((e) => e.escola_id === escolaAtivaId)?.nome,
+        multaPercentual: cfg?.multa_percentual, jurosMensalPercentual: cfg?.juros_mensal_percentual,
+      },
+    );
+    const semBoleto = doAluno.filter((l) => !l.boleto_linha_digitavel).length;
+    if (semBoleto > 0) toast.warning(`${semBoleto} parcela(s) do carnê ainda não têm boleto emitido no banco.`);
+    else toast.success("Carnê gerado.");
+  };
 
   const reprocessarErros = async () => {
     if (!escolaAtivaId) return;
@@ -370,6 +397,11 @@ export default function Financeiro() {
                             >
                               <QrCode className="h-4 w-4 mr-2" />
                               {l.gateway_status === "erro" ? "Tentar registrar boleto de novo" : "Registrar boleto"}
+                            </DropdownMenuItem>
+                          )}
+                          {l.matricula_id && l.status !== "Pago" && (
+                            <DropdownMenuItem onClick={() => gerarCarne(l)}>
+                              <FileText className="h-4 w-4 mr-2" />Gerar carnê do aluno
                             </DropdownMenuItem>
                           )}
                           {l.pix_qr_code && (

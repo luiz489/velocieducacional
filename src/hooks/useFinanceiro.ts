@@ -5,6 +5,8 @@ import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 export type LancamentoRow = {
   id: string;
+  matricula_id: string | null;
+  turma: string;
   aluno_nome: string;
   responsavel: string;
   descricao: string;
@@ -33,7 +35,7 @@ export function useFinanceiro() {
       .select(`
         id, descricao, valor, valor_integral, data_vencimento, data_pagamento, status, tipo, forma_pagamento,
         gateway_status, gateway_erro, boleto_linha_digitavel, pix_qr_code,
-        matriculas ( alunos ( nome, responsavel_financeiro ) )
+        matricula_id, matriculas ( alunos ( nome, responsavel_financeiro ), turmas ( nome ) )
       `)
       .eq("escola_id", escolaAtivaId)
       .eq("faturado", true)
@@ -48,6 +50,8 @@ export function useFinanceiro() {
     setLancamentos(
       (data ?? []).map((l: any) => ({
         id: l.id,
+        matricula_id: l.matricula_id ?? null,
+        turma: l.matriculas?.turmas?.nome ?? "—",
         aluno_nome: l.matriculas?.alunos?.nome ?? "—",
         responsavel: l.matriculas?.alunos?.responsavel_financeiro ?? "—",
         descricao: l.descricao,
