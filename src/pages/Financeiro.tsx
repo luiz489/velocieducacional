@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { dataBR } from "@/lib/utils";
-import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter, Undo2 } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter, Undo2, Copy, QrCode } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,15 @@ function getStatusBadge(status: string) {
     case "Atrasado": return <Badge variant="destructive">Atrasado</Badge>;
     case "Cancelado": return <Badge variant="outline">Cancelado</Badge>;
     default: return <Badge variant="secondary">Pendente</Badge>;
+  }
+}
+
+function getBoletoBadge(l: LancamentoRow) {
+  switch (l.gateway_status) {
+    case "registrado": return <Badge variant="outline" className="border-info text-info">Boleto registrado</Badge>;
+    case "erro": return <Badge variant="outline" className="border-destructive text-destructive" title={l.gateway_erro ?? undefined}>Boleto com erro</Badge>;
+    case "baixado": return <Badge variant="outline">Boleto baixado</Badge>;
+    default: return null;
   }
 }
 
@@ -69,7 +78,13 @@ function getInadimplentes(lancamentos: LancamentoRow[]): Inadimplente[] {
 }
 
 export default function Financeiro() {
-  const { lancamentos, loading, confirmarPagamento, desfazerConfirmacao } = useFinanceiro();
+  const { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, registrarBoleto } = useFinanceiro();
+  const [registrandoId, setRegistrandoId] = useState<string | null>(null);
+
+  const copiar = async (texto: string, rotulo: string) => {
+    try { await navigator.clipboard.writeText(texto); toast.success(`${rotulo} copiado.`); }
+    catch { toast.error("Não foi possível copiar."); }
+  };
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [tipoFilter, setTipoFilter] = useState("todos");
@@ -295,7 +310,12 @@ export default function Financeiro() {
                     <TableCell className="hidden md:table-cell text-muted-foreground">
                       {dataBR(l.data_vencimento)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(l.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {getStatusBadge(l.status)}
+                        {getBoletoBadge(l)}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -307,6 +327,25 @@ export default function Financeiro() {
                           {l.status !== "Pago" && (
                             <DropdownMenuItem onClick={() => abrirConfirmDialog(l)}>
                               Confirmar Pagamento
+                            </DropdownMenuItem>
+                          )}
+                          {(l.status === "Pendente" || l.status === "Atrasado") && l.gateway_status !== "registrado" && (
+                            <DropdownMenuItem
+                              disabled={registrandoId === l.id}
+                              onClick={async () => { setRegistrandoId(l.id); await registrarBoleto(l.id); setRegistrandoId(null); }}
+                            >
+                              <QrCode className="h-4 w-4 mr-2" />
+                              {l.gateway_status === "erro" ? "Tentar registrar boleto de novo" : "Registrar boleto"}
+                            </DropdownMenuItem>
+                          )}
+                          {l.pix_qr_code && (
+                            <DropdownMenuItem onClick={() => copiar(l.pix_qr_code!, "Pix copia e cola")}>
+                              <Copy className="h-4 w-4 mr-2" />Copiar Pix
+                            </DropdownMenuItem>
+                          )}
+                          {l.boleto_linha_digitavel && (
+                            <DropdownMenuItem onClick={() => copiar(l.boleto_linha_digitavel!, "Linha digitável")}>
+                              <Copy className="h-4 w-4 mr-2" />Copiar linha digitável
                             </DropdownMenuItem>
                           )}
                           {l.status === "Pago" && (

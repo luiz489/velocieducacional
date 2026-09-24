@@ -15,6 +15,10 @@ export type LancamentoRow = {
   data_pagamento: string | null;
   status: string;
   forma_pagamento: string | null;
+  gateway_status: string | null;
+  gateway_erro: string | null;
+  boleto_linha_digitavel: string | null;
+  pix_qr_code: string | null;
 };
 
 export function useFinanceiro() {
@@ -28,6 +32,7 @@ export function useFinanceiro() {
       .from("financeiro")
       .select(`
         id, descricao, valor, valor_integral, data_vencimento, data_pagamento, status, tipo, forma_pagamento,
+        gateway_status, gateway_erro, boleto_linha_digitavel, pix_qr_code,
         matriculas ( alunos ( nome, responsavel_financeiro ) )
       `)
       .eq("escola_id", escolaAtivaId)
@@ -53,6 +58,10 @@ export function useFinanceiro() {
         data_pagamento: l.data_pagamento,
         status: l.status,
         forma_pagamento: l.forma_pagamento,
+        gateway_status: l.gateway_status ?? null,
+        gateway_erro: l.gateway_erro ?? null,
+        boleto_linha_digitavel: l.boleto_linha_digitavel ?? null,
+        pix_qr_code: l.pix_qr_code ?? null,
       }))
     );
     setLoading(false);
@@ -61,6 +70,18 @@ export function useFinanceiro() {
   useEffect(() => {
     fetchLancamentos();
   }, [fetchLancamentos]);
+
+  const registrarBoleto = async (id: string) => {
+    const { data, error } = await supabase.functions.invoke("sicredi-registrar", { body: { financeiro_id: id } });
+    if (error || !data?.ok) {
+      toast.error("Não foi possível registrar o boleto: " + (data?.erro ?? error?.message ?? "erro desconhecido"));
+      await fetchLancamentos();
+      return false;
+    }
+    toast.success(data.jaRegistrado ? "Boleto já estava registrado." : "Boleto registrado no Sicredi.");
+    await fetchLancamentos();
+    return true;
+  };
 
   const confirmarPagamento = async (
     id: string,
@@ -94,5 +115,5 @@ export function useFinanceiro() {
     return true;
   };
 
-  return { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, refetch: fetchLancamentos };
+  return { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, registrarBoleto, refetch: fetchLancamentos };
 }
