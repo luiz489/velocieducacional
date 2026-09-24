@@ -285,6 +285,7 @@ const FORM_VAZIO = {
   codigo_acesso: "", x_api_key: "", chave_pix: "", ambiente: "homologacao",
   conta_bancaria_id: "", multa_percentual: "2", juros_mensal_percentual: "1",
   tipo_cobranca: "HIBRIDO", especie_documento: "DUPLICATA_MERCANTIL_INDICACAO",
+  registrar_na_matricula: false,
 };
 
 function SicrediDialog({
@@ -302,6 +303,8 @@ function SicrediDialog({
   const [salvando, setSalvando] = useState(false);
   const [testando, setTestando] = useState(false);
   const [ativandoWebhook, setAtivandoWebhook] = useState(false);
+  const [confirmandoLote, setConfirmandoLote] = useState(false);
+  const [enfileirando, setEnfileirando] = useState(false);
   const [form, setForm] = useState(FORM_VAZIO);
   const jaConfigurado = !!config?.tem_credenciais;
 
@@ -318,6 +321,7 @@ function SicrediDialog({
             conta_bancaria_id: config.conta_bancaria_id ?? "",
             multa_percentual: String(config.multa_percentual), juros_mensal_percentual: String(config.juros_mensal_percentual),
             tipo_cobranca: config.tipo_cobranca, especie_documento: config.especie_documento,
+            registrar_na_matricula: config.registrar_na_matricula,
           }
         : FORM_VAZIO
     );
@@ -359,7 +363,7 @@ function SicrediDialog({
       p_juros_mensal_percentual: Number(form.juros_mensal_percentual || 0),
       p_tipo_cobranca: form.tipo_cobranca,
       p_especie_documento: form.especie_documento,
-      p_registrar_na_matricula: config?.registrar_na_matricula ?? false,
+      p_registrar_na_matricula: form.registrar_na_matricula,
     });
     setSalvando(false);
     if (error) {
@@ -381,6 +385,33 @@ function SicrediDialog({
       return;
     }
     toast.success(`Conexão OK (${data.ambiente === "producao" ? "produção" : "homologação"}) — o Sicredi autenticou as credenciais salvas.`);
+  };
+
+  const { data: qtdPendentes } = useQuery({
+    queryKey: ["cobranca-pendentes", escolaId],
+    enabled: open && !!escolaId && jaConfigurado,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("cobranca_contar_pendentes", { p_escola_id: escolaId! });
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+  });
+
+  const registrarExistentes = async () => {
+    if (!escolaId) return;
+    setEnfileirando(true);
+    const { data, error } = await supabase.rpc("cobranca_enfileirar_pendentes", { p_escola_id: escolaId });
+    if (error) {
+      setEnfileirando(false);
+      toast.error("Não foi possível enfileirar os boletos: " + error.message);
+      return;
+    }
+    // já dispara o primeiro lote; o resto o processamento automático (a cada minuto) termina
+    await supabase.functions.invoke("sicredi-processar-fila", { body: { escola_id: escolaId } });
+    setEnfileirando(false);
+    setConfirmandoLote(false);
+    qc.invalidateQueries({ queryKey: ["cobranca-pendentes", escolaId] });
+    toast.success(`${data ?? 0} boletos na fila. Eles são registrados aos poucos (cerca de 30 por minuto).`);
   };
 
   const ativarRecebimento = async () => {
@@ -493,6 +524,17 @@ function SicrediDialog({
             </p>
           </div>
 
+          <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+            <div>
+              <Label className="text-sm">Registrar boletos automaticamente na matrícula</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ao gerar as parcelas de uma matrícula, cada uma vira boleto no Sicredi. Desligado, os boletos só saem pelo botão
+                "Registrar boleto" do Financeiro.
+              </p>
+            </div>
+            <Switch checked={form.registrar_na_matricula} onCheckedChange={(v) => setForm({ ...form, registrar_na_matricula: v })} />
+          </div>
+
           <div className="flex gap-2">
             <Button onClick={salvar} disabled={salvando} className="flex-1">
               {salvando ? "Salvando…" : "Salvar Integração"}
@@ -519,6 +561,32 @@ function SicrediDialog({
               <p className="text-xs text-muted-foreground">
                 O Sicredi avisa o sistema quando um boleto ou Pix é pago; a parcela vira "Paga" e entra na conta bancária.
               </p>
+            </div>
+          )}
+          {jaConfigurado && (qtdPendentes ?? 0) > 0 && (
+            <div className="rounded-md border p-3 space-y-2">
+              <p className="text-sm font-medium">Parcelas já existentes sem boleto: {qtdPendentes}</p>
+              <p className="text-xs text-muted-foreground">
+                Pendentes ou atrasadas que ainda não têm boleto no Sicredi (inclui as que deram erro).
+              </p>
+              {!confirmandoLote ? (
+                <Button variant="outline" size="sm" onClick={() => setConfirmandoLote(true)}>
+                  Registrar boletos dessas parcelas…
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs">
+                    Vai registrar <strong>{qtdPendentes}</strong> boletos no ambiente{" "}
+                    <strong>{form.ambiente === "producao" ? "de PRODUÇÃO (boletos reais, com cobrança)" : "de homologação (teste)"}</strong>. Confirma?
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={registrarExistentes} disabled={enfileirando}>
+                      {enfileirando ? "Enfileirando…" : "Confirmar"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmandoLote(false)} disabled={enfileirando}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {jaConfigurado && (

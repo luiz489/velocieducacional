@@ -23,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useFinanceiro, type LancamentoRow } from "@/hooks/useFinanceiro";
 import { exportarFinanceiroPDF } from "@/lib/relatorios";
+import { supabase } from "@/integrations/supabase/client";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -78,7 +80,25 @@ function getInadimplentes(lancamentos: LancamentoRow[]): Inadimplente[] {
 }
 
 export default function Financeiro() {
-  const { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, registrarBoleto } = useFinanceiro();
+  const { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, registrarBoleto, refetch } = useFinanceiro();
+  const { escolaAtivaId } = useEscolaAtiva();
+  const [reprocessando, setReprocessando] = useState(false);
+  const boletosComErro = lancamentos.filter((l) => l.gateway_status === "erro" && l.status !== "Pago");
+
+  const reprocessarErros = async () => {
+    if (!escolaAtivaId) return;
+    setReprocessando(true);
+    const { data, error } = await supabase.rpc("cobranca_enfileirar_pendentes", { p_escola_id: escolaAtivaId });
+    if (error) {
+      setReprocessando(false);
+      toast.error("Não foi possível reprocessar: " + error.message);
+      return;
+    }
+    await supabase.functions.invoke("sicredi-processar-fila", { body: { escola_id: escolaAtivaId } });
+    await refetch();
+    setReprocessando(false);
+    toast.success(`${data ?? 0} boletos reenviados para registro.`);
+  };
   const [registrandoId, setRegistrandoId] = useState<string | null>(null);
 
   const copiar = async (texto: string, rotulo: string) => {
@@ -251,6 +271,20 @@ export default function Financeiro() {
         </TabsList>
 
         <TabsContent value="lancamentos" className="space-y-4">
+          {boletosComErro.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+              <div className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <span>
+                  <strong>{boletosComErro.length}</strong> {boletosComErro.length === 1 ? "boleto com erro" : "boletos com erro"} no registro do Sicredi.
+                  Passe o mouse no selo "Boleto com erro" para ver o motivo.
+                </span>
+              </div>
+              <Button size="sm" variant="outline" onClick={reprocessarErros} disabled={reprocessando}>
+                {reprocessando ? "Reprocessando…" : "Reprocessar"}
+              </Button>
+            </div>
+          )}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

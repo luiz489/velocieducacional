@@ -1002,6 +1002,7 @@ export type Database = {
           nosso_numero: string | null
           operacao: string
           processado_em: string | null
+          proxima_tentativa_em: string
           status: string
           tentativas: number
           ultimo_erro: string | null
@@ -1015,6 +1016,7 @@ export type Database = {
           nosso_numero?: string | null
           operacao: string
           processado_em?: string | null
+          proxima_tentativa_em?: string
           status?: string
           tentativas?: number
           ultimo_erro?: string | null
@@ -1028,6 +1030,7 @@ export type Database = {
           nosso_numero?: string | null
           operacao?: string
           processado_em?: string | null
+          proxima_tentativa_em?: string
           status?: string
           tentativas?: number
           ultimo_erro?: string | null
@@ -6165,6 +6168,41 @@ export type Database = {
         Args: { p_escola_id: string }
         Returns: undefined
       }
+      cobranca_contar_pendentes: {
+        Args: { p_escola_id: string }
+        Returns: number
+      }
+      cobranca_enfileirar_pendentes: {
+        Args: { p_escola_id: string }
+        Returns: number
+      }
+      cobranca_fila_reservar: {
+        Args: { p_escola_id?: string; p_limite?: number }
+        Returns: {
+          atualizado_em: string
+          criado_em: string
+          escola_id: string
+          financeiro_id: string | null
+          id: string
+          nosso_numero: string | null
+          operacao: string
+          processado_em: string | null
+          proxima_tentativa_em: string
+          status: string
+          tentativas: number
+          ultimo_erro: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cobranca_fila"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cobranca_registro_automatico: {
+        Args: { p_escola_id: string }
+        Returns: boolean
+      }
       confirmar_pagamento_bancario: {
         Args: {
           p_comprovante_url?: string
@@ -6581,6 +6619,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      sicredi_cron_ok: { Args: { p_segredo: string }; Returns: boolean }
       suspender_cliente_saas: {
         Args: { p_escola_id: string; p_motivo?: string }
         Returns: undefined
