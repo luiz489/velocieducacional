@@ -420,6 +420,12 @@ function SicrediDialog({
     const { data, error } = await supabase.functions.invoke("sicredi-configurar-webhook", { body: { escola_id: escolaId } });
     setAtivandoWebhook(false);
     qc.invalidateQueries({ queryKey: ["integracoes-bancarias", escolaId] });
+    // Em homologação o Sicredi responde "Falha na busca do beneficiário" porque os dados do sandbox são fictícios:
+    // segundo o suporte, esse erro prova que a comunicação com a API de webhook está correta.
+    if (!data?.ok && form.ambiente !== "producao" && /Falha na busca do benefici/i.test(String(data?.erro ?? ""))) {
+      toast.success("Comunicação com o webhook do Sicredi validada em homologação. O erro \"Falha na busca do beneficiário\" é o esperado com os dados fictícios do sandbox; o contrato real é criado em produção, com os dados do beneficiário.");
+      return;
+    }
     if (error || !data?.ok) {
       toast.error("Não foi possível ativar o recebimento automático: " + (data?.erro ?? error?.message ?? "erro desconhecido"));
       return;
@@ -551,7 +557,7 @@ function SicrediDialog({
                 <div>
                   <p className="text-sm font-medium">Baixa automática de pagamentos</p>
                   <p className="text-xs text-muted-foreground">
-                    Situação: {config?.webhook_status === "ativo" ? "ativa" : config?.webhook_status === "homologacao" ? "testada em homologação (contrato fictício — o real só existe em produção)" : config?.webhook_status ? config.webhook_status : "não ativada"}
+                    Situação: {config?.webhook_status === "ativo" ? "ativa" : config?.webhook_status === "homologacao" || (config?.ambiente !== "producao" && /Falha na busca do benefici/i.test(config?.webhook_status ?? "")) ? "comunicação validada em homologação (o contrato real só existe em produção)" : config?.webhook_status ? config.webhook_status : "não ativada"}
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={ativarRecebimento} disabled={ativandoWebhook}>
