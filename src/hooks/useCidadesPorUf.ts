@@ -24,7 +24,10 @@ export function useCidadesPorUf(uf: string | undefined | null) {
       if (!resposta.ok || dados.error) {
         throw new Error(dados.error || "Não foi possível buscar as cidades.");
       }
-      return dados.cidades as string[];
+      // Só aceita lista de textos: qualquer outra coisa quebraria a renderização do Select.
+      return (Array.isArray(dados.cidades) ? dados.cidades : []).filter(
+        (c: unknown): c is string => typeof c === "string" && c.length > 0,
+      );
     },
   });
 }

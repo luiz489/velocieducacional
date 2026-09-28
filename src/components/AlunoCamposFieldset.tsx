@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { mascaraCPF, mascaraTelefone } from "@/lib/masks";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 import { useCidadesPorUf } from "@/hooks/useCidadesPorUf";
 import { ESTADOS } from "@/lib/cidadesSP";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { ESCOLA, ehEscola } from "@/lib/customizacoesEscola";
 
 export type AlunoCamposDefaultValues = {
   nome?: string;
@@ -90,29 +91,34 @@ function CampoUfCidade({
     if (cidades && cidade && !cidades.includes(cidade)) setCidade("");
   }, [cidades]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // <select> nativo (igual aos outros campos de lista deste formulário): o Select do
+  // Radix abre uma camada por cima do diálogo da matrícula, e escolher UF/cidade nele
+  // estava fechando a tela.
+  const classeSelect = "mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50";
+  // Enquanto a lista carrega (ou se falhar), mantém a cidade já escolhida como opção
+  // para o valor não sumir (ex.: Barretos pré-preenchida).
+  const opcoesCidade = cidade && !cidades?.includes(cidade) ? [cidade, ...(cidades ?? [])] : (cidades ?? []);
+
   return (
     <>
       <div>
-        <Label>{labelUf}</Label>
-        <Select value={uf} onValueChange={setUf}>
-          <SelectTrigger className="mt-1"><SelectValue placeholder="UF" /></SelectTrigger>
-          <SelectContent>
-            {ESTADOS.map((e) => <SelectItem key={e.uf} value={e.uf}>{e.uf} - {e.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name={nomeUf} value={uf} />
+        <Label htmlFor={nomeUf}>{labelUf}</Label>
+        <select id={nomeUf} name={nomeUf} value={uf} onChange={(e) => setUf(e.target.value)} className={classeSelect}>
+          <option value="">UF</option>
+          {ESTADOS.map((e) => <option key={e.uf} value={e.uf}>{e.uf} - {e.nome}</option>)}
+        </select>
       </div>
       <div>
-        <Label>{labelCidade}</Label>
-        <Select value={cidade} onValueChange={setCidade} disabled={!uf}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder={!uf ? "Escolha a UF primeiro" : carregandoCidades ? "Carregando..." : "Selecione"} />
-          </SelectTrigger>
-          <SelectContent>
-            {cidades?.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <input type="hidden" name={nomeCidade} value={cidade} />
+        <Label htmlFor={nomeCidade}>{labelCidade}</Label>
+        <select
+          id={nomeCidade} name={nomeCidade} value={cidade} onChange={(e) => setCidade(e.target.value)}
+          disabled={!uf} className={classeSelect}
+        >
+          <option value="">
+            {!uf ? "Escolha a UF primeiro" : carregandoCidades ? "Carregando..." : "Selecione"}
+          </option>
+          {opcoesCidade.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
     </>
   );
@@ -141,6 +147,12 @@ export function AlunoCamposFieldset({
   );
   const [cep, setCep] = useState(defaultValues?.responsavel_cep || "");
   const { buscarCep, buscando: buscandoCep } = useCepLookup();
+
+  // Colégio DM (as duas unidades): aluno novo já vem com Barretos/SP no endereço.
+  // Só em cadastro novo - ao editar um aluno existente, respeita o que está salvo.
+  const { codigoEscolaAtiva } = useEscolaAtiva();
+  const ehDM = ehEscola(codigoEscolaAtiva, ESCOLA.DM_NUCLEO, ESCOLA.DM_UNIDADE_2);
+  const cidadePadraoEndereco = !defaultValues && ehDM ? { uf: "SP", cidade: "Barretos" } : null;
   const enderecoRef = useRef<HTMLInputElement>(null);
   const bairroRef = useRef<HTMLInputElement>(null);
 
@@ -236,9 +248,11 @@ export function AlunoCamposFieldset({
               <Input id="responsavel_bairro" name="responsavel_bairro" className="mt-1" defaultValue={defaultValues?.responsavel_bairro || ""} ref={bairroRef} />
             </div>
             <CampoUfCidade
+              key={cidadePadraoEndereco ? "dm" : "padrao"}
               labelCidade="Cidade" labelUf="UF"
               nomeCidade="responsavel_cidade" nomeUf="responsavel_uf"
-              ufInicial={defaultValues?.responsavel_uf} cidadeInicial={defaultValues?.responsavel_cidade}
+              ufInicial={defaultValues?.responsavel_uf ?? cidadePadraoEndereco?.uf}
+              cidadeInicial={defaultValues?.responsavel_cidade ?? cidadePadraoEndereco?.cidade}
             />
           </>
         )}
