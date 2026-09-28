@@ -6632,10 +6632,6 @@ export type Database = {
         Args: { p_acao: string; p_escola_id: string; p_modulo_codigo: string }
         Returns: boolean
       }
-      usuario_tem_permissao_em_alguma_escola: {
-        Args: { p_acao: string; p_modulo_codigo: string }
-        Returns: boolean
-      }
       vincular_administrador_escola: {
         Args: { p_escola_id: string; p_user_email: string }
         Returns: undefined
