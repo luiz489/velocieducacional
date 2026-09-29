@@ -424,7 +424,8 @@ export default function Matriculas() {
       .select("descricao, valor, valor_integral, data_vencimento, status")
       .eq("matricula_id", m.id)
       .eq("escola_id", escolaAtivaId!)
-      .order("data_vencimento");
+      .order("data_vencimento")
+      .order("descricao");
     setCarneParcelas(data ?? []);
     setCarneDialogOpen(true);
   };

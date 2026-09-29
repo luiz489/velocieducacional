@@ -86,9 +86,22 @@ export default function Financeiro() {
   const [reprocessando, setReprocessando] = useState(false);
   const boletosComErro = lancamentos.filter((l) => l.gateway_status === "erro" && l.status !== "Pago");
 
+  // Quando uma matrícula tem cobrança dividida entre 2 responsáveis (caso específico,
+  // resolvido na mão - ver descrição das parcelas), cada título vem com "— Nome" no
+  // final da descrição. Usamos isso pra separar o carnê de cada um; título sem "—"
+  // (o caso normal, só 1 responsável) segue funcionando exatamente como antes.
+  const nomeResponsavelDoTitulo = (descricao: string) => {
+    const partes = descricao.split(" — ");
+    return partes.length > 1 ? partes[partes.length - 1] : null;
+  };
+
   const gerarCarne = async (base: LancamentoRow) => {
+    const nomeAlvo = nomeResponsavelDoTitulo(base.descricao);
     const doAluno = lancamentos
-      .filter((l) => l.matricula_id && l.matricula_id === base.matricula_id && (l.status === "Pendente" || l.status === "Atrasado"))
+      .filter((l) =>
+        l.matricula_id && l.matricula_id === base.matricula_id &&
+        (l.status === "Pendente" || l.status === "Atrasado") &&
+        nomeResponsavelDoTitulo(l.descricao) === nomeAlvo)
       .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
     if (doAluno.length === 0) { toast.error("Este aluno não tem parcelas em aberto."); return; }
 
@@ -97,7 +110,7 @@ export default function Financeiro() {
       .select("multa_percentual, juros_mensal_percentual").eq("escola_id", escolaAtivaId!).maybeSingle();
 
     await gerarCarnePDF(
-      { nome: base.aluno_nome, turma: base.turma, responsavel: base.responsavel },
+      { nome: base.aluno_nome, turma: base.turma, responsavel: nomeAlvo ?? base.responsavel },
       doAluno.map((l) => ({
         id: l.id, descricao: l.descricao, vencimento: dataBR(l.data_vencimento), valor: l.valor,
         valorIntegral: l.valor_integral, linhaDigitavel: l.boleto_linha_digitavel, pixCopiaECola: l.pix_qr_code,
