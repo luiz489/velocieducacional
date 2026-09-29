@@ -41,6 +41,11 @@ function getStatusBadge(status: string) {
   }
 }
 
+// <select> nativo (igual ao usado em AlunoCamposFieldset): dentro dos diálogos de
+// matrícula, o Select do Radix (portal por cima do Dialog) estava fechando a tela
+// ao escolher a opção - já aconteceu em Cidade/UF e depois em Turma.
+const CLASSE_SELECT_MATRICULA = "mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50";
+
 export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
   const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro } = useMatriculas();
@@ -467,15 +472,14 @@ export default function Matriculas() {
                 </TabsList>
 
                 <TabsContent value="existente" className="mt-3">
-                  <Label>Aluno</Label>
-                  <Select value={formAlunoId} onValueChange={setFormAlunoId}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o aluno" /></SelectTrigger>
-                    <SelectContent>
-                      {alunos.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="form-aluno-existente">Aluno</Label>
+                  <select
+                    id="form-aluno-existente" value={formAlunoId} onChange={(e) => setFormAlunoId(e.target.value)}
+                    className={CLASSE_SELECT_MATRICULA}
+                  >
+                    <option value="">Selecione o aluno</option>
+                    {alunos.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                  </select>
                 </TabsContent>
 
                 <TabsContent value="novo" className="mt-3">
@@ -485,32 +489,34 @@ export default function Matriculas() {
 
               <div className="border-t pt-4 space-y-4">
                 <div>
-                  <Label>Turma</Label>
-                  <Select value={formTurmaId} onValueChange={setFormTurmaId}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione a turma" /></SelectTrigger>
-                    <SelectContent>
-                      {turmasComVagas.map((t) => {
-                        const disponiveis = t.vagas_totais - t.vagas_ocupadas;
-                        return (
-                          <SelectItem key={t.id} value={t.id} disabled={disponiveis <= 0}>
-                            {t.nome} - {t.turno} ({t.ano_letivo}) {disponiveis <= 0 ? "— sem vagas" : `— ${disponiveis} vaga(s)`}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="form-turma">Turma</Label>
+                  <select
+                    id="form-turma" value={formTurmaId} onChange={(e) => setFormTurmaId(e.target.value)}
+                    className={CLASSE_SELECT_MATRICULA}
+                  >
+                    <option value="">Selecione a turma</option>
+                    {turmasComVagas.map((t) => {
+                      const disponiveis = t.vagas_totais - t.vagas_ocupadas;
+                      return (
+                        <option key={t.id} value={t.id} disabled={disponiveis <= 0}>
+                          {t.nome} - {t.turno} ({t.ano_letivo}) {disponiveis <= 0 ? "— sem vagas" : `— ${disponiveis} vaga(s)`}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
                 {!!modalidadesForm?.length && (
                   <div>
-                    <Label>Modalidade</Label>
-                    <Select value={formModalidadeId} onValueChange={setFormModalidadeId}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Mensal (padrão da turma)" /></SelectTrigger>
-                      <SelectContent>
-                        {modalidadesForm.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>{m.nome} — R$ {Number(m.valor_mensalidade).toFixed(2)}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="form-modalidade">Modalidade</Label>
+                    <select
+                      id="form-modalidade" value={formModalidadeId} onChange={(e) => setFormModalidadeId(e.target.value)}
+                      className={CLASSE_SELECT_MATRICULA}
+                    >
+                      <option value="">Mensal (padrão da turma)</option>
+                      {modalidadesForm.map((m) => (
+                        <option key={m.id} value={m.id}>{m.nome} — R$ {Number(m.valor_mensalidade).toFixed(2)}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 {!!opcionaisDisponiveis?.length && (
@@ -785,27 +791,28 @@ export default function Matriculas() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Turma</Label>
-              <Select value={editTurmaId} onValueChange={setEditTurmaId}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {turmasComVagas.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.nome} - {t.turno} ({t.ano_letivo})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="edit-turma">Turma</Label>
+              <select
+                id="edit-turma" value={editTurmaId} onChange={(e) => setEditTurmaId(e.target.value)}
+                className={CLASSE_SELECT_MATRICULA}
+              >
+                {turmasComVagas.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nome} - {t.turno} ({t.ano_letivo})</option>
+                ))}
+              </select>
             </div>
             {!!modalidadesEdit?.length && (
               <div>
-                <Label>Modalidade</Label>
-                <Select value={editModalidadeId} onValueChange={setEditModalidadeId}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Mensal (padrão da turma)" /></SelectTrigger>
-                  <SelectContent>
-                    {modalidadesEdit.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>{m.nome} — R$ {Number(m.valor_mensalidade).toFixed(2)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="edit-modalidade">Modalidade</Label>
+                <select
+                  id="edit-modalidade" value={editModalidadeId} onChange={(e) => setEditModalidadeId(e.target.value)}
+                  className={CLASSE_SELECT_MATRICULA}
+                >
+                  <option value="">Mensal (padrão da turma)</option>
+                  {modalidadesEdit.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nome} — R$ {Number(m.valor_mensalidade).toFixed(2)}</option>
+                  ))}
+                </select>
               </div>
             )}
             {!!opcionaisDisponiveis?.length && (
