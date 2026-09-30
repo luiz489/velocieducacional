@@ -92,5 +92,19 @@ export function usePlanosFinanceirosTurma() {
     return true;
   };
 
-  return { turmas, loading, salvarPlano, refetch: fetchDados };
+  /** Corrige o ano letivo da turma direto por aqui (ex: turma cadastrada com o ano
+   * errado) - sem precisar ir na tela de Turmas. Só afeta matrículas novas (o
+   * carnê já gerado de quem já está matriculado não é recalculado). */
+  const atualizarAnoLetivo = async (turmaId: string, anoLetivo: number) => {
+    const { error } = await supabase.from("turmas").update({ ano_letivo: anoLetivo }).eq("id", turmaId);
+    if (error) {
+      toast.error("Erro ao atualizar ano letivo: " + error.message);
+      return false;
+    }
+    toast.success("Ano letivo atualizado!");
+    await fetchDados();
+    return true;
+  };
+
+  return { turmas, loading, salvarPlano, atualizarAnoLetivo, refetch: fetchDados };
 }

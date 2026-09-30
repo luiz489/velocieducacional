@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Pencil, Plus, Wallet, AlertCircle, Trash2, ListPlus } from "lucide-react";
+import { Pencil, Plus, Wallet, AlertCircle, Trash2, ListPlus, CalendarCog } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,7 @@ import { toast } from "sonner";
 export const REGIMES_MODALIDADE = ["Parcial", "Parcial Estendido", "Semi Integral", "Integral"] as const;
 
 export default function PlanosFinanceirosTurma() {
-  const { turmas, loading, salvarPlano } = usePlanosFinanceirosTurma();
+  const { turmas, loading, salvarPlano, atualizarAnoLetivo } = usePlanosFinanceirosTurma();
   const { escolaAtivaId } = useEscolaAtiva();
   const qc = useQueryClient();
 
@@ -35,6 +35,23 @@ export default function PlanosFinanceirosTurma() {
   const [numeroParcelas, setNumeroParcelas] = useState("12");
   const [diaVencimento, setDiaVencimento] = useState("10");
   const [salvando, setSalvando] = useState(false);
+
+  const [editandoAno, setEditandoAno] = useState<TurmaComPlano | null>(null);
+  const [novoAnoLetivo, setNovoAnoLetivo] = useState("");
+  const [salvandoAno, setSalvandoAno] = useState(false);
+
+  const abrirEdicaoAno = (t: TurmaComPlano) => {
+    setEditandoAno(t);
+    setNovoAnoLetivo(String(t.ano_letivo));
+  };
+
+  const handleSalvarAno = async () => {
+    if (!editandoAno || !novoAnoLetivo) return;
+    setSalvandoAno(true);
+    const ok = await atualizarAnoLetivo(editandoAno.turma_id, Number(novoAnoLetivo));
+    setSalvandoAno(false);
+    if (ok) setEditandoAno(null);
+  };
 
   const [modalidadesDe, setModalidadesDe] = useState<TurmaComPlano | null>(null);
   const [novaModNome, setNovaModNome] = useState("");
@@ -162,7 +179,17 @@ export default function PlanosFinanceirosTurma() {
                 <TableRow key={t.turma_id}>
                   <TableCell className="font-medium">{t.turma_nome}</TableCell>
                   <TableCell>{t.turno}</TableCell>
-                  <TableCell>{t.ano_letivo}</TableCell>
+                  <TableCell>
+                    <button
+                      type="button"
+                      onClick={() => abrirEdicaoAno(t)}
+                      className="inline-flex items-center gap-1 text-foreground hover:underline"
+                      title="Alterar ano letivo desta turma"
+                    >
+                      {t.ano_letivo}
+                      <CalendarCog className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </TableCell>
                   <TableCell>
                     {t.valor_mensalidade != null ? `R$ ${Number(t.valor_mensalidade).toFixed(2)}` : "—"}
                   </TableCell>
@@ -315,6 +342,31 @@ export default function PlanosFinanceirosTurma() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editandoAno} onOpenChange={(open) => !open && setEditandoAno(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ano Letivo — {editandoAno?.turma_nome}</DialogTitle>
+            <DialogDescription>
+              Só vale pra matrículas novas nesta turma - o carnê de quem já está matriculado
+              não é recalculado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="novo-ano-letivo">Ano Letivo</Label>
+            <Input
+              id="novo-ano-letivo" type="number" className="mt-1"
+              value={novoAnoLetivo} onChange={(e) => setNovoAnoLetivo(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditandoAno(null)}>Cancelar</Button>
+            <Button onClick={handleSalvarAno} disabled={salvandoAno || !novoAnoLetivo}>
+              {salvandoAno ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
