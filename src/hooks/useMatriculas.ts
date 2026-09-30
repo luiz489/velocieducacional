@@ -33,6 +33,8 @@ export type TurmaComVagas = {
   ano_letivo: number;
   vagas_totais: number;
   vagas_ocupadas: number;
+  categoria_id: string | null;
+  categoria_nome: string | null;
 };
 
 export function useMatriculas() {
@@ -136,6 +138,8 @@ export function useMatriculas() {
     ano_letivo: t.ano_letivo,
     vagas_totais: t.vagas_totais,
     vagas_ocupadas: t.alunos_matriculados,
+    categoria_id: t.categoria_id,
+    categoria_nome: t.categoria_nome,
   }));
 
   const loading = loadingMatriculas || loadingTurmas;

@@ -80,6 +80,20 @@ export default function Matriculas() {
 
   const { escolaAtivaId } = useEscolaAtiva();
 
+  const { data: categorias } = useQuery({
+    queryKey: ["categorias", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categorias")
+        .select("id, nome")
+        .eq("escola_id", escolaAtivaId!)
+        .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: camposVisiveis } = useQuery({
     queryKey: ["campos-matricula-visiveis", escolaAtivaId],
     enabled: !!escolaAtivaId,
@@ -105,6 +119,7 @@ export default function Matriculas() {
   const [abaAluno, setAbaAluno] = useState<"existente" | "novo">("existente");
   const [formAlunoId, setFormAlunoId] = useState("");
 
+  const [formCategoriaId, setFormCategoriaId] = useState("");
   const [formTurmaId, setFormTurmaId] = useState("");
   const [formModalidadeId, setFormModalidadeId] = useState("");
   const [formOpcionaisIds, setFormOpcionaisIds] = useState<string[]>([]);
@@ -118,6 +133,7 @@ export default function Matriculas() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editingMatricula, setEditingMatricula] = useState<typeof matriculas[number] | null>(null);
+  const [editCategoriaId, setEditCategoriaId] = useState("");
   const [editTurmaId, setEditTurmaId] = useState("");
   const [editModalidadeId, setEditModalidadeId] = useState("");
   const [editOpcionaisIds, setEditOpcionaisIds] = useState<string[]>([]);
@@ -229,6 +245,13 @@ export default function Matriculas() {
     ? (valorBaseSemOpcionais - (valorDesconto ?? 0)) + somaOpcionaisForm
     : null;
 
+  const turmasFormFiltradas = formCategoriaId
+    ? turmasComVagas.filter((t) => t.categoria_id === formCategoriaId)
+    : turmasComVagas;
+  const turmasEditFiltradas = editCategoriaId
+    ? turmasComVagas.filter((t) => t.categoria_id === editCategoriaId)
+    : turmasComVagas;
+
   const filtered = matriculas.filter((m) => {
     const matchSearch =
       m.aluno_nome.toLowerCase().includes(search.toLowerCase()) ||
@@ -244,6 +267,7 @@ export default function Matriculas() {
   const resetForm = () => {
     setAbaAluno("existente");
     setFormAlunoId("");
+    setFormCategoriaId("");
     setFormTurmaId("");
     setFormDataIngresso(new Date().toISOString().split("T")[0]);
     setFormDataVencimentoMatricula("");
@@ -342,6 +366,7 @@ export default function Matriculas() {
 
   const openEditMatricula = async (m: typeof matriculas[number]) => {
     setEditingMatricula(m);
+    setEditCategoriaId(turmasComVagas.find((t) => t.id === m.turma_id)?.categoria_id ?? "");
     setEditTurmaId(m.turma_id);
     setEditModalidadeId(m.modalidade_financeira_id ?? "");
     setEditDataIngresso(m.data_ingresso);
@@ -361,6 +386,10 @@ export default function Matriculas() {
 
   const handleSaveEdit = async () => {
     if (!editingMatricula) return;
+    if (!editTurmaId) {
+      toast.error("Selecione a turma.");
+      return;
+    }
     setSavingEdit(true);
     const opcionaisOriginais = await supabase
       .from("matricula_valores_opcionais")
@@ -488,6 +517,19 @@ export default function Matriculas() {
               </Tabs>
 
               <div className="border-t pt-4 space-y-4">
+                {!!categorias?.length && (
+                  <div>
+                    <Label htmlFor="form-categoria">Categoria/Segmento</Label>
+                    <select
+                      id="form-categoria" value={formCategoriaId}
+                      onChange={(e) => { setFormCategoriaId(e.target.value); setFormTurmaId(""); }}
+                      className={CLASSE_SELECT_MATRICULA}
+                    >
+                      <option value="">Todas</option>
+                      {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="form-turma">Turma</Label>
                   <select
@@ -495,7 +537,7 @@ export default function Matriculas() {
                     className={CLASSE_SELECT_MATRICULA}
                   >
                     <option value="">Selecione a turma</option>
-                    {turmasComVagas.map((t) => {
+                    {turmasFormFiltradas.map((t) => {
                       const disponiveis = t.vagas_totais - t.vagas_ocupadas;
                       return (
                         <option key={t.id} value={t.id} disabled={disponiveis <= 0}>
@@ -790,13 +832,27 @@ export default function Matriculas() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {!!categorias?.length && (
+              <div>
+                <Label htmlFor="edit-categoria">Categoria/Segmento</Label>
+                <select
+                  id="edit-categoria" value={editCategoriaId}
+                  onChange={(e) => { setEditCategoriaId(e.target.value); setEditTurmaId(""); }}
+                  className={CLASSE_SELECT_MATRICULA}
+                >
+                  <option value="">Todas</option>
+                  {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <Label htmlFor="edit-turma">Turma</Label>
               <select
                 id="edit-turma" value={editTurmaId} onChange={(e) => setEditTurmaId(e.target.value)}
                 className={CLASSE_SELECT_MATRICULA}
               >
-                {turmasComVagas.map((t) => (
+                <option value="">Selecione a turma</option>
+                {turmasEditFiltradas.map((t) => (
                   <option key={t.id} value={t.id}>{t.nome} - {t.turno} ({t.ano_letivo})</option>
                 ))}
               </select>
