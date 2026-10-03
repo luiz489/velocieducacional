@@ -98,6 +98,7 @@ const menuGroups = [
     items: [
       { title: "Matrizes Curriculares", url: "/matrizes-curriculares", icon: GraduationCap },
       { title: "Notas", url: "/notas", icon: GraduationCap },
+      { title: "Chamada", url: "/chamada", icon: UserCheck },
       { title: "Frequência", url: "/notas?tab=frequencia", icon: UserCheck },
       { title: "Ocorrências", url: "/ocorrencias", icon: AlertTriangle },
     ],
@@ -132,7 +133,8 @@ export function AppSidebar() {
   const { can } = usePermissoes();
 
   const podeVerRota = (url: string) => {
-    const modulo = ROTA_MODULO[url];
+    // Itens com query string (ex: "/notas?tab=frequencia") precisam cair no módulo da rota.
+    const modulo = ROTA_MODULO[url.split("?")[0]];
     return !modulo || can(modulo);
   };
   const gruposVisiveis = menuGroups

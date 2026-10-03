@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { GraduationCap, BookOpen, Users, Search } from "lucide-react";
+import { Link } from "react-router-dom";
+import { GraduationCap, BookOpen, Users, Search, UserCheck } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -150,16 +151,43 @@ export default function Pedagogico() {
 
       const notasPorMatricula = new Map(notas?.map((n) => [n.matricula_id, n]));
 
+      // Frequência vem da chamada: linhas da própria disciplina + as do dia inteiro
+      // (disciplina_id null), que valem para todas as disciplinas da turma.
+      const { data: freq, error: errFreq } = await supabase
+        .from("v_frequencia_chamada")
+        .select("matricula_id, disciplina_id, aulas, presencas, faltas, faltas_justificadas")
+        .in("matricula_id", (matriculas ?? []).map((m) => m.id));
+      if (errFreq) throw errFreq;
+
+      const freqPorMatricula = new Map<string, { aulas: number; presencas: number; faltas: number; justificadas: number }>();
+      for (const f of freq ?? []) {
+        if (f.disciplina_id !== null && f.disciplina_id !== disciplinaId) continue;
+        const atual = freqPorMatricula.get(f.matricula_id!) ?? { aulas: 0, presencas: 0, faltas: 0, justificadas: 0 };
+        freqPorMatricula.set(f.matricula_id!, {
+          aulas: atual.aulas + (f.aulas ?? 0),
+          presencas: atual.presencas + (f.presencas ?? 0),
+          faltas: atual.faltas + (f.faltas ?? 0),
+          justificadas: atual.justificadas + (f.faltas_justificadas ?? 0),
+        });
+      }
+
       return (matriculas ?? [])
         .map((m: any) => {
           const nota = notasPorMatricula.get(m.id);
+          const chamada = freqPorMatricula.get(m.id);
           return {
             matricula_id: m.id as string,
             aluno_nome: m.alunos?.nome ?? "—",
             av1: nota?.av1 ?? null,
             av2: nota?.av2 ?? null,
             recuperacao: nota?.recuperacao ?? null,
-            frequencia_percentual: nota?.frequencia_percentual ?? null,
+            // Sem chamada lançada, cai no percentual antigo digitado à mão.
+            frequencia_percentual: chamada?.aulas
+              ? Math.round((1000 * chamada.presencas) / chamada.aulas) / 10
+              : nota?.frequencia_percentual ?? null,
+            aulas: chamada?.aulas ?? 0,
+            faltas: chamada?.faltas ?? 0,
+            justificadas: chamada?.justificadas ?? 0,
           };
         })
         .sort((a, b) => a.aluno_nome.localeCompare(b.aluno_nome));
@@ -167,7 +195,7 @@ export default function Pedagogico() {
   });
 
   const salvarCampo = useMutation({
-    mutationFn: async (vars: { matriculaId: string; campo: "av1" | "av2" | "recuperacao" | "frequencia_percentual"; valor: number | null }) => {
+    mutationFn: async (vars: { matriculaId: string; campo: "av1" | "av2" | "recuperacao"; valor: number | null }) => {
       const registro: Database["public"]["Tables"]["pedagogico"]["Insert"] = {
         matricula_id: vars.matriculaId,
         disciplina_id: disciplinaId,
@@ -205,7 +233,7 @@ export default function Pedagogico() {
     try {
       const { data: notasCompletas, error } = await supabase
         .from("pedagogico")
-        .select("disciplina, av1, av2, recuperacao, frequencia_percentual")
+        .select("disciplina, disciplina_id, av1, av2, recuperacao, frequencia_percentual")
         .eq("matricula_id", matriculaId);
       if (error) throw error;
 
@@ -213,6 +241,22 @@ export default function Pedagogico() {
         toast.error("Este aluno ainda não tem nenhuma nota lançada em nenhuma disciplina.");
         return;
       }
+
+      // Mesma regra da aba Frequência: a chamada manda, o percentual antigo é só reserva.
+      const { data: freq, error: errFreq } = await supabase
+        .from("v_frequencia_chamada")
+        .select("disciplina_id, aulas, presencas")
+        .eq("matricula_id", matriculaId);
+      if (errFreq) throw errFreq;
+
+      const frequenciaDa = (disciplinaIdDaNota: string | null) => {
+        const linhas = (freq ?? []).filter(
+          (f) => f.disciplina_id === null || f.disciplina_id === disciplinaIdDaNota,
+        );
+        const aulas = linhas.reduce((s, f) => s + (f.aulas ?? 0), 0);
+        if (!aulas) return null;
+        return Math.round((1000 * linhas.reduce((s, f) => s + (f.presencas ?? 0), 0)) / aulas) / 10;
+      };
 
       const notas = notasCompletas.map((n) => {
         const { media, situacao } = calcularSituacao(n.av1, n.av2);
@@ -222,7 +266,7 @@ export default function Pedagogico() {
           av2: n.av2,
           recuperacao: n.recuperacao,
           media,
-          frequencia: n.frequencia_percentual ?? 0,
+          frequencia: frequenciaDa(n.disciplina_id) ?? n.frequencia_percentual ?? 0,
           situacao,
         };
       });
@@ -387,15 +431,25 @@ export default function Pedagogico() {
 
             <TabsContent value="frequencia" className="space-y-4">
               <div className="rounded-lg border bg-card shadow-sm">
-                <div className="p-3 border-b bg-muted/30">
-                  <p className="text-sm font-medium">{turmaNome} — {disciplinaNome}</p>
-                  <p className="text-xs text-muted-foreground">Clique para editar o percentual de frequência (0 a 100)</p>
+                <div className="p-3 border-b bg-muted/30 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{turmaNome} — {disciplinaNome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Calculado a partir da chamada. Falta justificada não conta como presença.
+                    </p>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/chamada"><UserCheck className="h-4 w-4 mr-2" /> Lançar chamada</Link>
+                  </Button>
                 </div>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="min-w-[180px]">Aluno</TableHead>
                       <TableHead className="min-w-[200px]">Frequência (%)</TableHead>
+                      <TableHead className="text-center w-20">Aulas</TableHead>
+                      <TableHead className="text-center w-20">Faltas</TableHead>
+                      <TableHead className="text-center w-24">Justif.</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -406,17 +460,25 @@ export default function Pedagogico() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Progress value={aluno.frequencia_percentual ?? 0} className="h-2 flex-1" />
-                            <EditableCellFreq
-                              value={aluno.frequencia_percentual}
-                              onCommit={(v) => salvarCampo.mutate({ matriculaId: aluno.matricula_id, campo: "frequencia_percentual", valor: v })}
-                            />
+                            <span className="text-xs w-12 shrink-0 text-right">
+                              {aluno.frequencia_percentual !== null ? `${aluno.frequencia_percentual.toFixed(0)}%` : "—"}
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">{getFrequenciaBadge(aluno.frequencia_percentual ?? 0)}</TableCell>
+                        <TableCell className="text-center text-sm">
+                          {aluno.aulas > 0 ? aluno.aulas : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-center text-sm">{aluno.faltas}</TableCell>
+                        <TableCell className="text-center text-sm">{aluno.justificadas}</TableCell>
+                        <TableCell className="text-center">
+                          {aluno.aulas > 0 || aluno.frequencia_percentual !== null
+                            ? getFrequenciaBadge(aluno.frequencia_percentual ?? 0)
+                            : <Badge variant="secondary">Sem chamada</Badge>}
+                        </TableCell>
                       </TableRow>
                     ))}
                     {filtrados.length === 0 && (
-                      <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -426,41 +488,5 @@ export default function Pedagogico() {
         </>
       )}
     </div>
-  );
-}
-
-function EditableCellFreq({ value, onCommit }: { value: number | null; onCommit: (v: number | null) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [temp, setTemp] = useState(value !== null ? String(value) : "");
-
-  useEffect(() => { setTemp(value !== null ? String(value) : ""); }, [value]);
-
-  const commit = () => {
-    setEditing(false);
-    if (temp === "") { onCommit(null); return; }
-    const n = parseFloat(temp.replace(",", "."));
-    if (!isNaN(n) && n >= 0 && n <= 100) onCommit(n);
-    else setTemp(value !== null ? String(value) : "");
-  };
-
-  if (editing) {
-    return (
-      <Input
-        autoFocus
-        className="h-8 w-16 text-center text-sm p-1"
-        value={temp}
-        onChange={(e) => setTemp(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
-      />
-    );
-  }
-  return (
-    <button
-      className="h-8 w-16 rounded border border-transparent text-xs hover:border-input hover:bg-muted/50 flex items-center justify-center shrink-0"
-      onClick={() => { setEditing(true); setTemp(value !== null ? String(value) : ""); }}
-    >
-      {value !== null ? `${value.toFixed(0)}%` : <span className="text-muted-foreground">—</span>}
-    </button>
   );
 }

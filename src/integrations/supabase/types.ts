@@ -928,6 +928,119 @@ export type Database = {
           },
         ]
       }
+      chamada_presencas: {
+        Row: {
+          chamada_id: string
+          created_at: string
+          id: string
+          matricula_id: string
+          observacao: string | null
+          situacao: string
+          updated_at: string
+        }
+        Insert: {
+          chamada_id: string
+          created_at?: string
+          id?: string
+          matricula_id: string
+          observacao?: string | null
+          situacao?: string
+          updated_at?: string
+        }
+        Update: {
+          chamada_id?: string
+          created_at?: string
+          id?: string
+          matricula_id?: string
+          observacao?: string | null
+          situacao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chamada_presencas_chamada_id_fkey"
+            columns: ["chamada_id"]
+            isOneToOne: false
+            referencedRelation: "chamadas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chamada_presencas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chamadas: {
+        Row: {
+          created_at: string
+          data_aula: string
+          disciplina_id: string | null
+          escola_id: string
+          horario_aula_id: string | null
+          id: string
+          observacao: string | null
+          registrado_por: string | null
+          turma_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_aula: string
+          disciplina_id?: string | null
+          escola_id: string
+          horario_aula_id?: string | null
+          id?: string
+          observacao?: string | null
+          registrado_por?: string | null
+          turma_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_aula?: string
+          disciplina_id?: string | null
+          escola_id?: string
+          horario_aula_id?: string | null
+          id?: string
+          observacao?: string | null
+          registrado_por?: string | null
+          turma_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chamadas_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chamadas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chamadas_horario_aula_id_fkey"
+            columns: ["horario_aula_id"]
+            isOneToOne: false
+            referencedRelation: "horarios_aulas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chamadas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cobranca_eventos: {
         Row: {
           chave_beneficiario: string
@@ -5630,6 +5743,32 @@ export type Database = {
         }
         Relationships: []
       }
+      v_frequencia_chamada: {
+        Row: {
+          aulas: number | null
+          disciplina_id: string | null
+          faltas: number | null
+          faltas_justificadas: number | null
+          matricula_id: string | null
+          presencas: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chamadas_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chamada_presencas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_funcionarios_seguro: {
         Row: {
           agencia: string | null
@@ -6373,6 +6512,10 @@ export type Database = {
       }
       faturar_contas_a_pagar: { Args: { p_ids: string[] }; Returns: number }
       faturar_titulos: { Args: { p_ids: string[] }; Returns: number }
+      fn_frequencia_percentual: {
+        Args: { p_disciplina_id: string; p_matricula_id: string }
+        Returns: number
+      }
       fn_data_por_extenso: { Args: { p_data?: string }; Returns: string }
       fn_numero_por_extenso: { Args: { n: number }; Returns: string }
       fn_tri_extenso: { Args: { n: number }; Returns: string }
@@ -6598,6 +6741,16 @@ export type Database = {
       recalcular_saldo_conta_bancaria: {
         Args: { p_conta_id: string }
         Returns: undefined
+      }
+      salvar_chamada: {
+        Args: {
+          p_data: string
+          p_horario_aula_id?: string | null
+          p_observacao?: string | null
+          p_presencas: Json
+          p_turma_id: string
+        }
+        Returns: string
       }
       salvar_integracao_sicredi: {
         Args: {
