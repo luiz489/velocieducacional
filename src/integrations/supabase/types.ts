@@ -971,6 +971,13 @@ export type Database = {
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chamada_presencas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
         ]
       }
       chamadas: {
@@ -1024,6 +1031,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chamadas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "chamadas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "chamadas_horario_aula_id_fkey"
@@ -4358,6 +4379,61 @@ export type Database = {
           },
         ]
       }
+      periodos_letivos: {
+        Row: {
+          ano_letivo: number
+          bimestre: number
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          escola_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          ano_letivo: number
+          bimestre: number
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          escola_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          ano_letivo?: number
+          bimestre?: number
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          escola_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "periodos_letivos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       permissoes: {
         Row: {
           acao: string
@@ -5532,17 +5608,27 @@ export type Database = {
       v_boletim_bimestral: {
         Row: {
           aluno_id: string | null
+          aulas: number | null
+          conceito_b1: string | null
+          conceito_b2: string | null
+          conceito_b3: string | null
+          conceito_b4: string | null
           disciplina: string | null
           disciplina_id: string | null
+          escola_id: string | null
+          faltas_b1: number | null
+          faltas_b2: number | null
+          faltas_b3: number | null
+          faltas_b4: number | null
+          frequencia_percentual: number | null
           matricula_id: string | null
           nota_b1: number | null
           nota_b2: number | null
           nota_b3: number | null
           nota_b4: number | null
+          presencas: number | null
           recuperacao_1sem: number | null
           recuperacao_2sem: number | null
-          resultado_1sem: number | null
-          resultado_2sem: number | null
           tipo_avaliacao: string | null
         }
         Relationships: [
@@ -5552,6 +5638,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "disciplinas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_bimestrais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_bimestrais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_bimestrais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "avaliacoes_bimestrais_matricula_id_fkey"
@@ -5692,6 +5799,7 @@ export type Database = {
           nome_mae: string | null
           nome_pai: string | null
           numero_parcelas: number | null
+          opcionais_nomes: string | null
           percentual_desconto: number | null
           ra_censo: string | null
           serie: string | null
@@ -5704,7 +5812,11 @@ export type Database = {
           valor_mensalidade: number | null
           valor_mensalidade_com_desconto: number | null
           valor_mensalidade_com_desconto_extenso: string | null
+          valor_mensalidade_com_desconto_sem_opcionais: number | null
+          valor_mensalidade_com_desconto_sem_opcionais_extenso: string | null
           valor_mensalidade_extenso: string | null
+          valor_opcionais: number | null
+          valor_opcionais_extenso: string | null
         }
         Relationships: [
           {
@@ -5746,6 +5858,7 @@ export type Database = {
       v_frequencia_chamada: {
         Row: {
           aulas: number | null
+          bimestre: number | null
           disciplina_id: string | null
           faltas: number | null
           faltas_justificadas: number | null
@@ -5754,17 +5867,24 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "chamadas_disciplina_id_fkey"
-            columns: ["disciplina_id"]
+            foreignKeyName: "chamada_presencas_matricula_id_fkey"
+            columns: ["matricula_id"]
             isOneToOne: false
-            referencedRelation: "disciplinas"
+            referencedRelation: "matriculas"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "chamada_presencas_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
-            referencedRelation: "matriculas"
+            referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "chamadas_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas"
             referencedColumns: ["id"]
           },
         ]
@@ -6512,11 +6632,15 @@ export type Database = {
       }
       faturar_contas_a_pagar: { Args: { p_ids: string[] }; Returns: number }
       faturar_titulos: { Args: { p_ids: string[] }; Returns: number }
+      fn_data_por_extenso: { Args: { p_data?: string }; Returns: string }
       fn_frequencia_percentual: {
-        Args: { p_disciplina_id: string; p_matricula_id: string }
+        Args: {
+          p_bimestre?: number
+          p_disciplina_id: string
+          p_matricula_id: string
+        }
         Returns: number
       }
-      fn_data_por_extenso: { Args: { p_data?: string }; Returns: string }
       fn_numero_por_extenso: { Args: { n: number }; Returns: string }
       fn_tri_extenso: { Args: { n: number }; Returns: string }
       fn_valor_por_extenso: { Args: { p_valor: number }; Returns: string }
@@ -6745,8 +6869,8 @@ export type Database = {
       salvar_chamada: {
         Args: {
           p_data: string
-          p_horario_aula_id?: string | null
-          p_observacao?: string | null
+          p_horario_aula_id?: string
+          p_observacao?: string
           p_presencas: Json
           p_turma_id: string
         }
@@ -6770,6 +6894,10 @@ export type Database = {
           p_tipo_cobranca?: string
           p_x_api_key?: string
         }
+        Returns: undefined
+      }
+      salvar_periodos_letivos: {
+        Args: { p_ano_letivo: number; p_escola_id: string; p_periodos: Json }
         Returns: undefined
       }
       sicredi_cron_ok: { Args: { p_segredo: string }; Returns: boolean }

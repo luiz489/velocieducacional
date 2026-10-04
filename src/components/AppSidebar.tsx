@@ -19,6 +19,7 @@ import {
   Megaphone,
   Clock,
   CalendarDays,
+  CalendarRange,
   ClipboardEdit,
   IdCard,
   FileText,
@@ -97,6 +98,7 @@ const menuGroups = [
     label: "Pedagógico",
     items: [
       { title: "Matrizes Curriculares", url: "/matrizes-curriculares", icon: GraduationCap },
+      { title: "Períodos Letivos", url: "/periodos-letivos", icon: CalendarRange },
       { title: "Notas", url: "/notas", icon: GraduationCap },
       { title: "Chamada", url: "/chamada", icon: UserCheck },
       { title: "Frequência", url: "/notas?tab=frequencia", icon: UserCheck },

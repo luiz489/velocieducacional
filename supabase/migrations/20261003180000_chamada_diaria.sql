@@ -140,7 +140,7 @@ FROM public.chamada_presencas p
 JOIN public.chamadas c ON c.id = p.chamada_id
 GROUP BY p.matricula_id, c.disciplina_id;
 
-REVOKE ALL ON public.v_frequencia_chamada FROM PUBLIC, anon;
+REVOKE ALL ON public.v_frequencia_chamada FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.v_frequencia_chamada TO authenticated;
 
 -- Percentual de presença de um aluno numa disciplina: soma as chamadas daquela

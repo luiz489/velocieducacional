@@ -28,6 +28,7 @@ export const ROTA_MODULO: Record<string, string> = {
   "/notas": "pedagogico",
   "/frequencia": "pedagogico",
   "/chamada": "pedagogico",
+  "/periodos-letivos": "pedagogico",
   "/ocorrencias": "ocorrencias",
   "/avisos": "comunicacao",
   "/documentos": "relatorios_documentos",

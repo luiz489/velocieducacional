@@ -17,6 +17,7 @@ import {
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { cn } from "@/lib/utils";
+import { bimestreDaData } from "@/lib/boletim";
 
 type Situacao = "Presente" | "Falta" | "Falta Justificada";
 
@@ -77,6 +78,26 @@ export default function Chamada() {
   }, [turmas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const turma = turmas?.find((t) => t.id === turmaId);
+
+  // Para mostrar em que bimestre a chamada cai — é esse recorte que a tela de
+  // frequência usa depois.
+  const { data: periodos } = useQuery({
+    queryKey: ["periodos-letivos", escolaAtivaId, turma?.ano_letivo],
+    enabled: !!escolaAtivaId && !!turma?.ano_letivo,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("periodos_letivos")
+        .select("bimestre, data_inicio, data_fim")
+        .eq("escola_id", escolaAtivaId!)
+        .eq("ano_letivo", turma!.ano_letivo)
+        .order("bimestre");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const bimestre = bimestreDaData(periodos, data);
+  const periodosConfigurados = (periodos?.length ?? 0) === 4;
 
   // Aulas da grade naquele dia da semana. Domingo (0) nunca tem aula cadastrada.
   const { data: aulas } = useQuery({
@@ -242,6 +263,7 @@ export default function Chamada() {
 
       <p className="text-xs text-muted-foreground -mt-3">
         {DIAS_EXTENSO[diaSemana]}
+        {bimestre ? ` · ${bimestre}º bimestre` : ""}
         {aulaId === DIA_INTEIRO
           ? " · chamada do dia inteiro (vale para todas as disciplinas da turma)"
           : " · chamada de uma aula (vale só para a disciplina dela)"}
@@ -250,6 +272,13 @@ export default function Chamada() {
 
       {diaSemana === 0 && (
         <p className="text-sm text-warning">Domingo — confirme se é mesmo dia letivo antes de salvar.</p>
+      )}
+
+      {periodosConfigurados && bimestre === null && (
+        <p className="text-sm text-warning">
+          Esta data está fora dos bimestres de {turma?.ano_letivo}. A chamada é salva e conta no total do
+          ano, mas não entra em nenhum bimestre.
+        </p>
       )}
 
       {!turmas?.length ? (

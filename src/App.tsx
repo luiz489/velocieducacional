@@ -18,6 +18,7 @@ import CentralFaturamento from "@/pages/CentralFaturamento";
 import ParametrizacoesFinanceiras from "@/pages/ParametrizacoesFinanceiras";
 import Pedagogico from "@/pages/Pedagogico";
 import Chamada from "@/pages/Chamada";
+import PeriodosLetivos from "@/pages/PeriodosLetivos";
 import Ocorrencias from "@/pages/Ocorrencias";
 import ContasPagar from "@/pages/ContasPagar";
 import Contratos from "@/pages/Contratos";
@@ -110,6 +111,7 @@ function ProtectedRoutes() {
         <Route path="/compras" element={<Compras />} />
         <Route path="/notas" element={<Pedagogico />} />
         <Route path="/chamada" element={<Chamada />} />
+        <Route path="/periodos-letivos" element={<PeriodosLetivos />} />
         <Route path="/ocorrencias" element={<Ocorrencias />} />
             <Route path="/fornecedores" element={<Fornecedores />} />
             <Route path="/matrizes-curriculares" element={<MatrizesCurriculares />} />

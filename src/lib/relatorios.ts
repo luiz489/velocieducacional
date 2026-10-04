@@ -34,12 +34,26 @@ interface AlunoData {
 
 interface NotaBoletim {
   disciplina: string;
-  av1: number | null;
-  av2: number | null;
-  recuperacao: number | null;
-  media: number | null;
-  frequencia: number;
+  tipo_avaliacao: string;
+  nota_b1: number | null;
+  nota_b2: number | null;
+  nota_b3: number | null;
+  nota_b4: number | null;
+  conceito_b1: string | null;
+  conceito_b2: string | null;
+  conceito_b3: string | null;
+  conceito_b4: string | null;
+  recuperacao_1sem: number | null;
+  recuperacao_2sem: number | null;
+  faltas_b1: number | null;
+  faltas_b2: number | null;
+  faltas_b3: number | null;
+  faltas_b4: number | null;
+  resultado_1sem: number | null;
+  resultado_2sem: number | null;
+  media_final: number | null;
   situacao: string;
+  frequencia: number;
 }
 
 function addHeader(doc: jsPDF, title: string) {
@@ -237,29 +251,56 @@ export function gerarBoletim(aluno: { nome: string; turma: string; ano_letivo?: 
   // Grades table
   y = addSectionTitle(doc, "Desempenho Acadêmico", y);
 
-  const tableBody = notas.map((n) => [
-    n.disciplina,
-    n.av1 !== null ? n.av1.toFixed(1) : "—",
-    n.av2 !== null ? n.av2.toFixed(1) : "—",
-    n.recuperacao !== null ? n.recuperacao.toFixed(1) : "—",
-    n.media !== null ? n.media.toFixed(1) : "—",
-    `${n.frequencia.toFixed(0)}%`,
-    n.situacao,
-  ]);
+  const num = (v: number | null) => (v !== null ? v.toFixed(1) : "—");
+  // Colunas de resultado (semestres, final) ganham cor por faixa de nota.
+  const COLS_MEDIA = [4, 8, 9];
+  const COL_FALTAS = 10;
+  const COL_FREQ = 11;
+  const COL_SITUACAO = 12;
+
+  const tableBody = notas.map((n) => {
+    const porConceito = n.tipo_avaliacao === "conceito";
+    const faltas = (n.faltas_b1 ?? 0) + (n.faltas_b2 ?? 0) + (n.faltas_b3 ?? 0) + (n.faltas_b4 ?? 0);
+    return [
+      n.disciplina,
+      porConceito ? n.conceito_b1 ?? "—" : num(n.nota_b1),
+      porConceito ? n.conceito_b2 ?? "—" : num(n.nota_b2),
+      porConceito ? "—" : num(n.recuperacao_1sem),
+      porConceito ? "—" : num(n.resultado_1sem),
+      porConceito ? n.conceito_b3 ?? "—" : num(n.nota_b3),
+      porConceito ? n.conceito_b4 ?? "—" : num(n.nota_b4),
+      porConceito ? "—" : num(n.recuperacao_2sem),
+      porConceito ? "—" : num(n.resultado_2sem),
+      porConceito ? "—" : num(n.media_final),
+      String(faltas),
+      `${n.frequencia.toFixed(0)}%`,
+      porConceito ? "—" : n.situacao,
+    ];
+  });
 
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [["Disciplina", "AV1", "AV2", "Rec.", "Média", "Freq.", "Situação"]],
+    head: [[
+      "Disciplina", "1º bim", "2º bim", "Rec. 1º", "1º sem",
+      "3º bim", "4º bim", "Rec. 2º", "2º sem", "Final",
+      "Faltas", "Freq.", "Situação",
+    ]],
     body: tableBody,
-    styles: { fontSize: 8, cellPadding: 3, halign: "center", font: "helvetica" },
-    headStyles: { fillColor: [26, 54, 93], textColor: 255, fontStyle: "bold" },
+    styles: { fontSize: 6.5, cellPadding: 2, halign: "center", font: "helvetica" },
+    headStyles: { fillColor: [26, 54, 93], textColor: 255, fontStyle: "bold", fontSize: 6 },
     columnStyles: {
-      0: { halign: "left", fontStyle: "bold" },
+      0: { halign: "left", fontStyle: "bold", cellWidth: 30 },
+      4: { fillColor: [238, 241, 246] },
+      8: { fillColor: [238, 241, 246] },
+      9: { fillColor: [238, 241, 246] },
+      12: { cellWidth: 20 },
     },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     didParseCell(data) {
-      if (data.section === "body" && data.column.index === 6) {
+      if (data.section !== "body") return;
+
+      if (data.column.index === COL_SITUACAO) {
         data.cell.styles.fontStyle = "bold";
         const val = data.cell.raw as string;
         if (val === "Aprovado") data.cell.styles.textColor = [34, 139, 34];
@@ -267,8 +308,8 @@ export function gerarBoletim(aluno: { nome: string; turma: string; ano_letivo?: 
         else if (val === "Recuperação") data.cell.styles.textColor = [180, 140, 20];
         else data.cell.styles.textColor = [100, 110, 120];
       }
-      // Color media
-      if (data.section === "body" && data.column.index === 4) {
+
+      if (COLS_MEDIA.includes(data.column.index)) {
         const val = parseFloat(data.cell.raw as string);
         if (!isNaN(val)) {
           data.cell.styles.fontStyle = "bold";
@@ -277,21 +318,31 @@ export function gerarBoletim(aluno: { nome: string; turma: string; ano_letivo?: 
           else data.cell.styles.textColor = [220, 38, 38];
         }
       }
-      // Color frequency
-      if (data.section === "body" && data.column.index === 5) {
+
+      if (data.column.index === COL_FREQ) {
         const val = parseFloat(data.cell.raw as string);
         if (!isNaN(val) && val < 75) {
           data.cell.styles.textColor = [220, 38, 38];
           data.cell.styles.fontStyle = "bold";
         }
       }
+
+      if (data.column.index === COL_FALTAS && Number(data.cell.raw) > 0) {
+        data.cell.styles.textColor = [100, 110, 120];
+      }
     },
   });
 
   // Summary
   const finalY = (doc as any).lastAutoTable.finalY + 10;
-  const aprovadas = notas.filter((n) => n.situacao === "Aprovado").length;
-  const mediaGeral = notas.filter((n) => n.media !== null).reduce((s, n) => s + (n.media ?? 0), 0) / (notas.filter((n) => n.media !== null).length || 1);
+  const comNota = notas.filter((n) => n.tipo_avaliacao !== "conceito");
+  const fechadas = comNota.filter((n) => n.media_final !== null);
+  const aprovadas = comNota.filter((n) => n.situacao === "Aprovado").length;
+  // Enquanto o ano não fecha, a média geral sai dos resultados de semestre já apurados.
+  const apuradas = comNota.flatMap((n) =>
+    [n.media_final ?? n.resultado_2sem ?? n.resultado_1sem].filter((v): v is number => v !== null),
+  );
+  const mediaGeral = apuradas.reduce((s, v) => s + v, 0) / (apuradas.length || 1);
   const freqGeral = notas.reduce((s, n) => s + n.frequencia, 0) / (notas.length || 1);
 
   let sy = addSectionTitle(doc, "Resumo Geral", finalY);
@@ -301,7 +352,11 @@ export function gerarBoletim(aluno: { nome: string; turma: string; ano_letivo?: 
   const cards = [
     { label: "Média Geral", value: mediaGeral.toFixed(1), color: mediaGeral >= 7 ? [34, 139, 34] : mediaGeral >= 5 ? [180, 140, 20] : [220, 38, 38] },
     { label: "Frequência Geral", value: `${freqGeral.toFixed(1)}%`, color: freqGeral >= 75 ? [34, 139, 34] : [220, 38, 38] },
-    { label: "Disciplinas Aprovadas", value: `${aprovadas}/${notas.length}`, color: [26, 54, 93] },
+    {
+      label: fechadas.length ? "Disciplinas Aprovadas" : "Disciplinas em Curso",
+      value: fechadas.length ? `${aprovadas}/${fechadas.length}` : String(comNota.length),
+      color: [26, 54, 93],
+    },
   ];
 
   cards.forEach((card, i) => {

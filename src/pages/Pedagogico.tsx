@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Link } from "react-router-dom";
-import { GraduationCap, BookOpen, Users, Search, UserCheck } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { GraduationCap, BookOpen, Users, Search, UserCheck, CalendarRange, FileDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,19 +19,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { gerarBoletim } from "@/lib/relatorios";
-import { FileDown } from "lucide-react";
+import { avaliaPorConceito, fecharBoletim, type SituacaoBoletim } from "@/lib/boletim";
 
-type Situacao = "Aprovado" | "Recuperação" | "Reprovado" | "Cursando";
+const ANO_TODO = "ano";
 
-function calcularSituacao(av1: number | null, av2: number | null): { media: number | null; situacao: Situacao } {
-  if (av1 === null || av2 === null) return { media: null, situacao: "Cursando" };
-  const media = parseFloat(((av1 + av2) / 2).toFixed(2));
-  if (media >= 7) return { media, situacao: "Aprovado" };
-  if (media >= 5) return { media, situacao: "Recuperação" };
-  return { media, situacao: "Reprovado" };
-}
-
-function getSituacaoBadge(s: Situacao) {
+function getSituacaoBadge(s: SituacaoBoletim) {
   switch (s) {
     case "Aprovado": return <Badge className="bg-success text-success-foreground">Aprovado</Badge>;
     case "Recuperação": return <Badge className="bg-warning text-warning-foreground">Recuperação</Badge>;
@@ -48,21 +38,25 @@ function getFrequenciaBadge(p: number) {
   return <Badge variant="destructive">{p.toFixed(1)}%</Badge>;
 }
 
-function EditableCell({ value, onCommit }: { value: number | null; onCommit: (v: number | null) => void }) {
-  const [editing, setEditing] = useState(false);
+const corDaNota = (n: number | null) =>
+  n === null ? "text-muted-foreground" : n >= 7 ? "text-success" : n >= 5 ? "text-warning" : "text-destructive";
+
+/** Célula de nota: clique, digita 0 a 10, Enter ou sair salva. Vazio apaga a nota. */
+function CelulaNota({ value, onCommit }: { value: number | null; onCommit: (v: number | null) => void }) {
+  const [editando, setEditando] = useState(false);
   const [temp, setTemp] = useState(value !== null ? String(value) : "");
 
   useEffect(() => { setTemp(value !== null ? String(value) : ""); }, [value]);
 
   const commit = () => {
-    setEditing(false);
+    setEditando(false);
     if (temp === "" || temp === "-") { onCommit(null); return; }
     const n = parseFloat(temp.replace(",", "."));
     if (!isNaN(n) && n >= 0 && n <= 10) onCommit(n);
     else setTemp(value !== null ? String(value) : "");
   };
 
-  if (editing) {
+  if (editando) {
     return (
       <Input
         autoFocus
@@ -70,17 +64,59 @@ function EditableCell({ value, onCommit }: { value: number | null; onCommit: (v:
         value={temp}
         onChange={(e) => setTemp(e.target.value)}
         onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setEditing(false); setTemp(value !== null ? String(value) : ""); } }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") { setEditando(false); setTemp(value !== null ? String(value) : ""); }
+        }}
       />
     );
   }
 
   return (
     <button
-      className="h-8 w-16 rounded border border-transparent text-sm hover:border-input hover:bg-muted/50 transition-colors cursor-text flex items-center justify-center"
-      onClick={() => { setEditing(true); setTemp(value !== null ? String(value) : ""); }}
+      className="h-8 w-16 rounded border border-transparent text-sm hover:border-input hover:bg-muted/50 transition-colors cursor-text flex items-center justify-center mx-auto"
+      onClick={() => { setEditando(true); setTemp(value !== null ? String(value) : ""); }}
     >
       {value !== null ? value.toFixed(1) : <span className="text-muted-foreground">—</span>}
+    </button>
+  );
+}
+
+/** Célula de conceito: texto curto (A, S, Satisfatório...), para disciplina sem nota. */
+function CelulaConceito({ value, onCommit }: { value: string | null; onCommit: (v: string | null) => void }) {
+  const [editando, setEditando] = useState(false);
+  const [temp, setTemp] = useState(value ?? "");
+
+  useEffect(() => { setTemp(value ?? ""); }, [value]);
+
+  const commit = () => {
+    setEditando(false);
+    const limpo = temp.trim();
+    onCommit(limpo === "" ? null : limpo.slice(0, 20));
+  };
+
+  if (editando) {
+    return (
+      <Input
+        autoFocus
+        className="h-8 w-24 text-center text-sm p-1"
+        value={temp}
+        onChange={(e) => setTemp(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") { setEditando(false); setTemp(value ?? ""); }
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      className="h-8 w-24 rounded border border-transparent text-sm hover:border-input hover:bg-muted/50 transition-colors cursor-text flex items-center justify-center mx-auto"
+      onClick={() => setEditando(true)}
+    >
+      {value ?? <span className="text-muted-foreground">—</span>}
     </button>
   );
 }
@@ -93,6 +129,7 @@ export default function Pedagogico() {
   const [turmaId, setTurmaId] = useState<string>("");
   const [disciplinaId, setDisciplinaId] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [bimestreFreq, setBimestreFreq] = useState<string>(ANO_TODO);
 
   const { data: turmas } = useQuery({
     queryKey: ["turmas-pedagogico", escolaAtivaId],
@@ -118,7 +155,7 @@ export default function Pedagogico() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("disciplinas")
-        .select("id, nome")
+        .select("id, nome, tipo_avaliacao")
         .eq("escola_id", escolaAtivaId!)
         .eq("ativo", true)
         .order("nome");
@@ -131,7 +168,32 @@ export default function Pedagogico() {
     if (disciplinas && disciplinas.length > 0 && !disciplinaId) setDisciplinaId(disciplinas[0].id);
   }, [disciplinas]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Alunos matriculados na turma, com a nota/frequência já lançada (se houver) na disciplina selecionada
+  const turma = turmas?.find((t) => t.id === turmaId);
+  const disciplina = disciplinas?.find((d) => d.id === disciplinaId);
+  const porConceito = avaliaPorConceito(disciplina?.tipo_avaliacao);
+
+  // Períodos letivos: sem eles não existe recorte por bimestre na frequência.
+  const { data: periodos } = useQuery({
+    queryKey: ["periodos-letivos", escolaAtivaId, turma?.ano_letivo],
+    enabled: !!escolaAtivaId && !!turma?.ano_letivo,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("periodos_letivos")
+        .select("bimestre, data_inicio, data_fim")
+        .eq("escola_id", escolaAtivaId!)
+        .eq("ano_letivo", turma!.ano_letivo)
+        .order("bimestre");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const periodosConfigurados = (periodos?.length ?? 0) === 4;
+
+  useEffect(() => {
+    if (!periodosConfigurados && bimestreFreq !== ANO_TODO) setBimestreFreq(ANO_TODO);
+  }, [periodosConfigurados]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { data: registros, isLoading } = useQuery({
     queryKey: ["pedagogico-registros", turmaId, disciplinaId],
     enabled: !!turmaId && !!disciplinaId,
@@ -142,139 +204,185 @@ export default function Pedagogico() {
         .eq("turma_id", turmaId);
       if (errMat) throw errMat;
 
-      const { data: notas, error: errNotas } = await supabase
-        .from("pedagogico")
-        .select("id, matricula_id, av1, av2, recuperacao, frequencia_percentual")
-        .eq("disciplina_id", disciplinaId)
-        .in("matricula_id", (matriculas ?? []).map((m) => m.id));
-      if (errNotas) throw errNotas;
+      const ids = (matriculas ?? []).map((m) => m.id);
 
-      const notasPorMatricula = new Map(notas?.map((n) => [n.matricula_id, n]));
+      const [notas, recuperacoes, freq, legado] = await Promise.all([
+        supabase
+          .from("avaliacoes_bimestrais")
+          .select("matricula_id, bimestre, nota, conceito")
+          .eq("disciplina_id", disciplinaId)
+          .in("matricula_id", ids),
+        supabase
+          .from("recuperacoes_semestrais")
+          .select("matricula_id, semestre, nota")
+          .eq("disciplina_id", disciplinaId)
+          .in("matricula_id", ids),
+        supabase
+          .from("v_frequencia_chamada")
+          .select("matricula_id, disciplina_id, bimestre, aulas, presencas, faltas, faltas_justificadas")
+          .in("matricula_id", ids),
+        // Reserva: escola que ainda não lança chamada e tinha o percentual digitado.
+        supabase
+          .from("pedagogico")
+          .select("matricula_id, frequencia_percentual")
+          .eq("disciplina_id", disciplinaId)
+          .in("matricula_id", ids),
+      ]);
+      for (const r of [notas, recuperacoes, freq, legado]) if (r.error) throw r.error;
 
-      // Frequência vem da chamada: linhas da própria disciplina + as do dia inteiro
-      // (disciplina_id null), que valem para todas as disciplinas da turma.
-      const { data: freq, error: errFreq } = await supabase
-        .from("v_frequencia_chamada")
-        .select("matricula_id, disciplina_id, aulas, presencas, faltas, faltas_justificadas")
-        .in("matricula_id", (matriculas ?? []).map((m) => m.id));
-      if (errFreq) throw errFreq;
-
-      const freqPorMatricula = new Map<string, { aulas: number; presencas: number; faltas: number; justificadas: number }>();
-      for (const f of freq ?? []) {
-        if (f.disciplina_id !== null && f.disciplina_id !== disciplinaId) continue;
-        const atual = freqPorMatricula.get(f.matricula_id!) ?? { aulas: 0, presencas: 0, faltas: 0, justificadas: 0 };
-        freqPorMatricula.set(f.matricula_id!, {
-          aulas: atual.aulas + (f.aulas ?? 0),
-          presencas: atual.presencas + (f.presencas ?? 0),
-          faltas: atual.faltas + (f.faltas ?? 0),
-          justificadas: atual.justificadas + (f.faltas_justificadas ?? 0),
-        });
-      }
+      const legadoPorMatricula = new Map(
+        (legado.data ?? []).map((l) => [l.matricula_id, l.frequencia_percentual]),
+      );
 
       return (matriculas ?? [])
-        .map((m: any) => {
-          const nota = notasPorMatricula.get(m.id);
-          const chamada = freqPorMatricula.get(m.id);
+        .map((m) => {
+          const minhasNotas = (notas.data ?? []).filter((n) => n.matricula_id === m.id);
+          const notaDo = (b: number) => minhasNotas.find((n) => n.bimestre === b)?.nota ?? null;
+          const conceitoDo = (b: number) => minhasNotas.find((n) => n.bimestre === b)?.conceito ?? null;
+          const recDo = (s: number) =>
+            (recuperacoes.data ?? []).find((r) => r.matricula_id === m.id && r.semestre === s)?.nota ?? null;
+
+          // Chamada do dia inteiro (disciplina_id null) vale para esta disciplina também.
+          const minhaFreq = (freq.data ?? []).filter(
+            (f) => f.matricula_id === m.id && (f.disciplina_id === null || f.disciplina_id === disciplinaId),
+          );
+
           return {
-            matricula_id: m.id as string,
+            matricula_id: m.id,
             aluno_nome: m.alunos?.nome ?? "—",
-            av1: nota?.av1 ?? null,
-            av2: nota?.av2 ?? null,
-            recuperacao: nota?.recuperacao ?? null,
-            // Sem chamada lançada, cai no percentual antigo digitado à mão.
-            frequencia_percentual: chamada?.aulas
-              ? Math.round((1000 * chamada.presencas) / chamada.aulas) / 10
-              : nota?.frequencia_percentual ?? null,
-            aulas: chamada?.aulas ?? 0,
-            faltas: chamada?.faltas ?? 0,
-            justificadas: chamada?.justificadas ?? 0,
+            nota_b1: notaDo(1), nota_b2: notaDo(2), nota_b3: notaDo(3), nota_b4: notaDo(4),
+            conceito_b1: conceitoDo(1), conceito_b2: conceitoDo(2),
+            conceito_b3: conceitoDo(3), conceito_b4: conceitoDo(4),
+            recuperacao_1sem: recDo(1),
+            recuperacao_2sem: recDo(2),
+            frequencia: minhaFreq,
+            frequencia_legado: legadoPorMatricula.get(m.id) ?? null,
           };
         })
         .sort((a, b) => a.aluno_nome.localeCompare(b.aluno_nome));
     },
   });
 
-  const salvarCampo = useMutation({
-    mutationFn: async (vars: { matriculaId: string; campo: "av1" | "av2" | "recuperacao"; valor: number | null }) => {
-      const registro: Database["public"]["Tables"]["pedagogico"]["Insert"] = {
-        matricula_id: vars.matriculaId,
-        disciplina_id: disciplinaId,
-        escola_id: escolaAtivaId ?? "",
-        disciplina: disciplinas?.find((d) => d.id === disciplinaId)?.nome ?? "",
-      };
-      (registro as unknown as Record<string, number | null>)[vars.campo] = vars.valor;
-      const { error } = await supabase.from("pedagogico").upsert(registro, { onConflict: "matricula_id,disciplina_id" });
+  const salvarNota = useMutation({
+    mutationFn: async (vars: { matriculaId: string; bimestre: number; nota?: number | null; conceito?: string | null }) => {
+      const { error } = await supabase.from("avaliacoes_bimestrais").upsert(
+        {
+          matricula_id: vars.matriculaId,
+          disciplina_id: disciplinaId,
+          escola_id: escolaAtivaId ?? "",
+          bimestre: vars.bimestre,
+          ...(vars.nota !== undefined ? { nota: vars.nota } : {}),
+          ...(vars.conceito !== undefined ? { conceito: vars.conceito } : {}),
+        },
+        { onConflict: "matricula_id,disciplina_id,bimestre" },
+      );
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pedagogico-registros", turmaId, disciplinaId] });
-    },
-    onError: (e: any) => toast.error("Erro ao salvar: " + e.message),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pedagogico-registros", turmaId, disciplinaId] }),
+    onError: (e: Error) => toast.error("Erro ao salvar a nota: " + e.message),
   });
 
-  const filtrados = (registros ?? []).filter((r) => r.aluno_nome.toLowerCase().includes(search.toLowerCase()));
+  const salvarRecuperacao = useMutation({
+    mutationFn: async (vars: { matriculaId: string; semestre: number; nota: number | null }) => {
+      const { error } = await supabase.from("recuperacoes_semestrais").upsert(
+        {
+          matricula_id: vars.matriculaId,
+          disciplina_id: disciplinaId,
+          escola_id: escolaAtivaId ?? "",
+          semestre: vars.semestre,
+          nota: vars.nota,
+        },
+        { onConflict: "matricula_id,disciplina_id,semestre" },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pedagogico-registros", turmaId, disciplinaId] }),
+    onError: (e: Error) => toast.error("Erro ao salvar a recuperação: " + e.message),
+  });
 
-  const comMedia = filtrados.map((r) => ({ ...r, ...calcularSituacao(r.av1, r.av2) }));
-  const aprovados = comMedia.filter((r) => r.situacao === "Aprovado").length;
-  const mediaGeral = comMedia.filter((r) => r.media !== null).reduce((s, r, _i, arr) => s + (r.media ?? 0) / arr.length, 0);
-  const comFrequencia = filtrados.filter((r) => r.frequencia_percentual !== null);
-  const freqMedia = comFrequencia.length > 0
-    ? comFrequencia.reduce((s, r) => s + (r.frequencia_percentual ?? 0), 0) / comFrequencia.length
+  const filtrados = (registros ?? []).filter((r) =>
+    r.aluno_nome.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const comFechamento = filtrados.map((r) => ({ ...r, ...fecharBoletim(r) }));
+
+  // Percentual de frequência do recorte escolhido (bimestre ou ano todo).
+  const frequenciaDo = (r: (typeof filtrados)[number]) => {
+    const linhas = bimestreFreq === ANO_TODO
+      ? r.frequencia
+      : r.frequencia.filter((f) => f.bimestre === Number(bimestreFreq));
+    const aulas = linhas.reduce((s, f) => s + (f.aulas ?? 0), 0);
+    const presencas = linhas.reduce((s, f) => s + (f.presencas ?? 0), 0);
+    const faltas = linhas.reduce((s, f) => s + (f.faltas ?? 0), 0);
+    const justificadas = linhas.reduce((s, f) => s + (f.faltas_justificadas ?? 0), 0);
+    const percentual = aulas > 0
+      ? Math.round((1000 * presencas) / aulas) / 10
+      : bimestreFreq === ANO_TODO ? r.frequencia_legado : null;
+    return { aulas, faltas, justificadas, percentual };
+  };
+
+  const comFrequencia = filtrados.map((r) => ({ ...r, ...frequenciaDo(r) }));
+
+  const notasLancadas = comFechamento.flatMap((r) =>
+    [r.nota_b1, r.nota_b2, r.nota_b3, r.nota_b4].filter((n): n is number => n !== null),
+  );
+  const mediaLancada = notasLancadas.length
+    ? notasLancadas.reduce((s, n) => s + n, 0) / notasLancadas.length
+    : 0;
+  const fechados = comFechamento.filter((r) => r.media_final !== null);
+  const aprovados = comFechamento.filter((r) => r.situacao === "Aprovado").length;
+  const freqValidas = comFrequencia.filter((r) => r.percentual !== null);
+  const freqMedia = freqValidas.length
+    ? freqValidas.reduce((s, r) => s + (r.percentual ?? 0), 0) / freqValidas.length
     : 0;
 
-  const turmaNome = turmas?.find((t) => t.id === turmaId)?.nome ?? "";
-  const turmaAnoLetivo = turmas?.find((t) => t.id === turmaId)?.ano_letivo;
-  const disciplinaNome = disciplinas?.find((d) => d.id === disciplinaId)?.nome ?? "";
+  const turmaNome = turma?.nome ?? "";
+  const turmaAnoLetivo = turma?.ano_letivo;
+  const disciplinaNome = disciplina?.nome ?? "";
 
   const [gerandoBoletimId, setGerandoBoletimId] = useState<string | null>(null);
 
   const handleGerarBoletim = async (matriculaId: string, alunoNome: string) => {
     setGerandoBoletimId(matriculaId);
     try {
-      const { data: notasCompletas, error } = await supabase
-        .from("pedagogico")
-        .select("disciplina, disciplina_id, av1, av2, recuperacao, frequencia_percentual")
-        .eq("matricula_id", matriculaId);
+      // A view já traz todas as disciplinas do aluno, com notas por bimestre,
+      // recuperações e a frequência vinda da chamada.
+      const { data: linhas, error } = await supabase
+        .from("v_boletim_bimestral")
+        .select("*")
+        .eq("matricula_id", matriculaId)
+        .order("disciplina");
       if (error) throw error;
 
-      if (!notasCompletas?.length) {
+      if (!linhas?.length) {
         toast.error("Este aluno ainda não tem nenhuma nota lançada em nenhuma disciplina.");
         return;
       }
 
-      // Mesma regra da aba Frequência: a chamada manda, o percentual antigo é só reserva.
-      const { data: freq, error: errFreq } = await supabase
-        .from("v_frequencia_chamada")
-        .select("disciplina_id, aulas, presencas")
-        .eq("matricula_id", matriculaId);
-      if (errFreq) throw errFreq;
-
-      const frequenciaDa = (disciplinaIdDaNota: string | null) => {
-        const linhas = (freq ?? []).filter(
-          (f) => f.disciplina_id === null || f.disciplina_id === disciplinaIdDaNota,
-        );
-        const aulas = linhas.reduce((s, f) => s + (f.aulas ?? 0), 0);
-        if (!aulas) return null;
-        return Math.round((1000 * linhas.reduce((s, f) => s + (f.presencas ?? 0), 0)) / aulas) / 10;
-      };
-
-      const notas = notasCompletas.map((n) => {
-        const { media, situacao } = calcularSituacao(n.av1, n.av2);
+      const notas = linhas.map((l) => {
+        const f = fecharBoletim(l);
         return {
-          disciplina: n.disciplina,
-          av1: n.av1,
-          av2: n.av2,
-          recuperacao: n.recuperacao,
-          media,
-          frequencia: frequenciaDa(n.disciplina_id) ?? n.frequencia_percentual ?? 0,
-          situacao,
+          disciplina: l.disciplina ?? "—",
+          tipo_avaliacao: l.tipo_avaliacao ?? "nota",
+          nota_b1: l.nota_b1, nota_b2: l.nota_b2, nota_b3: l.nota_b3, nota_b4: l.nota_b4,
+          conceito_b1: l.conceito_b1, conceito_b2: l.conceito_b2,
+          conceito_b3: l.conceito_b3, conceito_b4: l.conceito_b4,
+          recuperacao_1sem: l.recuperacao_1sem,
+          recuperacao_2sem: l.recuperacao_2sem,
+          faltas_b1: l.faltas_b1, faltas_b2: l.faltas_b2,
+          faltas_b3: l.faltas_b3, faltas_b4: l.faltas_b4,
+          resultado_1sem: f.resultado_1sem,
+          resultado_2sem: f.resultado_2sem,
+          media_final: f.media_final,
+          situacao: f.situacao,
+          frequencia: l.frequencia_percentual ?? 0,
         };
       });
 
       gerarBoletim({ nome: alunoNome, turma: turmaNome, ano_letivo: turmaAnoLetivo }, notas);
       toast.success("Boletim gerado!");
-    } catch (e: any) {
-      toast.error("Erro ao gerar boletim: " + e.message);
+    } catch (e) {
+      toast.error("Erro ao gerar boletim: " + (e as Error).message);
     } finally {
       setGerandoBoletimId(null);
     }
@@ -282,13 +390,26 @@ export default function Pedagogico() {
 
   if (!escolaAtivaId) return null;
 
+  const botaoBoletim = (matriculaId: string, nome: string) => (
+    <Button
+      variant="ghost" size="icon" className="h-8 w-8"
+      title="Gerar boletim (todas as disciplinas)"
+      disabled={gerandoBoletimId === matriculaId}
+      onClick={() => handleGerarBoletim(matriculaId, nome)}
+    >
+      <FileDown className="h-4 w-4" />
+    </Button>
+  );
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <GraduationCap className="h-6 w-6" /> Pedagógico — Notas e Frequência
         </h1>
-        <p className="text-sm text-muted-foreground">Lançamento de notas (AV1, AV2, Recuperação) e frequência por turma e disciplina.</p>
+        <p className="text-sm text-muted-foreground">
+          Notas por bimestre, recuperação semestral e frequência vinda da chamada, por turma e disciplina.
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -316,6 +437,18 @@ export default function Pedagogico() {
         </div>
       </div>
 
+      {!periodosConfigurados && (
+        <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 flex items-start justify-between gap-3">
+          <p className="text-sm">
+            Os <strong>períodos letivos de {turmaAnoLetivo ?? "—"}</strong> não estão configurados, então a
+            frequência não pode ser separada por bimestre — só o acumulado do ano.
+          </p>
+          <Button asChild variant="outline" size="sm" className="shrink-0">
+            <Link to="/periodos-letivos"><CalendarRange className="h-4 w-4 mr-2" /> Configurar</Link>
+          </Button>
+        </div>
+      )}
+
       {!turmas?.length ? (
         <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma turma cadastrada ainda.</p>
       ) : !disciplinas?.length ? (
@@ -331,8 +464,8 @@ export default function Pedagogico() {
                   <GraduationCap className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Média da Turma</p>
-                  <p className="text-xl font-bold">{mediaGeral.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground">Média das notas lançadas</p>
+                  <p className="text-xl font-bold">{porConceito ? "—" : mediaLancada.toFixed(1)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -342,8 +475,8 @@ export default function Pedagogico() {
                   <Users className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Aprovados</p>
-                  <p className="text-xl font-bold">{aprovados}/{comMedia.length}</p>
+                  <p className="text-xs text-muted-foreground">Aprovados (ano fechado)</p>
+                  <p className="text-xl font-bold">{aprovados}/{fechados.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -353,7 +486,7 @@ export default function Pedagogico() {
                   <BookOpen className="h-5 w-5 text-info" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Frequência Média</p>
+                  <p className="text-xs text-muted-foreground">Frequência média</p>
                   <p className="text-xl font-bold">{freqMedia.toFixed(1)}%</p>
                 </div>
               </CardContent>
@@ -367,80 +500,136 @@ export default function Pedagogico() {
             </TabsList>
 
             <TabsContent value="notas" className="space-y-4">
-              <div className="rounded-lg border bg-card shadow-sm">
+              <div className="rounded-lg border bg-card shadow-sm overflow-x-auto">
                 <div className="p-3 border-b bg-muted/30">
                   <p className="text-sm font-medium">{turmaNome} — {disciplinaNome}</p>
-                  <p className="text-xs text-muted-foreground">Clique em uma célula para editar a nota (0 a 10)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {porConceito
+                      ? "Disciplina avaliada por conceito: clique na célula e escreva o conceito do bimestre."
+                      : "Clique na célula para lançar a nota do bimestre (0 a 10). A recuperação do semestre substitui a média quando for maior."}
+                  </p>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[180px]">Aluno</TableHead>
-                      <TableHead className="text-center w-20">AV1</TableHead>
-                      <TableHead className="text-center w-20">AV2</TableHead>
-                      <TableHead className="text-center w-20">Rec.</TableHead>
-                      <TableHead className="text-center w-20">Média</TableHead>
-                      <TableHead className="text-center">Situação</TableHead>
-                      <TableHead className="text-center w-10">Boletim</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {comMedia.map((aluno) => (
-                      <TableRow key={aluno.matricula_id}>
-                        <TableCell className="font-medium">{aluno.aluno_nome}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            <EditableCell value={aluno.av1} onCommit={(v) => salvarCampo.mutate({ matriculaId: aluno.matricula_id, campo: "av1", valor: v })} />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            <EditableCell value={aluno.av2} onCommit={(v) => salvarCampo.mutate({ matriculaId: aluno.matricula_id, campo: "av2", valor: v })} />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            <EditableCell value={aluno.recuperacao} onCommit={(v) => salvarCampo.mutate({ matriculaId: aluno.matricula_id, campo: "recuperacao", valor: v })} />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className={`font-bold ${aluno.media !== null ? (aluno.media >= 7 ? "text-success" : aluno.media >= 5 ? "text-warning" : "text-destructive") : "text-muted-foreground"}`}>
-                            {aluno.media !== null ? aluno.media.toFixed(1) : "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center">{getSituacaoBadge(aluno.situacao)}</TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="ghost" size="icon" className="h-8 w-8"
-                            title="Gerar Boletim (todas as disciplinas)"
-                            disabled={gerandoBoletimId === aluno.matricula_id}
-                            onClick={() => handleGerarBoletim(aluno.matricula_id, aluno.aluno_nome)}
-                          >
-                            <FileDown className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+
+                {porConceito ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[180px]">Aluno</TableHead>
+                        <TableHead className="text-center">1º bim</TableHead>
+                        <TableHead className="text-center">2º bim</TableHead>
+                        <TableHead className="text-center">3º bim</TableHead>
+                        <TableHead className="text-center">4º bim</TableHead>
+                        <TableHead className="text-center w-10">Boletim</TableHead>
                       </TableRow>
-                    ))}
-                    {comMedia.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {comFechamento.map((a) => (
+                        <TableRow key={a.matricula_id}>
+                          <TableCell className="font-medium">{a.aluno_nome}</TableCell>
+                          {([1, 2, 3, 4] as const).map((b) => (
+                            <TableCell key={b} className="text-center">
+                              <CelulaConceito
+                                value={[a.conceito_b1, a.conceito_b2, a.conceito_b3, a.conceito_b4][b - 1]}
+                                onCommit={(v) => salvarNota.mutate({ matriculaId: a.matricula_id, bimestre: b, conceito: v })}
+                              />
+                            </TableCell>
+                          ))}
+                          <TableCell className="text-center">{botaoBoletim(a.matricula_id, a.aluno_nome)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {comFechamento.length === 0 && (
+                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[180px] sticky left-0 bg-card">Aluno</TableHead>
+                        <TableHead className="text-center w-20">1º bim</TableHead>
+                        <TableHead className="text-center w-20">2º bim</TableHead>
+                        <TableHead className="text-center w-20">Rec. 1º</TableHead>
+                        <TableHead className="text-center w-20 bg-muted/30">1º sem</TableHead>
+                        <TableHead className="text-center w-20">3º bim</TableHead>
+                        <TableHead className="text-center w-20">4º bim</TableHead>
+                        <TableHead className="text-center w-20">Rec. 2º</TableHead>
+                        <TableHead className="text-center w-20 bg-muted/30">2º sem</TableHead>
+                        <TableHead className="text-center w-20 bg-muted/30">Final</TableHead>
+                        <TableHead className="text-center">Situação</TableHead>
+                        <TableHead className="text-center w-10">Boletim</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {comFechamento.map((a) => (
+                        <TableRow key={a.matricula_id}>
+                          <TableCell className="font-medium sticky left-0 bg-card">{a.aluno_nome}</TableCell>
+                          <TableCell className="text-center">
+                            <CelulaNota value={a.nota_b1} onCommit={(v) => salvarNota.mutate({ matriculaId: a.matricula_id, bimestre: 1, nota: v })} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <CelulaNota value={a.nota_b2} onCommit={(v) => salvarNota.mutate({ matriculaId: a.matricula_id, bimestre: 2, nota: v })} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <CelulaNota value={a.recuperacao_1sem} onCommit={(v) => salvarRecuperacao.mutate({ matriculaId: a.matricula_id, semestre: 1, nota: v })} />
+                          </TableCell>
+                          <TableCell className={`text-center font-bold bg-muted/30 ${corDaNota(a.resultado_1sem)}`}>
+                            {a.resultado_1sem !== null ? a.resultado_1sem.toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <CelulaNota value={a.nota_b3} onCommit={(v) => salvarNota.mutate({ matriculaId: a.matricula_id, bimestre: 3, nota: v })} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <CelulaNota value={a.nota_b4} onCommit={(v) => salvarNota.mutate({ matriculaId: a.matricula_id, bimestre: 4, nota: v })} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <CelulaNota value={a.recuperacao_2sem} onCommit={(v) => salvarRecuperacao.mutate({ matriculaId: a.matricula_id, semestre: 2, nota: v })} />
+                          </TableCell>
+                          <TableCell className={`text-center font-bold bg-muted/30 ${corDaNota(a.resultado_2sem)}`}>
+                            {a.resultado_2sem !== null ? a.resultado_2sem.toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell className={`text-center font-bold bg-muted/30 ${corDaNota(a.media_final)}`}>
+                            {a.media_final !== null ? a.media_final.toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell className="text-center">{getSituacaoBadge(a.situacao)}</TableCell>
+                          <TableCell className="text-center">{botaoBoletim(a.matricula_id, a.aluno_nome)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {comFechamento.length === 0 && (
+                        <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </TabsContent>
 
             <TabsContent value="frequencia" className="space-y-4">
               <div className="rounded-lg border bg-card shadow-sm">
-                <div className="p-3 border-b bg-muted/30 flex items-start justify-between gap-3">
+                <div className="p-3 border-b bg-muted/30 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium">{turmaNome} — {disciplinaNome}</p>
                     <p className="text-xs text-muted-foreground">
                       Calculado a partir da chamada. Falta justificada não conta como presença.
                     </p>
                   </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link to="/chamada"><UserCheck className="h-4 w-4 mr-2" /> Lançar chamada</Link>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Select value={bimestreFreq} onValueChange={setBimestreFreq} disabled={!periodosConfigurados}>
+                      <SelectTrigger className="w-[150px]">
+                        <CalendarRange className="h-4 w-4 mr-2" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ANO_TODO}>Ano todo</SelectItem>
+                        {(periodos ?? []).map((p) => (
+                          <SelectItem key={p.bimestre} value={String(p.bimestre)}>{p.bimestre}º bimestre</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/chamada"><UserCheck className="h-4 w-4 mr-2" /> Lançar chamada</Link>
+                    </Button>
+                  </div>
                 </div>
                 <Table>
                   <TableHeader>
@@ -454,30 +643,30 @@ export default function Pedagogico() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtrados.map((aluno) => (
-                      <TableRow key={aluno.matricula_id}>
-                        <TableCell className="font-medium">{aluno.aluno_nome}</TableCell>
+                    {comFrequencia.map((a) => (
+                      <TableRow key={a.matricula_id}>
+                        <TableCell className="font-medium">{a.aluno_nome}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Progress value={aluno.frequencia_percentual ?? 0} className="h-2 flex-1" />
+                            <Progress value={a.percentual ?? 0} className="h-2 flex-1" />
                             <span className="text-xs w-12 shrink-0 text-right">
-                              {aluno.frequencia_percentual !== null ? `${aluno.frequencia_percentual.toFixed(0)}%` : "—"}
+                              {a.percentual !== null ? `${a.percentual.toFixed(0)}%` : "—"}
                             </span>
                           </div>
                         </TableCell>
                         <TableCell className="text-center text-sm">
-                          {aluno.aulas > 0 ? aluno.aulas : <span className="text-muted-foreground">—</span>}
+                          {a.aulas > 0 ? a.aulas : <span className="text-muted-foreground">—</span>}
                         </TableCell>
-                        <TableCell className="text-center text-sm">{aluno.faltas}</TableCell>
-                        <TableCell className="text-center text-sm">{aluno.justificadas}</TableCell>
+                        <TableCell className="text-center text-sm">{a.faltas}</TableCell>
+                        <TableCell className="text-center text-sm">{a.justificadas}</TableCell>
                         <TableCell className="text-center">
-                          {aluno.aulas > 0 || aluno.frequencia_percentual !== null
-                            ? getFrequenciaBadge(aluno.frequencia_percentual ?? 0)
+                          {a.percentual !== null
+                            ? getFrequenciaBadge(a.percentual)
                             : <Badge variant="secondary">Sem chamada</Badge>}
                         </TableCell>
                       </TableRow>
                     ))}
-                    {filtrados.length === 0 && (
+                    {comFrequencia.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado nesta turma.</TableCell></TableRow>
                     )}
                   </TableBody>
