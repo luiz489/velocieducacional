@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { Plus, Trash2, Clock, Pencil } from "lucide-react";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 const DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -37,14 +37,35 @@ export default function Horarios() {
   const [turmaId, setTurmaId] = useState<string>("");
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
+  const [editId, setEditId] = useState<string | null>(null);
+  const FORM_VAZIO = {
     dia_semana: 1,
     hora_inicio: "07:00",
     hora_fim: "07:50",
     disciplina_id: "",
     professor_id: "",
     sala: "",
-  });
+  };
+  const [form, setForm] = useState(FORM_VAZIO);
+
+  const abrirNovo = () => {
+    setEditId(null);
+    setForm(FORM_VAZIO);
+    setOpen(true);
+  };
+
+  const abrirEdicao = (a: Aula) => {
+    setEditId(a.id);
+    setForm({
+      dia_semana: a.dia_semana,
+      hora_inicio: a.hora_inicio.slice(0, 5),
+      hora_fim: a.hora_fim.slice(0, 5),
+      disciplina_id: a.disciplina_id ?? "",
+      professor_id: a.professor_id ?? "",
+      sala: a.sala ?? "",
+    });
+    setOpen(true);
+  };
 
   const { data: turmas } = useQuery({
     queryKey: ["turmas-all", escolaAtivaId],
@@ -118,26 +139,32 @@ export default function Horarios() {
     mutationFn: async () => {
       const profNome = form.professor_id ? profMap.get(form.professor_id) ?? null : null;
       const discNome = discMap.get(form.disciplina_id) ?? "";
-      const { error } = await supabase.from("horarios_aulas").insert({
+      const campos = {
         dia_semana: form.dia_semana,
         hora_inicio: form.hora_inicio,
         hora_fim: form.hora_fim,
         disciplina_id: form.disciplina_id || null,
         disciplina_texto_legado: discNome,
-        turma_id: turmaId,
-        ano_letivo: ano,
         professor_id: form.professor_id || null,
         professor: profNome,
         sala: form.sala || null,
-        escola_id: escolaAtivaId,
-      });
+      };
+      const { error } = editId
+        ? await supabase.from("horarios_aulas").update(campos).eq("id", editId)
+        : await supabase.from("horarios_aulas").insert({
+            ...campos,
+            turma_id: turmaId,
+            ano_letivo: ano,
+            escola_id: escolaAtivaId,
+          });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Aula adicionada");
+      toast.success(editId ? "Aula atualizada" : "Aula adicionada");
       qc.invalidateQueries({ queryKey: ["horarios"] });
       setOpen(false);
-      setForm({ dia_semana: 1, hora_inicio: "07:00", hora_fim: "07:50", disciplina_id: "", professor_id: "", sala: "" });
+      setEditId(null);
+      setForm(FORM_VAZIO);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -184,7 +211,7 @@ export default function Horarios() {
             <Label className="text-xs">Ano letivo</Label>
             <Input type="number" value={ano} onChange={(e) => setAno(Number(e.target.value))} className="w-[110px]" />
           </div>
-          <Button disabled={!turmaId} onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" /> Adicionar aula</Button>
+          <Button disabled={!turmaId} onClick={abrirNovo}><Plus className="h-4 w-4 mr-2" /> Adicionar aula</Button>
         </div>
       </div>
 
@@ -194,7 +221,7 @@ export default function Horarios() {
         <Card>
           <CardHeader>
             <CardTitle>Grade — {ano}</CardTitle>
-            <CardDescription>Clique no X para remover uma aula.</CardDescription>
+            <CardDescription>Use o lápis para editar e a lixeira para remover uma aula.</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <div className="grid grid-cols-6 gap-2 min-w-[700px]">
@@ -207,9 +234,14 @@ export default function Horarios() {
                       <div className="text-muted-foreground">{a.hora_inicio.slice(0,5)} - {a.hora_fim.slice(0,5)}</div>
                       {a.professor && <div className="text-muted-foreground">Prof. {a.professor}</div>}
                       {a.sala && <div className="text-muted-foreground">Sala {a.sala}</div>}
-                      <button onClick={() => remove.mutate(a.id)} className="absolute top-1 right-1 opacity-50 hover:opacity-100">
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      <div className="absolute top-1 right-1 flex gap-1">
+                        <button onClick={() => abrirEdicao(a)} title="Editar" className="opacity-50 hover:opacity-100">
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button onClick={() => remove.mutate(a.id)} title="Remover" className="opacity-50 hover:opacity-100">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {!(grade[idx + 1]?.length) && <div className="text-center text-xs text-muted-foreground py-4">—</div>}
@@ -220,9 +252,9 @@ export default function Horarios() {
         </Card>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditId(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova aula</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editId ? "Editar aula" : "Nova aula"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
