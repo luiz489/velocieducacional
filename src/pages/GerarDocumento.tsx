@@ -134,7 +134,18 @@ export default function GerarDocumento() {
       </head><body>${resultado}</body></html>
     `);
     janela.document.close();
-    janela.print();
+    // Espera as imagens (logo) carregarem antes de abrir a impressão; sem isso o PDF sai sem o logo.
+    const imagens = Array.from(janela.document.images);
+    const carregadas = imagens.map((img) =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }),
+    );
+    const limite = new Promise<void>((resolve) => setTimeout(resolve, 3000));
+    Promise.race([Promise.all(carregadas), limite]).then(() => janela.print());
   };
 
   return (
