@@ -29,14 +29,29 @@ export function formatarDataHoraBrasilia(iso: string): string {
 export const escaparHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export type SituacaoAssinatura = "aguardando_escola" | "aguardando_familia" | "assinado" | "cancelado";
+export type SituacaoAssinatura =
+  | "aguardando_escola"
+  | "aguardando_familia"
+  | "assinado"
+  | "cancelado"
+  | "expirado"
+  | "bloqueado";
+
+export const MAX_TENTATIVAS_CPF = 5;
 
 export const situacaoAssinatura = (a: {
   assinado_em: string | null;
   cancelado_em: string | null;
   escola_assinou_em: string | null;
-}): SituacaoAssinatura =>
-  a.assinado_em ? "assinado" : a.cancelado_em ? "cancelado" : a.escola_assinou_em ? "aguardando_familia" : "aguardando_escola";
+  expira_em?: string | null;
+  tentativas_invalidas?: number | null;
+}): SituacaoAssinatura => {
+  if (a.assinado_em) return "assinado";
+  if (a.cancelado_em) return "cancelado";
+  if ((a.tentativas_invalidas ?? 0) >= MAX_TENTATIVAS_CPF) return "bloqueado";
+  if (a.expira_em && new Date(a.expira_em).getTime() < Date.now()) return "expirado";
+  return a.escola_assinou_em ? "aguardando_familia" : "aguardando_escola";
+};
 
 export type FormaAssinatura = "desenhada" | "nome" | "iniciais";
 export type InfoAssinatura = { forma: FormaAssinatura; estilo: string | null };

@@ -886,7 +886,7 @@ export default function Matriculas() {
             <DialogDescription>
               {linkAssinatura?.titulo} — {linkAssinatura?.alunoNome}.{" "}
               {linkAssinatura?.link
-                ? "A escola já assinou e o texto do contrato foi fixado. O responsável abre o link, lê e assina na tela."
+                ? "A escola já assinou e o texto do contrato foi fixado. O responsável abre o link, lê e assina na tela, informando o CPF do responsável cadastrado. O link vale 15 dias."
                 : "O texto do contrato foi fixado. Quem assina pela escola (a diretora) precisa assinar em Documentos → Assinaturas Digitais; depois disso o link fica disponível para enviar à família."}
             </DialogDescription>
           </DialogHeader>

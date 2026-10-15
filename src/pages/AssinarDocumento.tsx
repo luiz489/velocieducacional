@@ -6,86 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AssinaturaCanvas } from "@/components/AssinaturaCanvas";
-import {
-  escaparHtml, formatarCpf, formatarDataHoraBrasilia, rotuloFormaAssinatura, urlFuncaoAssinatura, type InfoAssinatura,
-} from "@/lib/assinaturas";
-
-type AssinaturaEscola = {
-  nome: string | null;
-  cargo: string | null;
-  assinadoEm: string;
-  ip: string | null;
-  imagem: string | null;
-  forma: string | null;
-  estilo: string | null;
-};
-
-type Documento = {
-  escolaAssinatura: AssinaturaEscola | null;
-  escola: string | null;
-  titulo: string;
-  alunoNome: string | null;
-  html: string;
-  assinado: boolean;
-  assinadoEm: string | null;
-  assinanteNome: string | null;
-  assinanteDocumento: string | null;
-  assinanteIp: string | null;
-  hashDocumento: string | null;
-  assinaturaImagem: string | null;
-  assinaturaForma: string | null;
-  assinaturaEstilo: string | null;
-};
-
-const ESTILO_DOCUMENTO = `
-  body { font-family: Georgia, serif; font-size: 14px; line-height: 1.6; max-width: 700px; margin: 24px auto; padding: 0 20px; color: #000; background: #fff; }
-  img { max-width: 100%; }
-  .registro { margin-top: 14px; padding-top: 10px; border-top: 1px solid #000; font-size: 12px; page-break-inside: avoid; overflow: hidden; }
-  .registro h2 { font-size: 14px; margin: 0 0 8px; }
-  .registro dt { float: left; clear: left; width: 150px; font-weight: bold; }
-  .registro dd { margin: 0 0 3px 160px; word-break: break-all; }
-  .registro img.assinatura { height: 80px; border: 1px solid #999; padding: 2px; margin-bottom: 8px; }
-`;
-
-const imagemPng = (src: string | null) =>
-  src?.startsWith("data:image/png;base64,") ? `<img class="assinatura" alt="Assinatura" src="${src}" />` : "";
-
-const blocoRegistro = (titulo: string, imagem: string | null, linhas: [string, string][]) =>
-  `<div class="registro"><h2>${escaparHtml(titulo)}</h2>${imagemPng(imagem)}<dl>${linhas
-    .map(([k, v]) => `<dt>${escaparHtml(k)}</dt><dd>${escaparHtml(v)}</dd>`)
-    .join("")}</dl></div>`;
-
-function montarDocumento(d: Documento): string {
-  let registro = "";
-  if (d.escolaAssinatura) {
-    const e = d.escolaAssinatura;
-    const linhas: [string, string][] = [
-      ["Assinado por", `${e.nome ?? ""}${e.cargo ? ` (${e.cargo})` : ""}`],
-      ["Data e hora", `${formatarDataHoraBrasilia(e.assinadoEm)} (Brasília)`],
-    ];
-    if (e.ip) linhas.push(["Endereço IP", e.ip]);
-    const formaEscola = rotuloFormaAssinatura(e.forma, e.estilo);
-    if (formaEscola) linhas.push(["Forma da assinatura", formaEscola]);
-    registro += blocoRegistro(`Assinatura da escola${d.escola ? ` — ${d.escola}` : ""}`, e.imagem, linhas);
-  }
-  if (d.assinado && d.assinadoEm) {
-    const linhas: [string, string][] = [
-      ["Assinado por", d.assinanteNome ?? ""],
-      ["CPF", formatarCpf(d.assinanteDocumento)],
-      ["Data e hora", `${formatarDataHoraBrasilia(d.assinadoEm)} (Brasília)`],
-    ];
-    if (d.assinanteIp) linhas.push(["Endereço IP", d.assinanteIp]);
-    const formaFamilia = rotuloFormaAssinatura(d.assinaturaForma, d.assinaturaEstilo);
-    if (formaFamilia) linhas.push(["Forma da assinatura", formaFamilia]);
-    registro += blocoRegistro("Assinatura do contratante", d.assinaturaImagem, linhas);
-  }
-  if (registro) {
-    registro = `<div class="registros"><h1 style="font-size:15px;margin:36px 0 0">Registro das assinaturas eletrônicas</h1>${registro}${
-      d.hashDocumento ? `<div class="registro"><dl><dt>Impressão digital</dt><dd>${escaparHtml(d.hashDocumento)}</dd></dl></div>` : ""
-    }<p style="font-size:12px">Assinaturas eletrônicas simples (Lei nº 14.063/2020). A impressão digital identifica o texto exato apresentado para assinatura.</p></div>`;
-  }
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${ESTILO_DOCUMENTO}</style></head><body>${d.html}${registro}</body></html>`;
-}
+import { formatarDataHoraBrasilia, urlFuncaoAssinatura, type InfoAssinatura } from "@/lib/assinaturas";
+import { montarDocumento, type Documento } from "@/lib/assinaturaDocumento";
 
 export default function AssinarDocumento() {
   const { token = "" } = useParams();
@@ -134,7 +56,7 @@ export default function AssinarDocumento() {
     return () => meta.remove();
   }, []);
 
-  const srcDoc = useMemo(() => (doc ? montarDocumento(doc) : ""), [doc]);
+  const srcDoc = useMemo(() => (doc && !doc.limitado ? montarDocumento(doc) : ""), [doc]);
 
   const ajustarAltura = () => {
     const h = iframeRef.current?.contentDocument?.documentElement?.scrollHeight;
@@ -183,6 +105,26 @@ export default function AssinarDocumento() {
     );
   }
 
+  if (doc.limitado) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="max-w-md space-y-3 text-center">
+          <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-500" />
+          <h1 className="text-lg font-semibold">Documento assinado</h1>
+          <p className="text-sm text-muted-foreground">
+            {doc.titulo}
+            {doc.escola ? ` — ${doc.escola}` : ""}
+            {doc.assinadoEm ? `, assinado em ${formatarDataHoraBrasilia(doc.assinadoEm)} (Brasília).` : "."}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Por segurança, o conteúdo do contrato não fica mais disponível neste link. Peça uma cópia do documento
+            assinado à escola.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const podeAssinar = nome.trim().length > 4 && cpf.replace(/\D/g, "").length === 11 && !!imagem && aceite && !enviando;
 
   return (
@@ -207,8 +149,9 @@ export default function AssinarDocumento() {
             <div className="text-sm">
               <p className="font-semibold">Documento assinado</p>
               <p className="text-muted-foreground">
-                Por {doc.assinanteNome} em {formatarDataHoraBrasilia(doc.assinadoEm)}. Use o botão abaixo para
-                imprimir ou salvar em PDF.
+                Por {doc.assinanteNome} em {formatarDataHoraBrasilia(doc.assinadoEm)}. Imprima ou salve uma cópia em
+                PDF agora: por segurança, este link deixa de mostrar o contrato em cerca de 30 minutos. A escola
+                também guarda o documento assinado.
               </p>
             </div>
           </div>
@@ -233,6 +176,10 @@ export default function AssinarDocumento() {
         {!doc.assinado && (
           <section className="space-y-4 rounded-xl border border-border/60 bg-card p-5">
             <h2 className="font-semibold">Assinar o documento</h2>
+            <p className="text-xs text-muted-foreground">
+              O CPF do responsável aparece oculto no texto acima. Para assinar, digite o CPF do responsável
+              financeiro cadastrado na escola.
+            </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="assinante-nome">Nome completo</Label>

@@ -4,8 +4,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 // Página pública de assinatura (verify_jwt = false: quem chama é o responsável pelo aluno, sem login).
 // O acesso é pelo token aleatório de 64 caracteres guardado em assinaturas_documentos.
 // GET  ?t=<token>  -> texto congelado do documento + situação da assinatura
-// POST {t, nome, documento, imagem, aceite} -> registra a assinatura (uma única vez)
-// A família só consegue abrir/assinar depois que a escola (diretora) assinou dentro do sistema.
+// POST {t, nome, documento, imagem, forma, estilo, aceite} -> registra a assinatura (uma única vez)
+// Regras: a família só assina depois que a escola (diretora) assinou dentro do sistema; o CPF digitado
+// precisa bater com o do responsável cadastrado (5 erros bloqueiam o link); o link expira (expira_em);
+// depois de assinado o conteúdo só abre por 30 min (cópia da família), a escola imprime pelo sistema.
+// O CPF do responsável aparece mascarado no texto exibido pelo link (ele é a conferência da assinatura).
 // Só esta função grava a assinatura (service role); quem está logado na escola não consegue.
 
 const cors = {
@@ -29,6 +32,13 @@ const PNG_OK = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
 const LIMITE_IMAGEM = 400_000;
 const FORMAS = new Set(["desenhada", "nome", "iniciais"]);
 const ESTILOS = new Set(["dancing", "vibes", "caveat"]);
+const MAX_TENTATIVAS = 5;
+const JANELA_COPIA_MS = 30 * 60 * 1000;
+
+const MSG_EXPIRADO = "Este link expirou. Peça um novo link à escola.";
+const MSG_BLOQUEADO = "Este link foi bloqueado após várias tentativas com CPF incorreto. Peça à escola para renovar o link.";
+const MSG_CANCELADO = "Este link foi cancelado pela escola.";
+const MSG_SEM_ESCOLA = "Este documento ainda não foi liberado pela escola para assinatura. Peça à escola para concluir a etapa dela e enviar o link de novo.";
 
 function cpfValido(bruto: string): boolean {
   const c = bruto.replace(/\D/g, "");
@@ -44,6 +54,17 @@ function cpfValido(bruto: string): boolean {
 
 // deno-lint-ignore no-explicit-any
 type Linha = Record<string, any>;
+
+// O CPF do responsável é a "senha" da assinatura: não pode aparecer no texto que o link exibe.
+// Troca qualquer CPF do texto que seja igual ao esperado (com ou sem pontuação); a escola vê o texto completo no sistema.
+function mascararCpf(html: string, cpfEsperado: string | null): string {
+  if (!cpfEsperado) return html;
+  return html.replace(/(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)/g, (m) =>
+    m.replace(/\D/g, "") === cpfEsperado ? "***.***.***-**" : m
+  );
+}
+
+const expirado = (l: Linha) => !!l.expira_em && new Date(l.expira_em).getTime() < Date.now();
 
 async function resolverLogo(db: ReturnType<typeof admin>, html: string): Promise<string> {
   const m = html.match(/data-logo-path="([^"]*)"/);
@@ -71,16 +92,24 @@ Deno.serve(async (req: Request) => {
       .eq("token", token)
       .maybeSingle();
     if (!s) return json({ erro: "Link inválido." }, 404);
-    if (s.cancelado_em && !s.assinado_em) {
-      return json({ erro: "Este link foi cancelado pela escola." }, 410);
-    }
 
     const l = s as Linha;
-    if (!l.escola_assinou_em && !l.assinado_em) {
+    if (!l.assinado_em) {
+      if (l.cancelado_em) return json({ erro: MSG_CANCELADO }, 410);
+      if (expirado(l)) return json({ erro: MSG_EXPIRADO }, 410);
+      if ((l.tentativas_invalidas ?? 0) >= MAX_TENTATIVAS) return json({ erro: MSG_BLOQUEADO }, 429);
+      if (!l.escola_assinou_em) return json({ erro: MSG_SEM_ESCOLA }, 403);
+    } else if (Date.now() - new Date(l.assinado_em).getTime() > JANELA_COPIA_MS) {
+      // já assinado há mais de 30 min: não expõe mais o texto nem os dados pessoais
       return json({
-        erro: "Este documento ainda não foi liberado pela escola para assinatura. Peça à escola para concluir a etapa dela e enviar o link de novo.",
-      }, 403);
+        limitado: true,
+        assinado: true,
+        escola: l.escolas?.nome ?? null,
+        titulo: l.titulo,
+        assinadoEm: l.assinado_em,
+      });
     }
+
     return json({
       escolaAssinatura: l.escola_assinou_em
         ? {
@@ -96,7 +125,7 @@ Deno.serve(async (req: Request) => {
       escola: l.escolas?.nome ?? null,
       titulo: l.titulo,
       alunoNome: l.alunos?.nome ?? null,
-      html: await resolverLogo(db, l.corpo_html),
+      html: mascararCpf(await resolverLogo(db, l.corpo_html), l.cpf_esperado ?? null),
       assinado: !!l.assinado_em,
       assinadoEm: l.assinado_em,
       assinanteNome: l.assinante_nome,
@@ -106,6 +135,7 @@ Deno.serve(async (req: Request) => {
       assinaturaImagem: l.assinatura_imagem,
       assinaturaForma: l.assinatura_forma,
       assinaturaEstilo: l.assinatura_estilo,
+      cpfConferido: l.cpf_conferido ?? null,
     });
   }
 
@@ -128,9 +158,30 @@ Deno.serve(async (req: Request) => {
     if (!PNG_OK.test(imagem) || imagem.length > LIMITE_IMAGEM) {
       return json({ erro: "Assinatura inválida. Desenhe de novo no quadro." }, 400);
     }
-
     if (!FORMAS.has(forma) || (estilo !== null && !ESTILOS.has(estilo))) {
       return json({ erro: "Forma de assinatura inválida." }, 400);
+    }
+
+    const { data: atual } = await db
+      .from("assinaturas_documentos")
+      .select("assinado_em, cancelado_em, escola_assinou_em, cpf_esperado, tentativas_invalidas, expira_em")
+      .eq("token", token)
+      .maybeSingle();
+    if (!atual) return json({ erro: "Link inválido." }, 404);
+    if (atual.assinado_em) return json({ erro: "Este documento já foi assinado." }, 409);
+    if (atual.cancelado_em) return json({ erro: MSG_CANCELADO }, 410);
+    if (expirado(atual)) return json({ erro: MSG_EXPIRADO }, 410);
+    if ((atual.tentativas_invalidas ?? 0) >= MAX_TENTATIVAS) return json({ erro: MSG_BLOQUEADO }, 429);
+    if (!atual.escola_assinou_em) return json({ erro: MSG_SEM_ESCOLA }, 403);
+
+    // O CPF digitado precisa ser o do responsável cadastrado (congelado no pedido). Sem CPF no cadastro, não há o que conferir.
+    if (atual.cpf_esperado && atual.cpf_esperado !== documento) {
+      const usadas = (atual.tentativas_invalidas ?? 0) + 1;
+      await db.from("assinaturas_documentos").update({ tentativas_invalidas: usadas }).eq("token", token).is("assinado_em", null);
+      const restam = MAX_TENTATIVAS - usadas;
+      return restam > 0
+        ? json({ erro: `O CPF informado não confere com o do responsável cadastrado na escola. Restam ${restam} tentativa(s).` }, 400)
+        : json({ erro: MSG_BLOQUEADO }, 429);
     }
 
     const ip =
@@ -140,11 +191,12 @@ Deno.serve(async (req: Request) => {
       null;
     const ua = (req.headers.get("user-agent") ?? "").slice(0, 300) || null;
 
-    // Atualização condicional: só assina quem ainda não foi assinado nem cancelado (evita assinatura dupla)
+    // Atualização condicional: só assina quem ainda não foi assinado, cancelado nem expirado (evita assinatura dupla)
+    const agora = new Date().toISOString();
     const { data: gravado, error } = await db
       .from("assinaturas_documentos")
       .update({
-        assinado_em: new Date().toISOString(),
+        assinado_em: agora,
         assinante_nome: nome,
         assinante_documento: documento,
         assinante_ip: ip,
@@ -152,11 +204,13 @@ Deno.serve(async (req: Request) => {
         assinatura_imagem: imagem,
         assinatura_forma: forma,
         assinatura_estilo: estilo,
+        cpf_conferido: !!atual.cpf_esperado,
       })
       .eq("token", token)
       .is("assinado_em", null)
       .is("cancelado_em", null)
       .not("escola_assinou_em", "is", null)
+      .or(`expira_em.is.null,expira_em.gt.${agora}`)
       .select("id")
       .maybeSingle();
 
@@ -165,15 +219,13 @@ Deno.serve(async (req: Request) => {
 
     const { data: s } = await db
       .from("assinaturas_documentos")
-      .select("assinado_em, cancelado_em, escola_assinou_em")
+      .select("assinado_em, cancelado_em, expira_em")
       .eq("token", token)
       .maybeSingle();
     if (!s) return json({ erro: "Link inválido." }, 404);
     if (s.assinado_em) return json({ erro: "Este documento já foi assinado." }, 409);
-    if (!s.cancelado_em && !s.escola_assinou_em) {
-      return json({ erro: "Este documento ainda não foi liberado pela escola para assinatura." }, 403);
-    }
-    return json({ erro: "Este link foi cancelado pela escola." }, 410);
+    if (s.cancelado_em) return json({ erro: MSG_CANCELADO }, 410);
+    return json({ erro: MSG_EXPIRADO }, 410);
   }
 
   return json({ erro: "Método não permitido." }, 405);

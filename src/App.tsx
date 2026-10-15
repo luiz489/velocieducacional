@@ -39,6 +39,7 @@ import Documentos from "@/pages/Documentos";
 import GerarDocumento from "@/pages/GerarDocumento";
 import Assinaturas from "@/pages/Assinaturas";
 import AssinarDocumento from "@/pages/AssinarDocumento";
+import VerAssinatura from "@/pages/VerAssinatura";
 import PlanosFinanceirosTurma from "@/pages/PlanosFinanceirosTurma";
 import CursosExtra from "@/pages/CursosExtra";
 import ContasBancarias from "@/pages/ContasBancarias";
@@ -127,6 +128,7 @@ function ProtectedRoutes() {
             <Route path="/documentos" element={<Documentos />} />
             <Route path="/documentos/gerar" element={<GerarDocumento />} />
             <Route path="/assinaturas" element={<Assinaturas />} />
+            <Route path="/assinaturas/ver" element={<VerAssinatura />} />
             <Route path="/professores" element={<Professores />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/filiais" element={<Filiais />} />
