@@ -47,6 +47,18 @@ export function AssinarPelaEscolaDialog({ assinaturaId, titulo, alunoNome, onClo
     },
   });
 
+  const { data: meuNome } = useQuery({
+    queryKey: ["meu-nome-assinatura"],
+    enabled: !!assinaturaId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return "";
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", u.user.id).maybeSingle();
+      return data?.full_name ?? "";
+    },
+  });
+
   const assinar = async () => {
     if (!assinaturaId || !imagem) return;
     setEnviando(true);
@@ -89,7 +101,7 @@ export function AssinarPelaEscolaDialog({ assinaturaId, titulo, alunoNome, onClo
             <Label htmlFor="cargo-assinante">Cargo de quem assina</Label>
             <Input id="cargo-assinante" value={cargo} onChange={(e) => setCargo(e.target.value)} maxLength={80} />
           </div>
-          <AssinaturaCanvas onChange={setImagem} />
+          <AssinaturaCanvas onChange={setImagem} nomeSugerido={meuNome ?? ""} />
           <label className="flex cursor-pointer items-start gap-3 text-sm">
             <Checkbox checked={aceite} onCheckedChange={(c) => setAceite(!!c)} className="mt-0.5" />
             <span>

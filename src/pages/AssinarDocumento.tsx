@@ -244,7 +244,7 @@ export default function AssinarDocumento() {
                 />
               </div>
             </div>
-            <AssinaturaCanvas onChange={setImagem} />
+            <AssinaturaCanvas onChange={setImagem} nomeSugerido={nome} />
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <Checkbox checked={aceite} onCheckedChange={(c) => setAceite(!!c)} className="mt-0.5" />
               <span>
