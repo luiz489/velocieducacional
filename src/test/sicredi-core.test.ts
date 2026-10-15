@@ -105,6 +105,26 @@ describe("montarPayloadBoleto", () => {
     expect(r.payload.juros).toBe(1);
   });
 
+  it("híbrido: QR Pix vale 30 dias após o vencimento, mantendo multa e juros", () => {
+    const r = montarPayloadBoleto(
+      { id: UUID, valor: 100, valor_integral: 100, data_vencimento: "2027-01-05" }, pagadorOk, config
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.payload.validadeAposVencimento).toBe(30);
+    expect(r.payload.multa).toBe(2);
+    expect(r.payload.juros).toBe(1);
+  });
+
+  it("boleto NORMAL não leva validadeAposVencimento", () => {
+    const r = montarPayloadBoleto(
+      { id: UUID, valor: 100, valor_integral: 100, data_vencimento: "2027-01-05" }, pagadorOk, { ...config, tipo_cobranca: "NORMAL" }
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.payload).not.toHaveProperty("validadeAposVencimento");
+  });
+
   it("sem desconto quando valor = valor_integral", () => {
     const r = montarPayloadBoleto(
       { id: UUID, valor: 500, valor_integral: 500, data_vencimento: "2027-02-05" }, pagadorOk, config

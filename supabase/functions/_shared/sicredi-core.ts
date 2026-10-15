@@ -98,6 +98,7 @@ export type ResultadoPayload =
   | { ok: true; payload: Record<string, unknown> }
   | { ok: false; erros: string[] };
 
+export const VALIDADE_PIX_APOS_VENCIMENTO_DIAS = 30;
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const cortar = (s: string, max: number) => s.trim().replace(/\s+/g, " ").slice(0, max);
 
@@ -167,6 +168,8 @@ export function montarPayloadBoleto(
     idTituloEmpresa: idTituloEmpresaDe(parcela.id),
     valor: integral,
   };
+
+  if (payload.tipoCobranca === "HIBRIDO") payload.validadeAposVencimento = VALIDADE_PIX_APOS_VENCIMENTO_DIAS;
 
   const desconto = r2(integral - pago);
   if (desconto > 0) {
