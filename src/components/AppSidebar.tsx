@@ -24,6 +24,7 @@ import {
   IdCard,
   FileText,
   FileSignature,
+  PenLine,
   Wallet,
   Dumbbell,
 } from "lucide-react";
@@ -115,6 +116,7 @@ const menuGroups = [
     label: "Documentos",
     items: [
       { title: "Gerar Documento", url: "/documentos/gerar", icon: FileSignature },
+      { title: "Assinaturas Digitais", url: "/assinaturas", icon: PenLine },
       { title: "Configurar Documentos", url: "/documentos", icon: FileText },
     ],
   },

@@ -37,6 +37,8 @@ import Rematricula from "@/pages/Rematricula";
 import Carteirinhas from "@/pages/Carteirinhas";
 import Documentos from "@/pages/Documentos";
 import GerarDocumento from "@/pages/GerarDocumento";
+import Assinaturas from "@/pages/Assinaturas";
+import AssinarDocumento from "@/pages/AssinarDocumento";
 import PlanosFinanceirosTurma from "@/pages/PlanosFinanceirosTurma";
 import CursosExtra from "@/pages/CursosExtra";
 import ContasBancarias from "@/pages/ContasBancarias";
@@ -124,6 +126,7 @@ function ProtectedRoutes() {
             <Route path="/carteirinhas" element={<Carteirinhas />} />
             <Route path="/documentos" element={<Documentos />} />
             <Route path="/documentos/gerar" element={<GerarDocumento />} />
+            <Route path="/assinaturas" element={<Assinaturas />} />
             <Route path="/professores" element={<Professores />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/filiais" element={<Filiais />} />
@@ -163,6 +166,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<AuthRoute />} />
             <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+            <Route path="/assinar/:token" element={<AssinarDocumento />} />
             <Route path="/app" element={<AppMobile />} />
             <Route path="/app/financeiro" element={<AppFinanceiro />} />
             <Route path="/plataforma" element={<PlataformaLayout />}>

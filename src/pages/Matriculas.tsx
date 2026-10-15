@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { dataBR } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, MoreHorizontal, ClipboardList, DollarSign, CheckCircle, UserPlus, UserCheck, FileSignature } from "lucide-react";
+import { Search, Plus, MoreHorizontal, ClipboardList, DollarSign, CheckCircle, UserPlus, UserCheck, FileSignature, Printer, PenLine, Copy, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ import { limparCPF } from "@/lib/masks";
 import { AlunoCamposFieldset, lerAlunoCamposDeFormData } from "@/components/AlunoCamposFieldset";
 import { validarCPF } from "@/lib/validations";
 import { Skeleton } from "@/components/ui/skeleton";
+import { linkWhatsapp, urlAssinatura } from "@/lib/assinaturas";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -65,6 +66,38 @@ export default function Matriculas() {
       return data ?? [];
     },
   });
+
+  const [gerandoAssinatura, setGerandoAssinatura] = useState<string | null>(null);
+  const [linkAssinatura, setLinkAssinatura] = useState<
+    { link: string; titulo: string; alunoNome: string; telefone: string | null } | null
+  >(null);
+
+  const enviarParaAssinatura = async (templateId: string, titulo: string) => {
+    if (!alunoParaContrato) return;
+    const alunoId = alunoParaContrato;
+    setGerandoAssinatura(templateId);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("solicitar_assinatura_documento", {
+        p_template_id: templateId,
+        p_aluno_id: alunoId,
+      });
+      if (error) throw error;
+      const novo = Array.isArray(data) ? data[0] : data;
+      const { data: aluno } = await supabase.from("alunos").select("nome, telefone_responsavel").eq("id", alunoId).maybeSingle();
+      setAlunoParaContrato(null);
+      setLinkAssinatura({
+        link: urlAssinatura(novo.assinatura_token),
+        titulo,
+        alunoNome: aluno?.nome ?? "",
+        telefone: aluno?.telefone_responsavel ?? null,
+      });
+    } catch (e) {
+      toast.error("Não foi possível gerar o link de assinatura: " + (e instanceof Error ? e.message : "erro desconhecido"));
+    } finally {
+      setGerandoAssinatura(null);
+    }
+  };
 
   const emitirContrato = (templateId: string) => {
     if (!alunoParaContrato) return;
@@ -803,20 +836,75 @@ export default function Matriculas() {
       </div>
 
       <Dialog open={!!alunoParaContrato} onOpenChange={(open) => !open && setAlunoParaContrato(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Escolha o modelo de contrato</DialogTitle>
-            <DialogDescription>Você vai poder conferir e preencher os dados antes de gerar.</DialogDescription>
+            <DialogDescription>Imprima/salve em PDF (você confere os dados antes) ou envie um link para o responsável assinar pelo celular.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {!templatesContrato?.length ? (
               <p className="text-sm text-muted-foreground">Nenhum modelo de contrato cadastrado.</p>
             ) : (
               templatesContrato.map((t) => (
-                <Button key={t.id} variant="outline" className="w-full justify-start" onClick={() => emitirContrato(t.id)}>
-                  <FileSignature className="h-4 w-4 mr-2" /> {t.nome}
-                </Button>
+                <div key={t.id} className="rounded-md border p-3 space-y-2">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <FileSignature className="h-4 w-4 shrink-0" /> {t.nome}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => emitirContrato(t.id)}>
+                      <Printer className="h-4 w-4" /> Imprimir / PDF
+                    </Button>
+                    <Button
+                      size="sm" className="gap-2"
+                      disabled={gerandoAssinatura !== null}
+                      onClick={() => void enviarParaAssinatura(t.id, t.nome)}
+                    >
+                      <PenLine className="h-4 w-4" /> {gerandoAssinatura === t.id ? "Gerando…" : "Assinatura digital"}
+                    </Button>
+                  </div>
+                </div>
               ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
+      <Dialog open={!!linkAssinatura} onOpenChange={(open) => !open && setLinkAssinatura(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Link de assinatura gerado</DialogTitle>
+            <DialogDescription>
+              {linkAssinatura?.titulo} — {linkAssinatura?.alunoNome}. O texto do contrato foi fixado agora; o
+              responsável abre o link, lê e assina na tela.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input readOnly value={linkAssinatura?.link ?? ""} onFocus={(e) => e.currentTarget.select()} />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline" className="gap-2"
+                onClick={async () => { await navigator.clipboard.writeText(linkAssinatura!.link); toast.success("Link copiado"); }}
+              >
+                <Copy className="h-4 w-4" /> Copiar link
+              </Button>
+              <Button className="gap-2" asChild>
+                <a
+                  target="_blank" rel="noreferrer"
+                  href={linkWhatsapp(linkAssinatura?.telefone, `Olá! Segue o contrato "${linkAssinatura?.titulo}" para assinatura digital: ${linkAssinatura?.link}`)}
+                >
+                  <Send className="h-4 w-4" /> Enviar pelo WhatsApp
+                </a>
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => { setLinkAssinatura(null); setTimeout(() => navigate("/assinaturas"), 0); }}
+              >
+                Ver assinaturas
+              </Button>
+            </div>
+            {!linkAssinatura?.telefone && (
+              <p className="text-xs text-muted-foreground">O aluno não tem telefone do responsável cadastrado: no WhatsApp, escolha o contato na hora de enviar.</p>
             )}
           </div>
         </DialogContent>
