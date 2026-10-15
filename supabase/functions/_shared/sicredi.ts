@@ -363,16 +363,20 @@ export async function contratarWebhook(
   let base = "";
   let criar: { status: number; ok: boolean; texto: string } | null = null;
   const falhas: string[] = [];
+  let negado: { status: number; texto: string } | null = null;
   for (const candidato of urlsWebhookContrato(cfg.ambiente)) {
     try {
       const r = await chamar(admin, cfg, { metodo: "POST", url: candidato + "/", corpo });
       if (r.status === 404) { falhas.push(`${candidato}: 404`); continue; }
+      // 403 do gateway = rota não liberada pra esse app/ambiente: ainda vale tentar o outro endereço
+      if (r.status === 403) { falhas.push(`${candidato}: 403`); negado ??= r; continue; }
       base = candidato; criar = r; break;
     } catch (e) {
       if (e instanceof ErroSicredi && e.status === 0) { falhas.push(`${candidato}: ${e.message}`); continue; }
       throw e;
     }
   }
+  if (!criar && negado) throw new ErroSicredi(mensagemDeErro(negado.status, negado.texto) + ` (endereços tentados: ${falhas.join("; ")})`, 403);
   if (!criar) throw new ErroSicredi("Nenhum endereço de webhook do Sicredi respondeu (" + falhas.join("; ") + ").");
 
   if (criar.ok) {
