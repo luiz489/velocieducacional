@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dataBR } from "@/lib/utils";
-import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter, Undo2, Copy, QrCode, FileText } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, Clock, TrendingUp, MoreHorizontal, Download, Filter, Undo2, Copy, QrCode, FileText, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,22 @@ function getBoletoBadge(l: LancamentoRow) {
   }
 }
 
+type EmailSituacao = { financeiro_id: string; email_enviado_em: string | null; email_destino: string | null; email_erro: string | null; acessos: number };
+
+function getEmailBadge(e: EmailSituacao | undefined) {
+  if (!e) return null;
+  if (e.email_enviado_em) {
+    const quando = new Date(e.email_enviado_em).toLocaleString("pt-BR");
+    return (
+      <Badge variant="outline" className="border-success text-success" title={`Enviado para ${e.email_destino ?? ""} em ${quando}${e.acessos ? ` · aberto ${e.acessos}x` : ""}`}>
+        E-mail enviado
+      </Badge>
+    );
+  }
+  if (e.email_erro) return <Badge variant="outline" className="border-destructive text-destructive" title={e.email_erro}>E-mail com erro</Badge>;
+  return null;
+}
+
 function getTipoBadge(tipo: string) {
   switch (tipo) {
     case "Mensalidade": return <Badge variant="outline">Mensalidade</Badge>;
@@ -84,6 +101,29 @@ export default function Financeiro() {
   const { lancamentos, loading, confirmarPagamento, desfazerConfirmacao, registrarBoleto, refetch } = useFinanceiro();
   const { escolaAtivaId, escolas } = useEscolaAtiva();
   const [reprocessando, setReprocessando] = useState(false);
+  const [enviandoEmailId, setEnviandoEmailId] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const { data: emailsSituacao } = useQuery({
+    queryKey: ["boleto-email-situacao", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("boleto_email_situacao", { p_escola_id: escolaAtivaId! });
+      if (error) throw error;
+      return new Map(((data ?? []) as EmailSituacao[]).map((e) => [e.financeiro_id, e]));
+    },
+  });
+
+  const enviarBoletoPorEmail = async (id: string) => {
+    setEnviandoEmailId(id);
+    const { data, error } = await supabase.functions.invoke("boleto-enviar-email", { body: { financeiro_id: id } });
+    setEnviandoEmailId(null);
+    if (error || !data?.ok) {
+      toast.error(data?.erro ?? error?.message ?? "Não foi possível enviar o e-mail.");
+    } else {
+      toast.success("Boleto enviado por e-mail ao responsável.");
+    }
+    qc.invalidateQueries({ queryKey: ["boleto-email-situacao", escolaAtivaId] });
+  };
   const boletosComErro = lancamentos.filter((l) => l.gateway_status === "erro" && l.status !== "Pago");
 
   // Quando uma matrícula tem cobrança dividida entre 2 responsáveis (caso específico,
@@ -388,6 +428,7 @@ export default function Financeiro() {
                       <div className="flex flex-wrap items-center gap-1">
                         {getStatusBadge(l.status)}
                         {getBoletoBadge(l)}
+                        {getEmailBadge(emailsSituacao?.get(l.id))}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -415,6 +456,12 @@ export default function Financeiro() {
                           {l.matricula_id && l.status !== "Pago" && (
                             <DropdownMenuItem onClick={() => gerarCarne(l)}>
                               <FileText className="h-4 w-4 mr-2" />Gerar carnê do aluno
+                            </DropdownMenuItem>
+                          )}
+                          {l.gateway_status === "registrado" && (l.status === "Pendente" || l.status === "Atrasado") && (
+                            <DropdownMenuItem disabled={enviandoEmailId === l.id} onClick={() => enviarBoletoPorEmail(l.id)}>
+                              <Mail className="h-4 w-4 mr-2" />
+                              {emailsSituacao?.get(l.id)?.email_enviado_em ? "Reenviar boleto por e-mail" : "Enviar boleto por e-mail"}
                             </DropdownMenuItem>
                           )}
                           {l.pix_qr_code && (

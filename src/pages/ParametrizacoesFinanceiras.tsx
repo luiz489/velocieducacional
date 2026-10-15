@@ -35,7 +35,7 @@ export default function ParametrizacoesFinanceiras() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas_integracao_bancaria")
-        .select("banco, agencia, conta_corrente, codigo_beneficiario, posto, chave_pix, ambiente, ativo, conta_bancaria_id, multa_percentual, juros_mensal_percentual, tipo_cobranca, especie_documento, registrar_na_matricula, webhook_status, tem_credenciais")
+        .select("banco, agencia, conta_corrente, codigo_beneficiario, posto, chave_pix, ambiente, ativo, conta_bancaria_id, multa_percentual, juros_mensal_percentual, tipo_cobranca, especie_documento, registrar_na_matricula, webhook_status, tem_credenciais, email_boleto_ativo, email_boleto_dias_antes, email_responder_para")
         .eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       return data ?? [];
@@ -278,6 +278,7 @@ type ConfigSicredi = {
   agencia: string; conta_corrente: string; codigo_beneficiario: string; posto: string; chave_pix: string;
   ambiente: string; conta_bancaria_id: string | null; multa_percentual: number; juros_mensal_percentual: number;
   tipo_cobranca: string; especie_documento: string; registrar_na_matricula: boolean; tem_credenciais: boolean | null; webhook_status: string | null;
+  email_boleto_ativo: boolean; email_boleto_dias_antes: number; email_responder_para: string | null;
 };
 
 const FORM_VAZIO = {
@@ -286,6 +287,7 @@ const FORM_VAZIO = {
   conta_bancaria_id: "", multa_percentual: "2", juros_mensal_percentual: "1",
   tipo_cobranca: "HIBRIDO", especie_documento: "DUPLICATA_MERCANTIL_INDICACAO",
   registrar_na_matricula: false,
+  email_boleto_ativo: false, email_boleto_dias_antes: "5", email_responder_para: "",
 };
 
 function SicrediDialog({
@@ -322,6 +324,8 @@ function SicrediDialog({
             multa_percentual: String(config.multa_percentual), juros_mensal_percentual: String(config.juros_mensal_percentual),
             tipo_cobranca: config.tipo_cobranca, especie_documento: config.especie_documento,
             registrar_na_matricula: config.registrar_na_matricula,
+            email_boleto_ativo: config.email_boleto_ativo, email_boleto_dias_antes: String(config.email_boleto_dias_antes ?? 5),
+            email_responder_para: config.email_responder_para ?? "",
           }
         : FORM_VAZIO
     );
@@ -365,9 +369,20 @@ function SicrediDialog({
       p_especie_documento: form.especie_documento,
       p_registrar_na_matricula: form.registrar_na_matricula,
     });
-    setSalvando(false);
     if (error) {
+      setSalvando(false);
       toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    const { error: errEmail } = await supabase.rpc("salvar_email_boleto", {
+      p_escola_id: escolaId,
+      p_ativo: form.email_boleto_ativo,
+      p_dias_antes: Number(form.email_boleto_dias_antes || 5),
+      p_responder_para: form.email_responder_para || null,
+    });
+    setSalvando(false);
+    if (errEmail) {
+      toast.error("Integração salva, mas as opções de e-mail não: " + errEmail.message);
       return;
     }
     toast.success("Integração Sicredi salva!");
@@ -539,6 +554,33 @@ function SicrediDialog({
               </p>
             </div>
             <Switch checked={form.registrar_na_matricula} onCheckedChange={(v) => setForm({ ...form, registrar_na_matricula: v })} />
+          </div>
+
+          <div className="rounded-md border p-3 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Label className="text-sm">Enviar o boleto por e-mail ao responsável</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Todo dia às 8h, o sistema envia o e-mail (QR Pix, linha digitável e botão para abrir o boleto) das parcelas com boleto
+                  registrado que vencem nos próximos dias. Desligado, nada é enviado automaticamente; o envio manual pelo Financeiro continua disponível.
+                </p>
+              </div>
+              <Switch checked={form.email_boleto_ativo} onCheckedChange={(v) => setForm({ ...form, email_boleto_ativo: v })} />
+            </div>
+            {form.email_boleto_ativo && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Enviar quantos dias antes do vencimento</Label>
+                  <Input type="number" min={1} max={30} value={form.email_boleto_dias_antes}
+                    onChange={(e) => setForm({ ...form, email_boleto_dias_antes: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">E-mail da escola para respostas</Label>
+                  <Input type="email" placeholder="financeiro@escola.com.br" value={form.email_responder_para}
+                    onChange={(e) => setForm({ ...form, email_responder_para: e.target.value })} />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">

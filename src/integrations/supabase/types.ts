@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -55,6 +55,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "aluno_autorizados_retirada_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["aluno_id"]
           },
           {
@@ -118,6 +125,13 @@ export type Database = {
             referencedColumns: ["aluno_id"]
           },
           {
+            foreignKeyName: "aluno_contratantes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["aluno_id"]
+          },
+          {
             foreignKeyName: "aluno_contratantes_contratante_id_fkey"
             columns: ["contratante_id"]
             isOneToOne: false
@@ -129,6 +143,13 @@ export type Database = {
             columns: ["contratante_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["contratante_id"]
+          },
+          {
+            foreignKeyName: "aluno_contratantes_contratante_id_fkey"
+            columns: ["contratante_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["contratante_id"]
           },
           {
@@ -228,6 +249,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "aluno_matricula_dados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["aluno_id"]
           },
           {
@@ -360,6 +388,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: true
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "aluno_saude_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: true
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["aluno_id"]
           },
           {
@@ -594,6 +629,234 @@ export type Database = {
           },
         ]
       }
+      assinaturas_documentos: {
+        Row: {
+          aluno_id: string | null
+          assinado_em: string | null
+          assinante_documento: string | null
+          assinante_ip: string | null
+          assinante_nome: string | null
+          assinante_user_agent: string | null
+          assinatura_estilo: string | null
+          assinatura_forma: string | null
+          assinatura_imagem: string | null
+          cancelado_em: string | null
+          corpo_html: string
+          cpf_conferido: boolean | null
+          cpf_esperado: string | null
+          criado_em: string
+          criado_por: string | null
+          escola_assinante_cargo: string | null
+          escola_assinante_ip: string | null
+          escola_assinante_nome: string | null
+          escola_assinante_user_agent: string | null
+          escola_assinante_user_id: string | null
+          escola_assinatura_estilo: string | null
+          escola_assinatura_forma: string | null
+          escola_assinatura_imagem: string | null
+          escola_assinou_em: string | null
+          escola_id: string
+          expira_em: string | null
+          hash_documento: string
+          id: string
+          rg_esperado: string | null
+          template_id: string | null
+          tentativas_invalidas: number
+          titulo: string
+          token: string
+        }
+        Insert: {
+          aluno_id?: string | null
+          assinado_em?: string | null
+          assinante_documento?: string | null
+          assinante_ip?: string | null
+          assinante_nome?: string | null
+          assinante_user_agent?: string | null
+          assinatura_estilo?: string | null
+          assinatura_forma?: string | null
+          assinatura_imagem?: string | null
+          cancelado_em?: string | null
+          corpo_html: string
+          cpf_conferido?: boolean | null
+          cpf_esperado?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          escola_assinante_cargo?: string | null
+          escola_assinante_ip?: string | null
+          escola_assinante_nome?: string | null
+          escola_assinante_user_agent?: string | null
+          escola_assinante_user_id?: string | null
+          escola_assinatura_estilo?: string | null
+          escola_assinatura_forma?: string | null
+          escola_assinatura_imagem?: string | null
+          escola_assinou_em?: string | null
+          escola_id: string
+          expira_em?: string | null
+          hash_documento: string
+          id?: string
+          rg_esperado?: string | null
+          template_id?: string | null
+          tentativas_invalidas?: number
+          titulo: string
+          token: string
+        }
+        Update: {
+          aluno_id?: string | null
+          assinado_em?: string | null
+          assinante_documento?: string | null
+          assinante_ip?: string | null
+          assinante_nome?: string | null
+          assinante_user_agent?: string | null
+          assinatura_estilo?: string | null
+          assinatura_forma?: string | null
+          assinatura_imagem?: string | null
+          cancelado_em?: string | null
+          corpo_html?: string
+          cpf_conferido?: boolean | null
+          cpf_esperado?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          escola_assinante_cargo?: string | null
+          escola_assinante_ip?: string | null
+          escola_assinante_nome?: string | null
+          escola_assinante_user_agent?: string | null
+          escola_assinante_user_id?: string | null
+          escola_assinatura_estilo?: string | null
+          escola_assinatura_forma?: string | null
+          escola_assinatura_imagem?: string | null
+          escola_assinou_em?: string | null
+          escola_id?: string
+          expira_em?: string | null
+          hash_documento?: string
+          id?: string
+          rg_esperado?: string | null
+          template_id?: string | null
+          tentativas_invalidas?: number
+          titulo?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_documentos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assinaturas_documentos_excluidas: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          assinado_em: string | null
+          assinante_nome: string | null
+          assinatura_id: string
+          criado_em: string | null
+          escola_assinou_em: string | null
+          escola_id: string
+          excluido_em: string
+          excluido_por: string | null
+          hash_documento: string | null
+          id: string
+          titulo: string
+        }
+        Insert: {
+          aluno_id?: string | null
+          aluno_nome?: string | null
+          assinado_em?: string | null
+          assinante_nome?: string | null
+          assinatura_id: string
+          criado_em?: string | null
+          escola_assinou_em?: string | null
+          escola_id: string
+          excluido_em?: string
+          excluido_por?: string | null
+          hash_documento?: string | null
+          id?: string
+          titulo: string
+        }
+        Update: {
+          aluno_id?: string | null
+          aluno_nome?: string | null
+          assinado_em?: string | null
+          assinante_nome?: string | null
+          assinatura_id?: string
+          criado_em?: string | null
+          escola_assinou_em?: string | null
+          escola_id?: string
+          excluido_em?: string
+          excluido_por?: string | null
+          hash_documento?: string | null
+          id?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_documentos_excluidas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_excluidas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_documentos_excluidas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       atividades_turma: {
         Row: {
           created_at: string
@@ -737,6 +1000,13 @@ export type Database = {
             referencedRelation: "v_documento_dados"
             referencedColumns: ["matricula_id"]
           },
+          {
+            foreignKeyName: "avaliacoes_bimestrais_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["matricula_id"]
+          },
         ]
       }
       avisos: {
@@ -809,6 +1079,74 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_kpis_por_escola"
             referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      boleto_links: {
+        Row: {
+          acessos: number
+          criado_em: string
+          email_destino: string | null
+          email_enviado_em: string | null
+          email_erro: string | null
+          escola_id: string
+          financeiro_id: string
+          id: string
+          token: string
+          ultimo_acesso_em: string | null
+        }
+        Insert: {
+          acessos?: number
+          criado_em?: string
+          email_destino?: string | null
+          email_enviado_em?: string | null
+          email_erro?: string | null
+          escola_id: string
+          financeiro_id: string
+          id?: string
+          token: string
+          ultimo_acesso_em?: string | null
+        }
+        Update: {
+          acessos?: number
+          criado_em?: string
+          email_destino?: string | null
+          email_enviado_em?: string | null
+          email_erro?: string | null
+          escola_id?: string
+          financeiro_id?: string
+          id?: string
+          token?: string
+          ultimo_acesso_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boleto_links_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boleto_links_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "boleto_links_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "boleto_links_financeiro_id_fkey"
+            columns: ["financeiro_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -976,6 +1314,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "chamada_presencas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
         ]
@@ -1292,6 +1637,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "conselho_classe_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
         ]
@@ -1978,6 +2330,13 @@ export type Database = {
             referencedColumns: ["aluno_id"]
           },
           {
+            foreignKeyName: "cursos_extra_inscricoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["aluno_id"]
+          },
+          {
             foreignKeyName: "cursos_extra_inscricoes_curso_extra_id_fkey"
             columns: ["curso_extra_id"]
             isOneToOne: false
@@ -2017,6 +2376,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "cursos_extra_inscricoes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
         ]
@@ -2323,6 +2689,13 @@ export type Database = {
             referencedColumns: ["aluno_id"]
           },
           {
+            foreignKeyName: "documentos_gerados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["aluno_id"]
+          },
+          {
             foreignKeyName: "documentos_gerados_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -2541,6 +2914,9 @@ export type Database = {
           conta_bancaria_id: string | null
           conta_corrente: string
           criado_em: string
+          email_boleto_ativo: boolean
+          email_boleto_dias_antes: number
+          email_responder_para: string | null
           escola_id: string
           especie_documento: string
           id: string
@@ -2567,6 +2943,9 @@ export type Database = {
           conta_bancaria_id?: string | null
           conta_corrente: string
           criado_em?: string
+          email_boleto_ativo?: boolean
+          email_boleto_dias_antes?: number
+          email_responder_para?: string | null
           escola_id: string
           especie_documento?: string
           id?: string
@@ -2593,6 +2972,9 @@ export type Database = {
           conta_bancaria_id?: string | null
           conta_corrente?: string
           criado_em?: string
+          email_boleto_ativo?: boolean
+          email_boleto_dias_antes?: number
+          email_responder_para?: string | null
           escola_id?: string
           especie_documento?: string
           id?: string
@@ -2837,6 +3219,13 @@ export type Database = {
             referencedRelation: "v_documento_dados"
             referencedColumns: ["matricula_id"]
           },
+          {
+            foreignKeyName: "fichas_descritivas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["matricula_id"]
+          },
         ]
       }
       financeiro: {
@@ -2962,6 +3351,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "financeiro_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
         ]
@@ -3135,6 +3531,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "frequencia_bimestral_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
         ]
@@ -3572,6 +3975,13 @@ export type Database = {
             referencedColumns: ["matricula_id"]
           },
           {
+            foreignKeyName: "matricula_valores_opcionais_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["matricula_id"]
+          },
+          {
             foreignKeyName: "matricula_valores_opcionais_valor_opcional_id_fkey"
             columns: ["valor_opcional_id"]
             isOneToOne: false
@@ -3642,6 +4052,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["aluno_id"]
           },
           {
@@ -4081,6 +4498,13 @@ export type Database = {
             referencedColumns: ["aluno_id"]
           },
           {
+            foreignKeyName: "ocorrencias_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["aluno_id"]
+          },
+          {
             foreignKeyName: "ocorrencias_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -4375,6 +4799,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "pedagogico_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
         ]
@@ -4955,6 +5386,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "recuperacoes_semestrais_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
         ]
@@ -5675,6 +6113,13 @@ export type Database = {
             referencedColumns: ["matricula_id"]
           },
           {
+            foreignKeyName: "avaliacoes_bimestrais_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
+            referencedColumns: ["matricula_id"]
+          },
+          {
             foreignKeyName: "matriculas_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
@@ -5686,6 +6131,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["aluno_id"]
           },
         ]
@@ -5794,6 +6246,7 @@ export type Database = {
           escola_uf: string | null
           matricula_id: string | null
           naturalidade_cidade: string | null
+          naturalidade_frase: string | null
           naturalidade_uf: string | null
           nome: string | null
           nome_mae: string | null
@@ -5803,6 +6256,7 @@ export type Database = {
           percentual_desconto: number | null
           ra_censo: string | null
           serie: string | null
+          serie_ensino: string | null
           taxa_matricula: number | null
           telefone_mae: string | null
           telefone_pai: string | null
@@ -5817,6 +6271,103 @@ export type Database = {
           valor_mensalidade_extenso: string | null
           valor_opcionais: number | null
           valor_opcionais_extenso: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      v_documento_dados_aquarela: {
+        Row: {
+          aluno_cpf: string | null
+          aluno_id: string | null
+          ano: number | null
+          bolsa_100: boolean | null
+          contratante_bairro: string | null
+          contratante_cep: string | null
+          contratante_cidade: string | null
+          contratante_conjuge: string | null
+          contratante_cpf: string | null
+          contratante_data_nascimento: string | null
+          contratante_email: string | null
+          contratante_endereco: string | null
+          contratante_estado_civil: string | null
+          contratante_id: string | null
+          contratante_nacionalidade: string | null
+          contratante_naturalidade_cidade: string | null
+          contratante_naturalidade_uf: string | null
+          contratante_nome: string | null
+          contratante_nome_mae: string | null
+          contratante_nome_pai: string | null
+          contratante_rg: string | null
+          contratante_rg_data_emissao: string | null
+          contratante_rg_orgao: string | null
+          contratante_telefone: string | null
+          contratante_uf: string | null
+          data_nascimento: string | null
+          dia_vencimento: number | null
+          diretor_cargo: string | null
+          diretor_nome: string | null
+          ensino_padrao: string | null
+          escola_cep: string | null
+          escola_cidade: string | null
+          escola_cnpj: string | null
+          escola_endereco: string | null
+          escola_id: string | null
+          escola_logo_url: string | null
+          escola_nome: string | null
+          escola_telefone: string | null
+          escola_uf: string | null
+          matricula_id: string | null
+          naturalidade_cidade: string | null
+          naturalidade_uf: string | null
+          nome: string | null
+          nome_mae: string | null
+          nome_pai: string | null
+          numero_parcelas: number | null
+          opcionais_nomes: string | null
+          percentual_desconto: number | null
+          ra_censo: string | null
+          serie: string | null
+          taxa_matricula: number | null
+          taxa_matricula_br: string | null
+          taxa_matricula_extenso: string | null
+          telefone_mae: string | null
+          telefone_pai: string | null
+          turno: string | null
+          valor_anual_sem_desconto: number | null
+          valor_anual_sem_desconto_extenso: string | null
+          valor_mensalidade: number | null
+          valor_mensalidade_com_desconto: number | null
+          valor_mensalidade_com_desconto_extenso: string | null
+          valor_mensalidade_com_desconto_sem_opcionais: number | null
+          valor_mensalidade_com_desconto_sem_opcionais_extenso: string | null
+          valor_mensalidade_extenso: string | null
+          valor_opcionais: number | null
+          valor_opcionais_extenso: string | null
+          valor_parcela_br: string | null
+          valor_total_contrato: number | null
+          valor_total_contrato_br: string | null
+          valor_total_contrato_extenso: string | null
         }
         Relationships: [
           {
@@ -5878,6 +6429,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "v_documento_dados"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "chamada_presencas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "v_documento_dados_aquarela"
             referencedColumns: ["matricula_id"]
           },
           {
@@ -6359,6 +6917,16 @@ export type Database = {
       }
     }
     Functions: {
+      assinar_documento_pela_escola: {
+        Args: {
+          p_cargo: string
+          p_estilo?: string
+          p_forma?: string
+          p_id: string
+          p_imagem: string
+        }
+        Returns: undefined
+      }
       atualizar_filial:
         | {
             Args: {
@@ -6418,6 +6986,24 @@ export type Database = {
           p_valor_pago: number
         }
         Returns: string
+      }
+      boleto_email_situacao: {
+        Args: { p_escola_id: string }
+        Returns: {
+          acessos: number
+          email_destino: string
+          email_enviado_em: string
+          email_erro: string
+          financeiro_id: string
+        }[]
+      }
+      boleto_link_garantir: {
+        Args: { p_financeiro_id: string }
+        Returns: string
+      }
+      cancelar_assinatura_documento: {
+        Args: { p_id: string }
+        Returns: undefined
       }
       cancelar_inscricao_curso_extra: {
         Args: { p_data?: string; p_inscricao_id: string }
@@ -6609,6 +7195,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      email_n8n_segredo: { Args: never; Returns: string }
       escolas_gerenciaveis_do_grupo: {
         Args: { p_escola_id: string }
         Returns: {
@@ -6625,6 +7212,10 @@ export type Database = {
       estornar_faturamento_titulos: {
         Args: { p_ids: string[] }
         Returns: number
+      }
+      excluir_assinatura_documento: {
+        Args: { p_id: string }
+        Returns: undefined
       }
       excluir_cliente_saas: {
         Args: { p_escola_id: string }
@@ -6866,6 +7457,7 @@ export type Database = {
         Args: { p_conta_id: string }
         Returns: undefined
       }
+      renovar_prazo_assinatura: { Args: { p_id: string }; Returns: undefined }
       salvar_chamada: {
         Args: {
           p_data: string
@@ -6875,6 +7467,15 @@ export type Database = {
           p_turma_id: string
         }
         Returns: string
+      }
+      salvar_email_boleto: {
+        Args: {
+          p_ativo: boolean
+          p_dias_antes: number
+          p_escola_id: string
+          p_responder_para?: string
+        }
+        Returns: undefined
       }
       salvar_integracao_sicredi: {
         Args: {
@@ -6901,6 +7502,17 @@ export type Database = {
         Returns: undefined
       }
       sicredi_cron_ok: { Args: { p_segredo: string }; Returns: boolean }
+      solicitar_assinatura_documento: {
+        Args: {
+          p_aluno_id: string
+          p_template_id: string
+          p_valores_manuais?: Json
+        }
+        Returns: {
+          assinatura_id: string
+          assinatura_token: string
+        }[]
+      }
       suspender_cliente_saas: {
         Args: { p_escola_id: string; p_motivo?: string }
         Returns: undefined

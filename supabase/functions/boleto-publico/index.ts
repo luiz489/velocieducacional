@@ -1,7 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import QRCode from "npm:qrcode@1.5.4";
 
 // Página pública do boleto (verify_jwt = false: quem chama é o responsável, sem login).
+// GET ?t=<token de 64 hex>&qr=1 -> imagem PNG do QR Pix (usada no e-mail, que bloqueia imagens embutidas).
 // GET ?t=<token de 64 hex> -> dados mínimos para pagar: valor, vencimento, QR Pix e linha digitável.
 // Não expõe CPF, endereço nem dados do responsável; só o primeiro nome do aluno.
 // Depois de pago, ou fora da validade do Pix, o código de pagamento deixa de ser devolvido.
@@ -33,7 +35,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ erro: "Método não permitido." }, 405);
 
-  const token = new URL(req.url).searchParams.get("t") ?? "";
+  const params = new URL(req.url).searchParams;
+  const token = params.get("t") ?? "";
+  const soQr = params.get("qr") === "1";
   if (!TOKEN_OK.test(token)) return json({ erro: "Link inválido." }, 404);
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -51,7 +55,7 @@ Deno.serve(async (req: Request) => {
     `).eq("id", link.financeiro_id).maybeSingle();
   if (!t) return json({ erro: "Cobrança não encontrada. Fale com a escola." }, 404);
 
-  await db.from("boleto_links")
+  if (!soQr) await db.from("boleto_links")
     .update({ acessos: (link.acessos ?? 0) + 1, ultimo_acesso_em: new Date().toISOString() }).eq("id", link.id);
 
   // deno-lint-ignore no-explicit-any
@@ -82,6 +86,14 @@ Deno.serve(async (req: Request) => {
   }
   if (hoje > limitePix) {
     return json({ ...base, situacao: "expirado", mensagem: "Este boleto venceu há mais de " + VALIDADE_PIX_DIAS + " dias. Peça a segunda via à escola." });
+  }
+
+  if (soQr) {
+    if (!t.pix_qr_code) return json({ erro: "Sem Pix neste boleto." }, 404);
+    const png = await QRCode.toBuffer(t.pix_qr_code, { margin: 1, width: 300 });
+    return new Response(png, {
+      headers: { ...cors, "Content-Type": "image/png", "Cache-Control": "private, max-age=300" },
+    });
   }
 
   return json({
