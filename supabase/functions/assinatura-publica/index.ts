@@ -5,6 +5,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 // O acesso é pelo token aleatório de 64 caracteres guardado em assinaturas_documentos.
 // GET  ?t=<token>  -> texto congelado do documento + situação da assinatura
 // POST {t, nome, documento, imagem, aceite} -> registra a assinatura (uma única vez)
+// A família só consegue abrir/assinar depois que a escola (diretora) assinou dentro do sistema.
 // Só esta função grava a assinatura (service role); quem está logado na escola não consegue.
 
 const cors = {
@@ -73,7 +74,21 @@ Deno.serve(async (req: Request) => {
     }
 
     const l = s as Linha;
+    if (!l.escola_assinou_em && !l.assinado_em) {
+      return json({
+        erro: "Este documento ainda não foi liberado pela escola para assinatura. Peça à escola para concluir a etapa dela e enviar o link de novo.",
+      }, 403);
+    }
     return json({
+      escolaAssinatura: l.escola_assinou_em
+        ? {
+            nome: l.escola_assinante_nome,
+            cargo: l.escola_assinante_cargo,
+            assinadoEm: l.escola_assinou_em,
+            ip: l.escola_assinante_ip,
+            imagem: l.escola_assinatura_imagem,
+          }
+        : null,
       escola: l.escolas?.nome ?? null,
       titulo: l.titulo,
       alunoNome: l.alunos?.nome ?? null,
@@ -127,6 +142,7 @@ Deno.serve(async (req: Request) => {
       .eq("token", token)
       .is("assinado_em", null)
       .is("cancelado_em", null)
+      .not("escola_assinou_em", "is", null)
       .select("id")
       .maybeSingle();
 
@@ -135,11 +151,14 @@ Deno.serve(async (req: Request) => {
 
     const { data: s } = await db
       .from("assinaturas_documentos")
-      .select("assinado_em, cancelado_em")
+      .select("assinado_em, cancelado_em, escola_assinou_em")
       .eq("token", token)
       .maybeSingle();
     if (!s) return json({ erro: "Link inválido." }, 404);
     if (s.assinado_em) return json({ erro: "Este documento já foi assinado." }, 409);
+    if (!s.cancelado_em && !s.escola_assinou_em) {
+      return json({ erro: "Este documento ainda não foi liberado pela escola para assinatura." }, 403);
+    }
     return json({ erro: "Este link foi cancelado pela escola." }, 410);
   }
 

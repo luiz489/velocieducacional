@@ -32,6 +32,8 @@ import { AlunoCamposFieldset, lerAlunoCamposDeFormData } from "@/components/Alun
 import { validarCPF } from "@/lib/validations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { linkWhatsapp, urlAssinatura } from "@/lib/assinaturas";
+import { usePermissoes } from "@/hooks/usePermissoes";
+import { AssinarPelaEscolaDialog } from "@/components/AssinarPelaEscolaDialog";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -51,14 +53,17 @@ export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
   const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro } = useMatriculas();
   const navigate = useNavigate();
+  const { escolaAtivaId } = useEscolaAtiva();
   const [alunoParaContrato, setAlunoParaContrato] = useState<string | null>(null);
 
   const { data: templatesContrato } = useQuery({
-    queryKey: ["templates-contrato"],
+    queryKey: ["templates-contrato", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_templates")
         .select("id, nome")
+        .or(`escola_id.is.null,escola_id.eq.${escolaAtivaId}`)
         .eq("ativo", true)
         .like("codigo", "contrato_%")
         .order("nome");
@@ -69,7 +74,11 @@ export default function Matriculas() {
 
   const [gerandoAssinatura, setGerandoAssinatura] = useState<string | null>(null);
   const [linkAssinatura, setLinkAssinatura] = useState<
-    { link: string; titulo: string; alunoNome: string; telefone: string | null } | null
+    { link: string | null; titulo: string; alunoNome: string; telefone: string | null } | null
+  >(null);
+  const { can } = usePermissoes();
+  const [assinandoPelaEscola, setAssinandoPelaEscola] = useState<
+    { id: string; token: string; titulo: string; alunoNome: string; telefone: string | null } | null
   >(null);
 
   const enviarParaAssinatura = async (templateId: string, titulo: string) => {
@@ -86,12 +95,13 @@ export default function Matriculas() {
       const novo = Array.isArray(data) ? data[0] : data;
       const { data: aluno } = await supabase.from("alunos").select("nome, telefone_responsavel").eq("id", alunoId).maybeSingle();
       setAlunoParaContrato(null);
-      setLinkAssinatura({
-        link: urlAssinatura(novo.assinatura_token),
-        titulo,
-        alunoNome: aluno?.nome ?? "",
-        telefone: aluno?.telefone_responsavel ?? null,
-      });
+      const info = { titulo, alunoNome: aluno?.nome ?? "", telefone: aluno?.telefone_responsavel ?? null };
+      if (can("relatorios_documentos", "assinar")) {
+        // quem pode assinar pela escola (diretora) assina agora; o link só existe depois disso
+        setAssinandoPelaEscola({ id: novo.assinatura_id, token: novo.assinatura_token, ...info });
+      } else {
+        setLinkAssinatura({ link: null, ...info });
+      }
     } catch (e) {
       toast.error("Não foi possível gerar o link de assinatura: " + (e instanceof Error ? e.message : "erro desconhecido"));
     } finally {
@@ -111,7 +121,6 @@ export default function Matriculas() {
     }, 0);
   };
 
-  const { escolaAtivaId } = useEscolaAtiva();
 
   const { data: categorias } = useQuery({
     queryKey: ["categorias", escolaAtivaId],
@@ -873,18 +882,21 @@ export default function Matriculas() {
       <Dialog open={!!linkAssinatura} onOpenChange={(open) => !open && setLinkAssinatura(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Link de assinatura gerado</DialogTitle>
+            <DialogTitle>{linkAssinatura?.link ? "Link de assinatura gerado" : "Falta a assinatura da escola"}</DialogTitle>
             <DialogDescription>
-              {linkAssinatura?.titulo} — {linkAssinatura?.alunoNome}. O texto do contrato foi fixado agora; o
-              responsável abre o link, lê e assina na tela.
+              {linkAssinatura?.titulo} — {linkAssinatura?.alunoNome}.{" "}
+              {linkAssinatura?.link
+                ? "A escola já assinou e o texto do contrato foi fixado. O responsável abre o link, lê e assina na tela."
+                : "O texto do contrato foi fixado. Quem assina pela escola (a diretora) precisa assinar em Documentos → Assinaturas Digitais; depois disso o link fica disponível para enviar à família."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input readOnly value={linkAssinatura?.link ?? ""} onFocus={(e) => e.currentTarget.select()} />
+            {linkAssinatura?.link && <Input readOnly value={linkAssinatura.link} onFocus={(e) => e.currentTarget.select()} />}
             <div className="flex flex-wrap gap-2">
+              {linkAssinatura?.link && (<>
               <Button
                 variant="outline" className="gap-2"
-                onClick={async () => { await navigator.clipboard.writeText(linkAssinatura!.link); toast.success("Link copiado"); }}
+                onClick={async () => { await navigator.clipboard.writeText(linkAssinatura!.link!); toast.success("Link copiado"); }}
               >
                 <Copy className="h-4 w-4" /> Copiar link
               </Button>
@@ -896,6 +908,7 @@ export default function Matriculas() {
                   <Send className="h-4 w-4" /> Enviar pelo WhatsApp
                 </a>
               </Button>
+              </>)}
               <Button
                 variant="ghost"
                 onClick={() => { setLinkAssinatura(null); setTimeout(() => navigate("/assinaturas"), 0); }}
@@ -903,12 +916,28 @@ export default function Matriculas() {
                 Ver assinaturas
               </Button>
             </div>
-            {!linkAssinatura?.telefone && (
+            {linkAssinatura?.link && !linkAssinatura?.telefone && (
               <p className="text-xs text-muted-foreground">O aluno não tem telefone do responsável cadastrado: no WhatsApp, escolha o contato na hora de enviar.</p>
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      <AssinarPelaEscolaDialog
+        assinaturaId={assinandoPelaEscola?.id ?? null}
+        titulo={assinandoPelaEscola?.titulo ?? ""}
+        alunoNome={assinandoPelaEscola?.alunoNome}
+        onClose={() => {
+          const a = assinandoPelaEscola;
+          setAssinandoPelaEscola(null);
+          if (a) setLinkAssinatura({ link: null, titulo: a.titulo, alunoNome: a.alunoNome, telefone: a.telefone });
+        }}
+        onAssinado={() => {
+          const a = assinandoPelaEscola;
+          setAssinandoPelaEscola(null);
+          if (a) setLinkAssinatura({ link: urlAssinatura(a.token), titulo: a.titulo, alunoNome: a.alunoNome, telefone: a.telefone });
+        }}
+      />
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">

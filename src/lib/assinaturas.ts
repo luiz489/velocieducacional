@@ -29,7 +29,11 @@ export function formatarDataHoraBrasilia(iso: string): string {
 export const escaparHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export type SituacaoAssinatura = "assinado" | "cancelado" | "pendente";
+export type SituacaoAssinatura = "aguardando_escola" | "aguardando_familia" | "assinado" | "cancelado";
 
-export const situacaoAssinatura = (a: { assinado_em: string | null; cancelado_em: string | null }): SituacaoAssinatura =>
-  a.assinado_em ? "assinado" : a.cancelado_em ? "cancelado" : "pendente";
+export const situacaoAssinatura = (a: {
+  assinado_em: string | null;
+  cancelado_em: string | null;
+  escola_assinou_em: string | null;
+}): SituacaoAssinatura =>
+  a.assinado_em ? "assinado" : a.cancelado_em ? "cancelado" : a.escola_assinou_em ? "aguardando_familia" : "aguardando_escola";

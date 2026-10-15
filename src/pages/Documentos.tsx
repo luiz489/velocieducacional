@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 type Template = {
   id: string;
@@ -38,6 +39,7 @@ type Campo = {
 };
 
 export default function Documentos() {
+  const { escolaAtivaId } = useEscolaAtiva();
   const queryClient = useQueryClient();
   const [editando, setEditando] = useState<Template | null>(null);
   const [corpoEdit, setCorpoEdit] = useState("");
@@ -53,11 +55,13 @@ export default function Documentos() {
   });
 
   const { data: templates, isLoading } = useQuery({
-    queryKey: ["document-templates"],
+    queryKey: ["document-templates", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_templates")
         .select("id, codigo, nome, descricao, corpo_html, ativo, categoria_id")
+        .or(`escola_id.is.null,escola_id.eq.${escolaAtivaId}`)
         .order("nome");
       if (error) throw error;
       return data as Template[];

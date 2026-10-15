@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 
 type ParPermissao = { modulo_codigo: string; acao: string };
-export type Acao = "visualizar" | "criar" | "editar" | "excluir";
+export type Acao = "visualizar" | "criar" | "editar" | "excluir" | "assinar";
 
 /**
  * Permissões do usuário logado na escola ativa, derivadas do papel do vínculo.

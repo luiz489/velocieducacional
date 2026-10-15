@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Copy, ExternalLink, PenLine, Search, Send, XCircle } from "lucide-react";
+import { usePermissoes } from "@/hooks/usePermissoes";
+import { AssinarPelaEscolaDialog } from "@/components/AssinarPelaEscolaDialog";
 import { toast } from "sonner";
 import {
   formatarDataHoraBrasilia, linkWhatsapp, situacaoAssinatura, urlAssinatura, type SituacaoAssinatura,
@@ -20,22 +22,33 @@ type Linha = {
   criado_em: string;
   assinado_em: string | null;
   cancelado_em: string | null;
+  escola_assinou_em: string | null;
+  escola_assinante_nome: string | null;
   assinante_nome: string | null;
   alunos: { nome: string; telefone_responsavel: string | null } | null;
 };
 
-const ROTULO: Record<SituacaoAssinatura, string> = { pendente: "Aguardando assinatura", assinado: "Assinado", cancelado: "Cancelado" };
+const ROTULO: Record<SituacaoAssinatura, string> = {
+  aguardando_escola: "Aguardando a escola",
+  aguardando_familia: "Aguardando o responsável",
+  assinado: "Assinado",
+  cancelado: "Cancelado",
+};
 
 function BadgeSituacao({ s }: { s: SituacaoAssinatura }) {
   if (s === "assinado") return <Badge className="bg-success text-success-foreground">{ROTULO[s]}</Badge>;
   if (s === "cancelado") return <Badge variant="outline">{ROTULO[s]}</Badge>;
+  if (s === "aguardando_escola") return <Badge variant="destructive">{ROTULO[s]}</Badge>;
   return <Badge variant="secondary">{ROTULO[s]}</Badge>;
 }
 
 export default function Assinaturas() {
   const { escolaAtivaId } = useEscolaAtiva();
   const qc = useQueryClient();
+  const { can } = usePermissoes();
+  const podeAssinarPelaEscola = can("relatorios_documentos", "assinar");
   const [busca, setBusca] = useState("");
+  const [assinando, setAssinando] = useState<Linha | null>(null);
 
   const { data: linhas, isLoading } = useQuery({
     queryKey: ["assinaturas-documentos", escolaAtivaId],
@@ -45,7 +58,7 @@ export default function Assinaturas() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from("assinaturas_documentos")
-        .select("id, titulo, token, criado_em, assinado_em, cancelado_em, assinante_nome, alunos(nome, telefone_responsavel)")
+        .select("id, titulo, token, criado_em, assinado_em, cancelado_em, escola_assinou_em, escola_assinante_nome, assinante_nome, alunos(nome, telefone_responsavel)")
         .eq("escola_id", escolaAtivaId!)
         .order("criado_em", { ascending: false })
         .limit(300);
@@ -127,15 +140,25 @@ export default function Assinaturas() {
                           {l.assinante_nome} · {formatarDataHoraBrasilia(l.assinado_em).slice(0, 16)}
                         </p>
                       )}
+                      {s === "aguardando_familia" && l.escola_assinou_em && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Escola: {l.escola_assinante_nome} · {formatarDataHoraBrasilia(l.escola_assinou_em).slice(0, 16)}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        {s !== "cancelado" && (
+                        {(s === "aguardando_familia" || s === "assinado") && (
                           <Button variant="ghost" size="icon" className="h-8 w-8" title="Abrir (ver e imprimir)" asChild>
                             <a href={urlAssinatura(l.token)} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>
                           </Button>
                         )}
-                        {s === "pendente" && (
+                        {s === "aguardando_escola" && podeAssinarPelaEscola && (
+                          <Button size="sm" className="h-8 gap-1" onClick={() => setAssinando(l)}>
+                            <PenLine className="h-4 w-4" /> Assinar pela escola
+                          </Button>
+                        )}
+                        {s === "aguardando_familia" && (
                           <>
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Copiar link" onClick={() => void copiar(l.token)}>
                               <Copy className="h-4 w-4" />
@@ -146,14 +169,16 @@ export default function Assinaturas() {
                                 target="_blank" rel="noreferrer"
                               ><Send className="h-4 w-4" /></a>
                             </Button>
-                            <Button
-                              variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Cancelar pedido"
-                              disabled={cancelar.isPending}
-                              onClick={() => { if (confirm(`Cancelar o pedido de assinatura de "${l.alunos?.nome ?? "aluno"}"? O link deixará de funcionar.`)) cancelar.mutate(l.id); }}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
                           </>
+                        )}
+                        {(s === "aguardando_escola" || s === "aguardando_familia") && (
+                          <Button
+                            variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Cancelar pedido"
+                            disabled={cancelar.isPending}
+                            onClick={() => { if (confirm(`Cancelar o pedido de assinatura de "${l.alunos?.nome ?? "aluno"}"? O link deixará de funcionar.`)) cancelar.mutate(l.id); }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -164,6 +189,17 @@ export default function Assinaturas() {
           </Table>
         </CardContent>
       </Card>
+
+      <AssinarPelaEscolaDialog
+        assinaturaId={assinando?.id ?? null}
+        titulo={assinando?.titulo ?? ""}
+        alunoNome={assinando?.alunos?.nome}
+        onClose={() => setAssinando(null)}
+        onAssinado={() => {
+          setAssinando(null);
+          qc.invalidateQueries({ queryKey: ["assinaturas-documentos"] });
+        }}
+      />
     </div>
   );
 }

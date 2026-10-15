@@ -33,11 +33,13 @@ export default function GerarDocumento() {
   const [resultado, setResultado] = useState<string | null>(null);
 
   const { data: templates } = useQuery({
-    queryKey: ["templates-para-gerar"],
+    queryKey: ["templates-para-gerar", escolaAtivaId],
+    enabled: !!escolaAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_templates")
         .select("id, nome")
+        .or(`escola_id.is.null,escola_id.eq.${escolaAtivaId}`)
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;

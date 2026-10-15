@@ -39,7 +39,7 @@ type UsuarioAgrupado = {
   user_id: string; nome: string; email: string | null; unidades: UnidadeDoUsuario[];
 };
 
-const ACOES = ["visualizar", "criar", "editar", "excluir"] as const;
+const ACOES = ["visualizar", "criar", "editar", "excluir", "assinar"] as const;
 
 export default function Configuracoes() {
   const qc = useQueryClient();
