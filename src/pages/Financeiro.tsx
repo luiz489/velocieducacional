@@ -113,6 +113,26 @@ export default function Financeiro() {
     },
   });
 
+  const [baixandoPdfId, setBaixandoPdfId] = useState<string | null>(null);
+  const baixarPdfBoleto = async (id: string) => {
+    setBaixandoPdfId(id);
+    const { data, error } = await supabase.functions.invoke("boleto-pdf", { body: { financeiro_id: id } });
+    setBaixandoPdfId(null);
+    if (error || !data?.ok) {
+      toast.error(data?.erro ?? error?.message ?? "Não foi possível gerar o PDF do boleto.");
+      return;
+    }
+    const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = data.nome ?? "boleto.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  };
+
   const enviarBoletoPorEmail = async (id: string) => {
     setEnviandoEmailId(id);
     const { data, error } = await supabase.functions.invoke("boleto-enviar-email", { body: { financeiro_id: id } });
@@ -456,6 +476,11 @@ export default function Financeiro() {
                           {l.matricula_id && l.status !== "Pago" && (
                             <DropdownMenuItem onClick={() => gerarCarne(l)}>
                               <FileText className="h-4 w-4 mr-2" />Gerar carnê do aluno
+                            </DropdownMenuItem>
+                          )}
+                          {l.gateway_status === "registrado" && (l.status === "Pendente" || l.status === "Atrasado") && (
+                            <DropdownMenuItem disabled={baixandoPdfId === l.id} onClick={() => baixarPdfBoleto(l.id)}>
+                              <Download className="h-4 w-4 mr-2" />Baixar boleto (PDF)
                             </DropdownMenuItem>
                           )}
                           {l.gateway_status === "registrado" && (l.status === "Pendente" || l.status === "Atrasado") && (

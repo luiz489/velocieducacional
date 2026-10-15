@@ -51,6 +51,7 @@ function montarHtml(t: Linha, escolaNome: string, token: string): string {
   const aluno = String(t.matriculas?.alunos?.nome ?? "").trim().split(/\s+/)[0];
   const linkPagina = `${SITE_URL}/boleto/${token}`;
   const linkQr = `${FUNCOES_URL}/boleto-publico?t=${token}&qr=1`;
+  const linkPdf = `${FUNCOES_URL}/boleto-pdf?t=${token}`;
   const valor = Number(t.valor);
   const integral = Number(t.valor_integral ?? t.valor);
   const temDesconto = integral - valor > 0.004;
@@ -83,6 +84,7 @@ ${pix ? `<tr><td style="text-align:center;padding-top:8px">
 <div style="font-weight:bold;margin-bottom:8px">Pagar com boleto</div>
 <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Linha digitável</div>
 <div style="font-family:Consolas,monospace;font-size:13px;word-break:break-all;background:#f3f4f6;border-radius:6px;padding:10px">${esc(formatarLinha(linha))}</div>
+<div style="margin-top:12px"><a href="${linkPdf}" style="color:#2563eb;font-size:14px">Baixar boleto em PDF</a></div>
 </td></tr>
 <tr><td style="padding-top:22px;text-align:center;font-size:12px;color:#6b7280">
 O pagamento é identificado automaticamente. Em caso de dúvida, responda este e-mail ou fale com a escola.

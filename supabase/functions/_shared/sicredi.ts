@@ -180,6 +180,7 @@ type OpcoesChamada = {
   url: string;
   corpo?: unknown;
   incluirBeneficiario?: boolean; // instruções (baixa) exigem o header codigoBeneficiario
+  binario?: boolean; // resposta de sucesso é um arquivo (PDF): devolve os bytes em vez de texto
 };
 
 async function chamar(admin: SupabaseClient, cfg: ConfigIntegracao, op: OpcoesChamada, forcarToken = false) {
@@ -199,12 +200,13 @@ async function chamar(admin: SupabaseClient, cfg: ConfigIntegracao, op: OpcoesCh
     method: op.metodo, headers,
     body: op.corpo === undefined ? undefined : JSON.stringify(op.corpo),
   });
-  const texto = await resp.text();
-
   // token pode ter sido invalidado antes do prazo: renova e tenta de novo uma vez
   if (resp.status === 401 && !forcarToken) return chamar(admin, cfg, op, true);
 
-  return { status: resp.status, ok: resp.ok, texto };
+  if (op.binario && resp.ok) {
+    return { status: resp.status, ok: true, texto: "", bytes: new Uint8Array(await resp.arrayBuffer()) };
+  }
+  return { status: resp.status, ok: resp.ok, texto: await resp.text(), bytes: undefined as Uint8Array | undefined };
 }
 
 export async function registrarBoleto(
@@ -223,6 +225,15 @@ export async function baixarBoleto(admin: SupabaseClient, cfg: ConfigIntegracao,
     corpo: {}, incluirBeneficiario: true,
   });
   if (!r.ok) throw new ErroSicredi(mensagemDeErro(r.status, r.texto), r.status);
+}
+
+/** PDF oficial do boleto (2ª via), pela linha digitável de 47 dígitos. */
+export async function baixarPdfBoleto(admin: SupabaseClient, cfg: ConfigIntegracao, linhaDigitavel: string): Promise<Uint8Array> {
+  const linha = linhaDigitavel.replace(/\D/g, "");
+  if (linha.length !== 47) throw new ErroSicredi("Linha digitável inválida para gerar o PDF.");
+  const r = await chamar(admin, cfg, { metodo: "GET", url: `${urlBoletos(cfg.ambiente)}/pdf?linhaDigitavel=${linha}`, binario: true });
+  if (!r.ok || !r.bytes) throw new ErroSicredi(mensagemDeErro(r.status, r.texto), r.status);
+  return r.bytes;
 }
 
 /** Recupera um boleto já registrado pelo idTituloEmpresa (idempotência quando a resposta do cadastro se perdeu). */

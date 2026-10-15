@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import QRCode from "qrcode";
-import { CheckCircle2, Copy, Check, AlertCircle } from "lucide-react";
+import { CheckCircle2, Copy, Check, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Boleto = {
@@ -185,6 +185,16 @@ export default function BoletoPublico() {
                       valor={boleto.linha_digitavel.replace(/\D/g, "")}
                       exibir={formatarLinha(boleto.linha_digitavel)}
                     />
+                    <Button asChild variant="outline" className="w-full">
+                      <a
+                        href={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/boleto-pdf?t=${encodeURIComponent(token)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Baixar boleto em PDF
+                      </a>
+                    </Button>
                   </section>
                 )}
 
