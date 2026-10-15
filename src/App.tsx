@@ -39,6 +39,7 @@ import Documentos from "@/pages/Documentos";
 import GerarDocumento from "@/pages/GerarDocumento";
 import Assinaturas from "@/pages/Assinaturas";
 import AssinarDocumento from "@/pages/AssinarDocumento";
+import BoletoPublico from "@/pages/BoletoPublico";
 import VerAssinatura from "@/pages/VerAssinatura";
 import PlanosFinanceirosTurma from "@/pages/PlanosFinanceirosTurma";
 import CursosExtra from "@/pages/CursosExtra";
@@ -169,6 +170,7 @@ const App = () => (
             <Route path="/login" element={<AuthRoute />} />
             <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/assinar/:token" element={<AssinarDocumento />} />
+            <Route path="/boleto/:token" element={<BoletoPublico />} />
             <Route path="/app" element={<AppMobile />} />
             <Route path="/app/financeiro" element={<AppFinanceiro />} />
             <Route path="/plataforma" element={<PlataformaLayout />}>
