@@ -8,7 +8,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 // Regras: a família só assina depois que a escola (diretora) assinou dentro do sistema; o CPF digitado
 // precisa bater com o do responsável cadastrado (5 erros bloqueiam o link); o link expira (expira_em);
 // depois de assinado o conteúdo só abre por 30 min (cópia da família), a escola imprime pelo sistema.
-// O CPF do responsável aparece mascarado no texto exibido pelo link (ele é a conferência da assinatura).
+// O CPF (conferência da assinatura) e o RG do responsável aparecem mascarados no texto exibido pelo link.
 // Só esta função grava a assinatura (service role); quem está logado na escola não consegue.
 
 const cors = {
@@ -62,6 +62,13 @@ function mascararCpf(html: string, cpfEsperado: string | null): string {
   return html.replace(/(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)/g, (m) =>
     m.replace(/\D/g, "") === cpfEsperado ? "***.***.***-**" : m
   );
+}
+
+// O RG do responsável também não aparece no texto do link: o valor do cadastro é trocado onde estiver no texto.
+function mascararRg(html: string, rg: string | null): string {
+  const r = (rg ?? "").trim();
+  if (r.length < 5) return html;
+  return html.split(r).join("**********");
 }
 
 const expirado = (l: Linha) => !!l.expira_em && new Date(l.expira_em).getTime() < Date.now();
@@ -125,7 +132,7 @@ Deno.serve(async (req: Request) => {
       escola: l.escolas?.nome ?? null,
       titulo: l.titulo,
       alunoNome: l.alunos?.nome ?? null,
-      html: mascararCpf(await resolverLogo(db, l.corpo_html), l.cpf_esperado ?? null),
+      html: mascararRg(mascararCpf(await resolverLogo(db, l.corpo_html), l.cpf_esperado ?? null), l.rg_esperado ?? null),
       assinado: !!l.assinado_em,
       assinadoEm: l.assinado_em,
       assinanteNome: l.assinante_nome,

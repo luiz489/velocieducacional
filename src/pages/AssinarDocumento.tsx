@@ -177,8 +177,8 @@ export default function AssinarDocumento() {
           <section className="space-y-4 rounded-xl border border-border/60 bg-card p-5">
             <h2 className="font-semibold">Assinar o documento</h2>
             <p className="text-xs text-muted-foreground">
-              O CPF do responsável aparece oculto no texto acima. Para assinar, digite o CPF do responsável
-              financeiro cadastrado na escola.
+              O CPF e o RG do responsável aparecem ocultos no texto acima. Para assinar, digite o CPF do
+              responsável financeiro cadastrado na escola.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
