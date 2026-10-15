@@ -37,3 +37,17 @@ export const situacaoAssinatura = (a: {
   escola_assinou_em: string | null;
 }): SituacaoAssinatura =>
   a.assinado_em ? "assinado" : a.cancelado_em ? "cancelado" : a.escola_assinou_em ? "aguardando_familia" : "aguardando_escola";
+
+export type FormaAssinatura = "desenhada" | "nome" | "iniciais";
+export type InfoAssinatura = { forma: FormaAssinatura; estilo: string | null };
+
+const ROTULO_ESTILO: Record<string, string> = { dancing: "Elegante", vibes: "Clássica", caveat: "Manuscrita" };
+
+/** Texto para o registro do documento: como a assinatura foi feita. Vazio quando o dado não existe (assinaturas antigas). */
+export function rotuloFormaAssinatura(forma: string | null | undefined, estilo: string | null | undefined): string {
+  if (forma === "desenhada") return "Desenhada à mão";
+  const base = forma === "nome" ? "Nome por extenso digitado" : forma === "iniciais" ? "Iniciais digitadas (rubrica)" : "";
+  if (!base) return "";
+  const e = estilo ? ROTULO_ESTILO[estilo] : null;
+  return e ? `${base}, letra ${e}` : base;
+}

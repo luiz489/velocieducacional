@@ -6,7 +6,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AssinaturaCanvas } from "@/components/AssinaturaCanvas";
-import { escaparHtml, formatarCpf, formatarDataHoraBrasilia, urlFuncaoAssinatura } from "@/lib/assinaturas";
+import {
+  escaparHtml, formatarCpf, formatarDataHoraBrasilia, rotuloFormaAssinatura, urlFuncaoAssinatura, type InfoAssinatura,
+} from "@/lib/assinaturas";
 
 type AssinaturaEscola = {
   nome: string | null;
@@ -14,6 +16,8 @@ type AssinaturaEscola = {
   assinadoEm: string;
   ip: string | null;
   imagem: string | null;
+  forma: string | null;
+  estilo: string | null;
 };
 
 type Documento = {
@@ -29,6 +33,8 @@ type Documento = {
   assinanteIp: string | null;
   hashDocumento: string | null;
   assinaturaImagem: string | null;
+  assinaturaForma: string | null;
+  assinaturaEstilo: string | null;
 };
 
 const ESTILO_DOCUMENTO = `
@@ -58,6 +64,8 @@ function montarDocumento(d: Documento): string {
       ["Data e hora", `${formatarDataHoraBrasilia(e.assinadoEm)} (Brasília)`],
     ];
     if (e.ip) linhas.push(["Endereço IP", e.ip]);
+    const formaEscola = rotuloFormaAssinatura(e.forma, e.estilo);
+    if (formaEscola) linhas.push(["Forma da assinatura", formaEscola]);
     registro += blocoRegistro(`Assinatura da escola${d.escola ? ` — ${d.escola}` : ""}`, e.imagem, linhas);
   }
   if (d.assinado && d.assinadoEm) {
@@ -67,6 +75,8 @@ function montarDocumento(d: Documento): string {
       ["Data e hora", `${formatarDataHoraBrasilia(d.assinadoEm)} (Brasília)`],
     ];
     if (d.assinanteIp) linhas.push(["Endereço IP", d.assinanteIp]);
+    const formaFamilia = rotuloFormaAssinatura(d.assinaturaForma, d.assinaturaEstilo);
+    if (formaFamilia) linhas.push(["Forma da assinatura", formaFamilia]);
     registro += blocoRegistro("Assinatura do contratante", d.assinaturaImagem, linhas);
   }
   if (registro) {
@@ -86,6 +96,7 @@ export default function AssinarDocumento() {
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [imagem, setImagem] = useState<string | null>(null);
+  const [info, setInfo] = useState<InfoAssinatura>({ forma: "desenhada", estilo: null });
   const [aceite, setAceite] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
@@ -140,7 +151,7 @@ export default function AssinarDocumento() {
       const resp = await fetch(urlFuncaoAssinatura(token).split("?")[0], {
         method: "POST",
         headers: { "content-type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        body: JSON.stringify({ t: token, nome, documento: cpf, imagem, aceite }),
+        body: JSON.stringify({ t: token, nome, documento: cpf, imagem, forma: info.forma, estilo: info.estilo, aceite }),
       });
       const corpo = await resp.json().catch(() => null);
       if (!resp.ok) {
@@ -244,7 +255,7 @@ export default function AssinarDocumento() {
                 />
               </div>
             </div>
-            <AssinaturaCanvas onChange={setImagem} nomeSugerido={nome} />
+            <AssinaturaCanvas onChange={(png, i) => { setImagem(png); setInfo(i); }} nomeSugerido={nome} />
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <Checkbox checked={aceite} onCheckedChange={(c) => setAceite(!!c)} className="mt-0.5" />
               <span>

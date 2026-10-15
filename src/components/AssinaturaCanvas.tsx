@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Eraser } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { InfoAssinatura } from "@/lib/assinaturas";
 import "@fontsource/dancing-script/latin-700.css";
 import "@fontsource/great-vibes/latin-400.css";
 import "@fontsource/caveat/latin-700.css";
@@ -62,7 +63,7 @@ export function AssinaturaCanvas({
   onChange,
   nomeSugerido = "",
 }: {
-  onChange: (png: string | null) => void;
+  onChange: (png: string | null, info: InfoAssinatura) => void;
   nomeSugerido?: string;
 }) {
   const [modo, setModo] = useState<Modo>("desenhar");
@@ -86,7 +87,7 @@ export function AssinaturaCanvas({
       for (const e of ESTILOS) novas[e.id] = await textoParaPng(baseTexto, e.familia, e.peso);
       if (cancelado) return;
       setPrevias(novas);
-      onChange(novas[estilo] ?? null);
+      onChange(novas[estilo] ?? null, { forma: modo, estilo });
     })();
     return () => {
       cancelado = true;
@@ -99,7 +100,7 @@ export function AssinaturaCanvas({
     if (m === modo) return;
     setModo(m);
     setPrevias({});
-    onChange(null);
+    onChange(null, { forma: m === "desenhar" ? "desenhada" : m, estilo: null });
   };
 
   return (
@@ -175,7 +176,7 @@ export function AssinaturaCanvas({
   );
 }
 
-function QuadroDesenho({ onChange }: { onChange: (png: string | null) => void }) {
+function QuadroDesenho({ onChange }: { onChange: (png: string | null, info: InfoAssinatura) => void }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const desenhando = useRef(false);
   const temTraco = useRef(false);
@@ -232,12 +233,12 @@ function QuadroDesenho({ onChange }: { onChange: (png: string | null) => void })
   const terminar = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!desenhando.current) return;
     desenhando.current = false;
-    onChange(temTraco.current ? e.currentTarget.toDataURL("image/png") : null);
+    onChange(temTraco.current ? e.currentTarget.toDataURL("image/png") : null, { forma: "desenhada", estilo: null });
   };
 
   const limpar = () => {
     preparar();
-    onChange(null);
+    onChange(null, { forma: "desenhada", estilo: null });
   };
 
   return (

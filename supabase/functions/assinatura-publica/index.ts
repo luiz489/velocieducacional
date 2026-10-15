@@ -27,6 +27,8 @@ const admin = () =>
 const TOKEN_OK = /^[a-f0-9]{64}$/;
 const PNG_OK = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
 const LIMITE_IMAGEM = 400_000;
+const FORMAS = new Set(["desenhada", "nome", "iniciais"]);
+const ESTILOS = new Set(["dancing", "vibes", "caveat"]);
 
 function cpfValido(bruto: string): boolean {
   const c = bruto.replace(/\D/g, "");
@@ -87,6 +89,8 @@ Deno.serve(async (req: Request) => {
             assinadoEm: l.escola_assinou_em,
             ip: l.escola_assinante_ip,
             imagem: l.escola_assinatura_imagem,
+            forma: l.escola_assinatura_forma,
+            estilo: l.escola_assinatura_estilo,
           }
         : null,
       escola: l.escolas?.nome ?? null,
@@ -100,6 +104,8 @@ Deno.serve(async (req: Request) => {
       assinanteIp: l.assinante_ip,
       hashDocumento: l.hash_documento,
       assinaturaImagem: l.assinatura_imagem,
+      assinaturaForma: l.assinatura_forma,
+      assinaturaEstilo: l.assinatura_estilo,
     });
   }
 
@@ -112,6 +118,8 @@ Deno.serve(async (req: Request) => {
     const nome = String(c?.nome ?? "").trim().replace(/\s+/g, " ");
     const documento = String(c?.documento ?? "").replace(/\D/g, "");
     const imagem = String(c?.imagem ?? "");
+    const forma = String(c?.forma ?? "desenhada");
+    const estilo = forma === "desenhada" ? null : String(c?.estilo ?? "");
 
     if (!TOKEN_OK.test(token)) return json({ erro: "Link inválido." }, 404);
     if (nome.length < 5 || nome.length > 150) return json({ erro: "Informe seu nome completo." }, 400);
@@ -119,6 +127,10 @@ Deno.serve(async (req: Request) => {
     if (c?.aceite !== true) return json({ erro: "É preciso aceitar os termos para assinar." }, 400);
     if (!PNG_OK.test(imagem) || imagem.length > LIMITE_IMAGEM) {
       return json({ erro: "Assinatura inválida. Desenhe de novo no quadro." }, 400);
+    }
+
+    if (!FORMAS.has(forma) || (estilo !== null && !ESTILOS.has(estilo))) {
+      return json({ erro: "Forma de assinatura inválida." }, 400);
     }
 
     const ip =
@@ -138,6 +150,8 @@ Deno.serve(async (req: Request) => {
         assinante_ip: ip,
         assinante_user_agent: ua,
         assinatura_imagem: imagem,
+        assinatura_forma: forma,
+        assinatura_estilo: estilo,
       })
       .eq("token", token)
       .is("assinado_em", null)

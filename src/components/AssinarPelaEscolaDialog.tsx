@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AssinaturaCanvas } from "@/components/AssinaturaCanvas";
 import { toast } from "sonner";
+import type { InfoAssinatura } from "@/lib/assinaturas";
 
 const CHAVE_CARGO = "assinatura-escola-cargo";
 
@@ -23,6 +24,7 @@ type Props = {
 export function AssinarPelaEscolaDialog({ assinaturaId, titulo, alunoNome, onClose, onAssinado }: Props) {
   const [cargo, setCargo] = useState("Diretora");
   const [imagem, setImagem] = useState<string | null>(null);
+  const [info, setInfo] = useState<InfoAssinatura>({ forma: "desenhada", estilo: null });
   const [aceite, setAceite] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
@@ -67,6 +69,8 @@ export function AssinarPelaEscolaDialog({ assinaturaId, titulo, alunoNome, onClo
       p_id: assinaturaId,
       p_cargo: cargo,
       p_imagem: imagem,
+      p_forma: info.forma,
+      p_estilo: info.estilo,
     });
     setEnviando(false);
     if (error) {
@@ -101,7 +105,7 @@ export function AssinarPelaEscolaDialog({ assinaturaId, titulo, alunoNome, onClo
             <Label htmlFor="cargo-assinante">Cargo de quem assina</Label>
             <Input id="cargo-assinante" value={cargo} onChange={(e) => setCargo(e.target.value)} maxLength={80} />
           </div>
-          <AssinaturaCanvas onChange={setImagem} nomeSugerido={meuNome ?? ""} />
+          <AssinaturaCanvas onChange={(png, i) => { setImagem(png); setInfo(i); }} nomeSugerido={meuNome ?? ""} />
           <label className="flex cursor-pointer items-start gap-3 text-sm">
             <Checkbox checked={aceite} onCheckedChange={(c) => setAceite(!!c)} className="mt-0.5" />
             <span>
