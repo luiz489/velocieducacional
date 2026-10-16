@@ -290,6 +290,7 @@ export type DadosBoletoConsultado = {
   vencimento: string | null; // YYYY-MM-DD
   valorNominal: number | null;
   situacao: string | null;
+  idTituloEmpresa: string | null; // só existe em boleto registrado pela API
 };
 
 // deno-lint-ignore no-explicit-any
@@ -305,6 +306,7 @@ export function parseConsultaPorNossoNumero(json: any): DadosBoletoConsultado | 
     vencimento: bruto.dataVencimento ? String(bruto.dataVencimento).slice(0, 10) : null,
     valorNominal: Number.isFinite(valor) ? valor : null,
     situacao: bruto.situacao ? String(bruto.situacao) : null,
+    idTituloEmpresa: bruto.idTituloEmpresa ? String(bruto.idTituloEmpresa).trim() || null : null,
   };
 }
 
@@ -321,7 +323,7 @@ export type ParcelaCandidata = {
 export type ResultadoCasamento =
   | { tipo: "unico"; parcela: ParcelaCandidata }
   | { tipo: "ambiguo"; parcelas: ParcelaCandidata[] }
-  | { tipo: "nenhum"; motivo: string };
+  | { tipo: "nenhum"; motivo: string; proximas?: ParcelaCandidata[] };
 
 const igual2 = (a: number, b: number) => Math.abs(a - b) < 0.005;
 
@@ -348,7 +350,9 @@ export function casarLiquidacaoExterna(
   const iguais = doMesmoPagador.filter(
     (p) => igual2(nominal, Number(p.valor_integral ?? p.valor)) || igual2(nominal, Number(p.valor))
   );
-  if (iguais.length === 0) return { tipo: "nenhum", motivo: "Há parcela deste CPF/CNPJ neste vencimento, mas com valor diferente." };
+  if (iguais.length === 0) {
+    return { tipo: "nenhum", motivo: "Há parcela deste CPF/CNPJ neste vencimento, mas com valor diferente.", proximas: doMesmoPagador };
+  }
   if (iguais.length > 1) return { tipo: "ambiguo", parcelas: iguais };
   return { tipo: "unico", parcela: iguais[0] };
 }

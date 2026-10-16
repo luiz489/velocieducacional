@@ -35,7 +35,7 @@ export default function ParametrizacoesFinanceiras() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas_integracao_bancaria")
-        .select("banco, agencia, conta_corrente, codigo_beneficiario, posto, chave_pix, ambiente, ativo, conta_bancaria_id, multa_percentual, juros_mensal_percentual, tipo_cobranca, especie_documento, registrar_na_matricula, webhook_status, tem_credenciais, email_boleto_ativo, email_boleto_dias_antes, email_responder_para")
+        .select("banco, agencia, conta_corrente, codigo_beneficiario, posto, chave_pix, ambiente, ativo, conta_bancaria_id, multa_percentual, juros_mensal_percentual, tipo_cobranca, especie_documento, registrar_na_matricula, webhook_status, tem_credenciais, email_boleto_ativo, email_boleto_dias_antes, email_responder_para, baixa_boleto_manual")
         .eq("escola_id", escolaAtivaId!);
       if (error) throw error;
       return data ?? [];
@@ -278,7 +278,7 @@ type ConfigSicredi = {
   agencia: string; conta_corrente: string; codigo_beneficiario: string; posto: string; chave_pix: string;
   ambiente: string; conta_bancaria_id: string | null; multa_percentual: number; juros_mensal_percentual: number;
   tipo_cobranca: string; especie_documento: string; registrar_na_matricula: boolean; tem_credenciais: boolean | null; webhook_status: string | null;
-  email_boleto_ativo: boolean; email_boleto_dias_antes: number; email_responder_para: string | null;
+  email_boleto_ativo: boolean; email_boleto_dias_antes: number; email_responder_para: string | null; baixa_boleto_manual: boolean;
 };
 
 const FORM_VAZIO = {
@@ -287,7 +287,7 @@ const FORM_VAZIO = {
   conta_bancaria_id: "", multa_percentual: "2", juros_mensal_percentual: "1",
   tipo_cobranca: "HIBRIDO", especie_documento: "DUPLICATA_MERCANTIL_INDICACAO",
   registrar_na_matricula: false,
-  email_boleto_ativo: false, email_boleto_dias_antes: "5", email_responder_para: "",
+  email_boleto_ativo: false, email_boleto_dias_antes: "5", email_responder_para: "", baixa_boleto_manual: false,
 };
 
 function SicrediDialog({
@@ -325,7 +325,7 @@ function SicrediDialog({
             tipo_cobranca: config.tipo_cobranca, especie_documento: config.especie_documento,
             registrar_na_matricula: config.registrar_na_matricula,
             email_boleto_ativo: config.email_boleto_ativo, email_boleto_dias_antes: String(config.email_boleto_dias_antes ?? 5),
-            email_responder_para: config.email_responder_para ?? "",
+            email_responder_para: config.email_responder_para ?? "", baixa_boleto_manual: config.baixa_boleto_manual ?? false,
           }
         : FORM_VAZIO
     );
@@ -380,9 +380,16 @@ function SicrediDialog({
       p_dias_antes: Number(form.email_boleto_dias_antes || 5),
       p_responder_para: form.email_responder_para || null,
     });
+    const { error: errManual } = errEmail ? { error: null } : await supabase.rpc("salvar_baixa_boleto_manual", {
+      p_escola_id: escolaId, p_ativo: form.baixa_boleto_manual,
+    });
     setSalvando(false);
     if (errEmail) {
       toast.error("Integração salva, mas as opções de e-mail não: " + errEmail.message);
+      return;
+    }
+    if (errManual) {
+      toast.error("Integração salva, mas a baixa de boletos do banco não: " + errManual.message);
       return;
     }
     toast.success("Integração Sicredi salva!");
@@ -554,6 +561,18 @@ function SicrediDialog({
               </p>
             </div>
             <Switch checked={form.registrar_na_matricula} onCheckedChange={(v) => setForm({ ...form, registrar_na_matricula: v })} />
+          </div>
+
+          <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+            <div>
+              <Label className="text-sm">Dar baixa em boletos emitidos no Internet Banking</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                O banco só avisa pagamentos de boletos feitos pelo sistema. Com esta opção, os pagamentos de boletos emitidos direto no banco são
+                reconhecidos duas vezes ao dia e a parcela é baixada sozinha quando o CPF do pagador, o vencimento e o valor batem com uma única
+                parcela. O que não bater com segurança vai para "Pagamentos para conferir" no Financeiro.
+              </p>
+            </div>
+            <Switch checked={form.baixa_boleto_manual} onCheckedChange={(v) => setForm({ ...form, baixa_boleto_manual: v })} />
           </div>
 
           <div className="rounded-md border p-3 space-y-3">

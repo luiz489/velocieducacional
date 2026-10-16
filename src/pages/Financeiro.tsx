@@ -27,6 +27,7 @@ import { exportarFinanceiroPDF } from "@/lib/relatorios";
 import { gerarCarnePDF } from "@/lib/carne";
 import { supabase } from "@/integrations/supabase/client";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
+import { PagamentosParaConferir } from "@/components/PagamentosParaConferir";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -371,6 +372,7 @@ export default function Financeiro() {
         </TabsList>
 
         <TabsContent value="lancamentos" className="space-y-4">
+          <PagamentosParaConferir escolaId={escolaAtivaId} />
           {boletosComErro.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
               <div className="flex items-center gap-2 text-sm">

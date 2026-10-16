@@ -300,6 +300,9 @@ describe("liquidação de boleto emitido fora do sistema", () => {
     expect(a.valorNominal).toBe(1548);
     expect(parseConsultaPorNossoNumero([resposta])!.nossoNumero).toBe("261001760");
     expect(parseConsultaPorNossoNumero({ items: [resposta] })!.nossoNumero).toBe("261001760");
+    expect(a.idTituloEmpresa).toBeNull();
+    expect(parseConsultaPorNossoNumero({ ...resposta, idTituloEmpresa: "2dpixsssqfbxuh5iinwmxzsdt" })!.idTituloEmpresa).toBe("2dpixsssqfbxuh5iinwmxzsdt");
+    expect(parseConsultaPorNossoNumero({ ...resposta, idTituloEmpresa: "  " })!.idTituloEmpresa).toBeNull();
     expect(parseConsultaPorNossoNumero({})).toBeNull();
     expect(parseConsultaPorNossoNumero(null)).toBeNull();
   });
@@ -327,7 +330,10 @@ describe("liquidação de boleto emitido fora do sistema", () => {
     expect(casarLiquidacaoExterna(b, [parcela({ data_vencimento: "2026-04-10" })])).toMatchObject({ tipo: "nenhum" });
     const v = casarLiquidacaoExterna({ ...b, valorNominal: 900 }, [parcela()]);
     expect(v.tipo).toBe("nenhum");
-    if (v.tipo === "nenhum") expect(v.motivo).toMatch(/valor diferente/i);
+    if (v.tipo === "nenhum") {
+      expect(v.motivo).toMatch(/valor diferente/i);
+      expect(v.proximas).toHaveLength(1); // a parcela parecida vai para a conferência
+    }
     expect(casarLiquidacaoExterna({ ...b, documentoPagador: null }, [parcela()])).toMatchObject({ tipo: "nenhum" });
     expect(casarLiquidacaoExterna({ ...b, vencimento: null }, [parcela()])).toMatchObject({ tipo: "nenhum" });
   });

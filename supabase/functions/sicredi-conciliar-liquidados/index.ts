@@ -3,7 +3,7 @@ import {
   corsHeaders, json, clienteAdmin, usuarioTemPermissao, carregarConfig, listarLiquidadosDoDia, consultarPorNossoNumero,
   type ConfigIntegracao, type BoletoLiquidado,
 } from "../_shared/sicredi.ts";
-import { casarLiquidacaoExterna, type ParcelaCandidata } from "../_shared/sicredi-core.ts";
+import { casarLiquidacaoExterna, type ParcelaCandidata, type DadosBoletoConsultado } from "../_shared/sicredi-core.ts";
 
 // Rede de segurança do webhook: pergunta ao Sicredi o que foi liquidado nos últimos dias e dá baixa
 // no que o webhook não entregou. É idempotente (título já Pago não é tocado).
@@ -32,17 +32,43 @@ async function candidatasDoVencimento(admin: ReturnType<typeof clienteAdmin>, es
   }));
 }
 
-async function simularExternas(admin: ReturnType<typeof clienteAdmin>, cfg: ConfigIntegracao, escolaId: string, porNN: Map<string, BoletoLiquidado>) {
+type Candidato = { id: string; aluno: string | null; valor: number; valor_integral: number | null };
+const paraCandidato = (p: ParcelaCandidata): Candidato => ({ id: p.id, aluno: p.aluno, valor: p.valor, valor_integral: p.valor_integral });
+
+/**
+ * Boletos emitidos fora do sistema. aplicar=false (modo "simular"): só lê e devolve o que faria.
+ * aplicar=true: baixa o caso ÚNICO (mesmo CPF + vencimento + valor) e grava o resto em liquidacoes_externas para conferência.
+ */
+async function processarExternas(
+  admin: ReturnType<typeof clienteAdmin>, cfg: ConfigIntegracao, escolaId: string, chave: string,
+  porNN: Map<string, BoletoLiquidado>, aplicar: boolean
+) {
   const nns = [...porNN.keys()];
   const conhecidos = new Set<string>();
   for (let i = 0; i < nns.length; i += 200) {
     const { data } = await admin.from("financeiro").select("gateway_cobranca_id").eq("escola_id", escolaId).in("gateway_cobranca_id", nns.slice(i, i + 200));
     for (const r of data ?? []) conhecidos.add(r.gateway_cobranca_id as string);
   }
-  const desconhecidos = nns.filter((n) => !conhecidos.has(n));
+  // já tratados (baixados, resolvidos ou ignorados) não voltam; os que seguem em "conferir" são reavaliados
+  const tratados = new Set<string>();
+  if (aplicar) {
+    for (let i = 0; i < nns.length; i += 200) {
+      const { data } = await admin.from("liquidacoes_externas").select("nosso_numero, situacao").eq("escola_id", escolaId).in("nosso_numero", nns.slice(i, i + 200));
+      for (const r of data ?? []) if (r.situacao !== "conferir") tratados.add(r.nosso_numero as string);
+    }
+  }
+  const desconhecidos = nns.filter((n) => !conhecidos.has(n) && !tratados.has(n));
   const alvo = desconhecidos.slice(0, MAX_CONSULTAS_SIMULACAO);
   const cacheVenc = new Map<string, ParcelaCandidata[]>();
   const resultados: Record<string, unknown>[] = [];
+
+  const gravar = (liq: BoletoLiquidado, dados: DadosBoletoConsultado | null, campos: Record<string, unknown>) =>
+    admin.from("liquidacoes_externas").upsert({
+      escola_id: escolaId, nosso_numero: liq.nossoNumero, data_pagamento: liq.dataPagamento || null, valor_pago: liq.valorLiquidado,
+      tipo_liquidacao: liq.tipoLiquidacao || null, pagador_nome: dados?.nomePagador ?? null,
+      pagador_doc_final: dados?.documentoPagador ? dados.documentoPagador.slice(-2) : null,
+      vencimento: dados?.vencimento ?? null, valor_nominal: dados?.valorNominal ?? null, atualizado_em: new Date().toISOString(), ...campos,
+    }, { onConflict: "escola_id,nosso_numero" });
 
   const fila = [...alvo];
   await Promise.all(Array.from({ length: Math.min(3, fila.length) }, async () => {
@@ -51,14 +77,49 @@ async function simularExternas(admin: ReturnType<typeof clienteAdmin>, cfg: Conf
       const base = { prefixo: nn.slice(0, 2), valor_pago: liq.valorLiquidado, data_pagamento: liq.dataPagamento };
       try {
         const dados = await consultarPorNossoNumero(admin, cfg, nn);
-        if (!dados) { resultados.push({ ...base, resultado: "nenhum", motivo: "O Sicredi não devolveu os dados deste nosso número." }); continue; }
+        if (!dados) { resultados.push({ ...base, resultado: "erro", motivo: "O Sicredi não devolveu os dados deste nosso número." }); continue; }
+        const comum = { ...base, pagador: primeiroNome(dados.nomePagador), documento: mascarar(dados.documentoPagador), vencimento: dados.vencimento, valor_nominal: dados.valorNominal };
+
+        // boleto registrado pela API que não está em nenhuma parcela: não é "boleto manual", é algo a investigar
+        if (dados.idTituloEmpresa) {
+          resultados.push({ ...comum, resultado: "api_sem_parcela" });
+          if (aplicar) await gravar(liq, dados, { resultado: "api_sem_parcela", motivo: "Boleto registrado pela API sem parcela correspondente no sistema.", situacao: "conferir", candidatos: [] });
+          continue;
+        }
+
         let cand = dados.vencimento ? cacheVenc.get(dados.vencimento) : [];
         if (dados.vencimento && !cand) { cand = await candidatasDoVencimento(admin, escolaId, dados.vencimento); cacheVenc.set(dados.vencimento, cand); }
         const r = casarLiquidacaoExterna(dados, cand ?? []);
-        const comum = { ...base, pagador: primeiroNome(dados.nomePagador), documento: mascarar(dados.documentoPagador), vencimento: dados.vencimento, valor_nominal: dados.valorNominal };
-        if (r.tipo === "unico") resultados.push({ ...comum, resultado: "unico", aluno: primeiroNome(r.parcela.aluno), tem_boleto_api: r.parcela.tem_boleto_api });
-        else if (r.tipo === "ambiguo") resultados.push({ ...comum, resultado: "ambiguo", alunos: r.parcelas.map((p) => primeiroNome(p.aluno)) });
-        else resultados.push({ ...comum, resultado: "nenhum", motivo: r.motivo });
+
+        if (r.tipo === "unico") {
+          let baixada = false;
+          if (aplicar) {
+            const { data: tituloId, error: errBaixa } = await admin.rpc("baixar_parcela_por_boleto_externo", {
+              p_escola_id: escolaId, p_financeiro_id: r.parcela.id, p_nosso_numero: nn, p_valor_pago: liq.valorLiquidado,
+              p_data_pagamento: liq.dataPagamento, p_conta_bancaria_id: cfg.conta_bancaria_id,
+              p_forma_pagamento: /PIX/i.test(liq.tipoLiquidacao) ? "Pix" : "Boleto", p_ref_evento: `sicredi:poll-externo:${nn}:${liq.dataPagamento}`,
+            });
+            if (errBaixa) throw new Error(errBaixa.message);
+            baixada = !!tituloId;
+            if (baixada) {
+              await gravar(liq, dados, { resultado: "unico", motivo: null, situacao: "baixada", financeiro_id: tituloId, candidatos: [], resolvido_em: new Date().toISOString() });
+              await admin.from("cobranca_eventos").upsert({
+                escola_id: escolaId, chave_beneficiario: chave, id_evento: `poll-externo:${nn}:${liq.dataPagamento}`,
+                movimento: `CONSULTA_EXTERNO_${liq.tipoLiquidacao || "LIQUIDADO"}`, nosso_numero: nn, payload: liq, status: "processado",
+                detalhe: "Baixa de boleto emitido fora do sistema (casado por CPF, vencimento e valor).",
+              }, { onConflict: "chave_beneficiario,id_evento", ignoreDuplicates: true });
+            } else {
+              await gravar(liq, dados, { resultado: "nenhum", motivo: "A parcela encontrada deixou de estar em aberto.", situacao: "conferir", candidatos: [paraCandidato(r.parcela)] });
+            }
+          }
+          resultados.push({ ...comum, resultado: "unico", aluno: primeiroNome(r.parcela.aluno), tem_boleto_api: r.parcela.tem_boleto_api, baixada });
+        } else if (r.tipo === "ambiguo") {
+          resultados.push({ ...comum, resultado: "ambiguo", alunos: r.parcelas.map((p) => primeiroNome(p.aluno)) });
+          if (aplicar) await gravar(liq, dados, { resultado: "ambiguo", motivo: "Mais de uma parcela com o mesmo CPF, vencimento e valor.", situacao: "conferir", candidatos: r.parcelas.map(paraCandidato) });
+        } else {
+          resultados.push({ ...comum, resultado: "nenhum", motivo: r.motivo });
+          if (aplicar) await gravar(liq, dados, { resultado: "nenhum", motivo: r.motivo, situacao: "conferir", candidatos: (r.proximas ?? []).map(paraCandidato) });
+        }
       } catch (e) {
         resultados.push({ ...base, resultado: "erro", motivo: (e instanceof Error ? e.message : String(e)).slice(0, 160) });
       }
@@ -67,8 +128,9 @@ async function simularExternas(admin: ReturnType<typeof clienteAdmin>, cfg: Conf
 
   const contagem = (t: string) => resultados.filter((r) => r.resultado === t).length;
   return {
-    liquidados: nns.length, ja_no_sistema: conhecidos.size, sem_parcela: desconhecidos.length, consultados: alvo.length,
-    unico: contagem("unico"), ambiguo: contagem("ambiguo"), nenhum: contagem("nenhum"), erro: contagem("erro"), resultados,
+    aplicado: aplicar, liquidados: nns.length, ja_no_sistema: conhecidos.size, ja_tratados: tratados.size, sem_parcela: desconhecidos.length,
+    consultados: alvo.length, unico: contagem("unico"), baixadas: resultados.filter((r) => r.baixada === true).length,
+    ambiguo: contagem("ambiguo"), nenhum: contagem("nenhum"), api_sem_parcela: contagem("api_sem_parcela"), erro: contagem("erro"), resultados,
   };
 }
 
@@ -114,7 +176,7 @@ Deno.serve(async (req: Request) => {
   const resumo: Record<string, unknown>[] = [];
 
   for (const { escola_id } of escolas ?? []) {
-    const item: { escola_id: string; consultados: number; baixados: number; erro: string | null; simulacao?: unknown } =
+    const item: { escola_id: string; consultados: number; baixados: number; erro: string | null; simulacao?: unknown; externos?: unknown } =
       { escola_id, consultados: 0, baixados: 0, erro: null };
     try {
       const cfg: ConfigIntegracao = await carregarConfig(admin, escola_id);
@@ -129,7 +191,7 @@ Deno.serve(async (req: Request) => {
       item.consultados = porNN.size;
 
       if (simular) {
-        item.simulacao = await simularExternas(admin, cfg, escola_id, porNN);
+        item.simulacao = await processarExternas(admin, cfg, escola_id, chave, porNN, false);
         resumo.push(item);
         continue;
       }
@@ -162,6 +224,13 @@ Deno.serve(async (req: Request) => {
             detalhe: "Baixa pela consulta diária (o webhook não entregou).",
           }, { onConflict: "chave_beneficiario,id_evento", ignoreDuplicates: true });
         }
+      }
+
+      // 3) boletos emitidos fora do sistema (Internet Banking): só nas escolas com a baixa de boleto manual ligada
+      if (cfg.baixa_boleto_manual) {
+        const ext = await processarExternas(admin, cfg, escola_id, chave, porNN, true);
+        item.externos = { liquidados_sem_parcela: ext.sem_parcela, baixadas: ext.baixadas, ambiguo: ext.ambiguo, nenhum: ext.nenhum, api_sem_parcela: ext.api_sem_parcela, erro: ext.erro };
+        item.baixados += ext.baixadas;
       }
     } catch (e) {
       item.erro = e instanceof Error ? e.message.slice(0, 300) : String(e);

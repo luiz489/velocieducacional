@@ -42,6 +42,7 @@ export type ConfigIntegracao = {
   tipo_cobranca: string;
   especie_documento: string;
   registrar_na_matricula: boolean;
+  baixa_boleto_manual: boolean;
   webhook_segredo: string | null;
   webhook_contrato_id: string | null;
   webhook_status: string | null;

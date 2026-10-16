@@ -2923,6 +2923,7 @@ export type Database = {
           ambiente: string
           ativo: boolean
           atualizado_em: string
+          baixa_boleto_manual: boolean
           banco: string
           chave_pix: string
           codigo_acesso: string
@@ -2952,6 +2953,7 @@ export type Database = {
           ambiente?: string
           ativo?: boolean
           atualizado_em?: string
+          baixa_boleto_manual?: boolean
           banco?: string
           chave_pix: string
           codigo_acesso: string
@@ -2981,6 +2983,7 @@ export type Database = {
           ambiente?: string
           ativo?: boolean
           atualizado_em?: string
+          baixa_boleto_manual?: boolean
           banco?: string
           chave_pix?: string
           codigo_acesso?: string
@@ -3979,6 +3982,101 @@ export type Database = {
             columns: ["professor_id"]
             isOneToOne: false
             referencedRelation: "v_professores_seguro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      liquidacoes_externas: {
+        Row: {
+          atualizado_em: string
+          candidatos: Json
+          criado_em: string
+          data_pagamento: string | null
+          escola_id: string
+          financeiro_id: string | null
+          id: string
+          motivo: string | null
+          nosso_numero: string
+          pagador_doc_final: string | null
+          pagador_nome: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
+          resultado: string
+          situacao: string
+          tipo_liquidacao: string | null
+          valor_nominal: number | null
+          valor_pago: number | null
+          vencimento: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          candidatos?: Json
+          criado_em?: string
+          data_pagamento?: string | null
+          escola_id: string
+          financeiro_id?: string | null
+          id?: string
+          motivo?: string | null
+          nosso_numero: string
+          pagador_doc_final?: string | null
+          pagador_nome?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          resultado: string
+          situacao?: string
+          tipo_liquidacao?: string | null
+          valor_nominal?: number | null
+          valor_pago?: number | null
+          vencimento?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          candidatos?: Json
+          criado_em?: string
+          data_pagamento?: string | null
+          escola_id?: string
+          financeiro_id?: string | null
+          id?: string
+          motivo?: string | null
+          nosso_numero?: string
+          pagador_doc_final?: string | null
+          pagador_nome?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          resultado?: string
+          situacao?: string
+          tipo_liquidacao?: string | null
+          valor_nominal?: number | null
+          valor_pago?: number | null
+          vencimento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liquidacoes_externas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidacoes_externas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "liquidacoes_externas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "liquidacoes_externas_financeiro_id_fkey"
+            columns: ["financeiro_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro"
             referencedColumns: ["id"]
           },
         ]
@@ -7280,6 +7378,19 @@ export type Database = {
         Args: { p_acao: string; p_remessa_id: string }
         Returns: undefined
       }
+      baixar_parcela_por_boleto_externo: {
+        Args: {
+          p_conta_bancaria_id?: string
+          p_data_pagamento: string
+          p_escola_id: string
+          p_financeiro_id: string
+          p_forma_pagamento?: string
+          p_nosso_numero: string
+          p_ref_evento?: string
+          p_valor_pago: number
+        }
+        Returns: string
+      }
       baixar_titulo_por_cobranca_bancaria: {
         Args: {
           p_conta_bancaria_id?: string
@@ -7773,6 +7884,14 @@ export type Database = {
         Returns: undefined
       }
       renovar_prazo_assinatura: { Args: { p_id: string }; Returns: undefined }
+      resolver_liquidacao_externa: {
+        Args: { p_acao: string; p_financeiro_id?: string; p_id: string }
+        Returns: undefined
+      }
+      salvar_baixa_boleto_manual: {
+        Args: { p_ativo: boolean; p_escola_id: string }
+        Returns: undefined
+      }
       salvar_chamada: {
         Args: {
           p_data: string
