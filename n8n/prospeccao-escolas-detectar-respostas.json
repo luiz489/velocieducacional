@@ -1,0 +1,119 @@
+{
+  "name": "Prospecção Escolas - Detectar respostas (IMAP)",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "downloadAttachments": false,
+        "options": {}
+      },
+      "id": "imap-trigger",
+      "name": "Nova resposta na caixa de prospecção",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "credentials": {
+        "imap": {
+          "id": "REPLACE_ME_IMAP_CRED",
+          "name": "IMAP - Prospecção Educacional (mesma conta do SMTP separado)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resultados = [];\n\nfor (const item of $input.all()) {\n  const d = item.json;\n  let email = null;\n\n  if (d.from && d.from.value && d.from.value[0] && d.from.value[0].address) {\n    email = d.from.value[0].address;\n  } else if (typeof d.from === \"string\") {\n    const match = d.from.match(/[\\w.+-]+@[\\w-]+\\.[\\w.-]+/);\n    if (match) email = match[0];\n  } else if (d.from && d.from.text) {\n    const match = d.from.text.match(/[\\w.+-]+@[\\w-]+\\.[\\w.-]+/);\n    if (match) email = match[0];\n  }\n\n  if (!email) continue;\n\n  resultados.push({\n    json: {\n      email_remetente: email.toLowerCase().trim()\n    }\n  });\n}\n\nreturn resultados;"
+      },
+      "id": "extrair-email",
+      "name": "Extrair e-mail do remetente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "email",
+              "lookupValue": "={{ $json.email_remetente }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-lead",
+      "name": "Buscar lead pelo e-mail",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [680, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME_GOOGLE_SHEETS_CRED",
+          "name": "Google Sheets - Prospecção Educacional"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["row_number"],
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "status": "respondeu"
+          }
+        },
+        "options": {}
+      },
+      "id": "marcar-respondeu",
+      "name": "Marcar respondeu na planilha",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME_GOOGLE_SHEETS_CRED",
+          "name": "Google Sheets - Prospecção Educacional"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Nova resposta na caixa de prospecção": {
+      "main": [[{ "node": "Extrair e-mail do remetente", "type": "main", "index": 0 }]]
+    },
+    "Extrair e-mail do remetente": {
+      "main": [[{ "node": "Buscar lead pelo e-mail", "type": "main", "index": 0 }]]
+    },
+    "Buscar lead pelo e-mail": {
+      "main": [[{ "node": "Marcar respondeu na planilha", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

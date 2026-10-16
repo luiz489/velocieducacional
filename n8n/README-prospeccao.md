@@ -9,9 +9,20 @@ Arquivo: `prospeccao-escolas.json` — importar no n8n da VPS.
 3. Se for o **1º e-mail**, baixa o PDF da apresentação de uma URL pública e anexa ao e-mail. Do 2º ao 4º, envia sem anexo.
 4. Envia o e-mail via SMTP (credencial separada, só para prospecção — não usa o SMTP transacional do Educacional nem o do Tennis).
 5. Atualiza a planilha com o novo status e a data do envio.
-6. Para automaticamente quando `numero_envios` chega a 4, ou quando alguém marcar a linha como `respondeu` ou `parar`.
+6. Para automaticamente quando `numero_envios` chega a 4, ou quando a linha estiver marcada como `respondeu` ou `parar`.
 
-Não há leitura automática de resposta — quem acompanha a caixa de entrada marca manualmente na planilha.
+A detecção de resposta é automática — ver o segundo fluxo abaixo. Também dá pra marcar `respondeu`/`parar` manualmente na planilha a qualquer momento.
+
+## Segundo fluxo: detectar resposta automaticamente (IMAP)
+
+Arquivo: `prospeccao-escolas-detectar-respostas.json` — workflow separado, sempre ativo (não é agendado, dispara a cada nova mensagem na caixa).
+
+1. Monitora a caixa de entrada da conta de prospecção via IMAP.
+2. Extrai o e-mail de quem respondeu.
+3. Procura esse e-mail na planilha `Leads`.
+4. Se achar, marca `status = respondeu` na linha — o outro fluxo para de mandar a cadência pra essa escola automaticamente no próximo disparo.
+
+**Importante**: isso só funciona se a conta de e-mail usada no SMTP separado for uma caixa real com acesso IMAP (ex: Gmail/Google Workspace, ou e-mail do seu provedor de hospedagem) — **não funciona** se você usar um serviço transacional só-envio (tipo SendGrid/SES puro), porque essas respostas não caem em caixa nenhuma. Se o SMTP separado hoje não é uma caixa real, me avisa antes de configurar o IMAP.
 
 ## Planilha (Google Sheets)
 
@@ -38,8 +49,8 @@ Valores possíveis de `status` ao longo do processo: vazio → `enviado` → ...
 
 ## Depois de importar no n8n
 
-1. **Credenciais**: crie/selecione no node "Ler planilha de leads" e "Atualizar status na planilha" a credencial Google Sheets OAuth2, e nos dois nodes de envio de e-mail a credencial SMTP — use um SMTP **separado** dos já existentes (Tennis e Educacional transacional), já que é envio frio em volume. Ver `[[n8n-credencial-smtp-separada]]`.
-2. **Ativar o workflow**: a importação deixa o fluxo inativo. É preciso ativar (`active: true`) e **reiniciar o n8n** — import sem restart engana e o webhook/schedule não sobe de fato. Ver `[[n8n-import-desativa-workflow]]`.
+1. **Credenciais**: crie/selecione no node "Ler planilha de leads" e "Atualizar status na planilha" a credencial Google Sheets OAuth2, e nos dois nodes de envio de e-mail a credencial SMTP — use um SMTP **separado** dos já existentes (Tennis e Educacional transacional), já que é envio frio em volume. No fluxo de detecção, configure também a credencial IMAP (mesma conta do SMTP separado) e reaproveite a credencial Google Sheets. Ver `[[n8n-credencial-smtp-separada]]`.
+2. **Ativar os dois workflows**: a importação deixa o fluxo inativo. É preciso ativar (`active: true`) e **reiniciar o n8n** — import sem restart engana e o webhook/schedule/IMAP não sobe de fato. Ver `[[n8n-import-desativa-workflow]]`.
 3. Rode uma vez manualmente com 1-2 linhas de teste antes de liberar pra planilha cheia.
 
 ## Ajustes fáceis de fazer depois
