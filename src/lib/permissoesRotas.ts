@@ -18,6 +18,7 @@ export const ROTA_MODULO: Record<string, string> = {
   "/planos-financeiros": "financeiro",
   "/contratos": "financeiro",
   "/contas-a-pagar": "compras",
+  "/remessa-pagamentos": "compras",
   "/compras": "compras",
   "/contas-bancarias": "conciliacao",
   "/cursos-extras": "cursos_extra",

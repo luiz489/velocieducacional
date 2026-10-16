@@ -27,6 +27,7 @@ import {
   PenLine,
   Wallet,
   Dumbbell,
+  Send,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -79,6 +80,7 @@ const menuGroups = [
       { title: "Central de Faturamento", url: "/faturamento", icon: Receipt },
       { title: "Parametrizações Financeiras", url: "/parametrizacoes-financeiras", icon: Landmark },
       { title: "Contas a Pagar", url: "/contas-a-pagar", icon: ClipboardList },
+      { title: "Remessa de Pagamentos", url: "/remessa-pagamentos", icon: Send },
       { title: "Contas Bancárias", url: "/contas-bancarias", icon: Landmark },
       { title: "Planos por Turma", url: "/planos-financeiros", icon: Wallet },
       { title: "Cursos Extracurriculares", url: "/cursos-extras", icon: Dumbbell },

@@ -21,6 +21,7 @@ import Chamada from "@/pages/Chamada";
 import PeriodosLetivos from "@/pages/PeriodosLetivos";
 import Ocorrencias from "@/pages/Ocorrencias";
 import ContasPagar from "@/pages/ContasPagar";
+import RemessaPagamentos from "@/pages/RemessaPagamentos";
 import Contratos from "@/pages/Contratos";
 import Compras from "@/pages/Compras";
 import Configuracoes from "@/pages/Configuracoes";
@@ -105,6 +106,7 @@ function ProtectedRoutes() {
         <Route path="/faturamento" element={<CentralFaturamento />} />
         <Route path="/parametrizacoes-financeiras" element={<ParametrizacoesFinanceiras />} />
         <Route path="/contas-a-pagar" element={<ContasPagar />} />
+        <Route path="/remessa-pagamentos" element={<RemessaPagamentos />} />
         <Route path="/planos-financeiros" element={<PlanosFinanceirosTurma />} />
         <Route path="/cursos-extras" element={<CursosExtra />} />
         <Route path="/contas-bancarias" element={<ContasBancarias />} />

@@ -5513,6 +5513,214 @@ export type Database = {
           },
         ]
       }
+      remessas_pagamento: {
+        Row: {
+          cancelada_em: string | null
+          concluida_em: string | null
+          conta_bancaria_id: string | null
+          created_at: string
+          criado_por: string | null
+          data_pagamento: string
+          enviada_em: string | null
+          escola_id: string
+          id: string
+          numero: number
+          observacoes: string | null
+          qtde: number
+          status: string
+          total: number
+        }
+        Insert: {
+          cancelada_em?: string | null
+          concluida_em?: string | null
+          conta_bancaria_id?: string | null
+          created_at?: string
+          criado_por?: string | null
+          data_pagamento: string
+          enviada_em?: string | null
+          escola_id: string
+          id?: string
+          numero: number
+          observacoes?: string | null
+          qtde?: number
+          status?: string
+          total?: number
+        }
+        Update: {
+          cancelada_em?: string | null
+          concluida_em?: string | null
+          conta_bancaria_id?: string | null
+          created_at?: string
+          criado_por?: string | null
+          data_pagamento?: string
+          enviada_em?: string | null
+          escola_id?: string
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          qtde?: number
+          status?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remessas_pagamento_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      remessas_pagamento_itens: {
+        Row: {
+          agencia: string | null
+          agencia_dv: string | null
+          banco_codigo: string | null
+          banco_nome: string | null
+          chave_pix: string | null
+          codigo_barras: string | null
+          conta: string | null
+          conta_a_pagar_id: string
+          conta_dv: string | null
+          created_at: string
+          documento: string | null
+          escola_id: string
+          favorecido_id: string
+          favorecido_nome: string
+          forma_pagamento: string
+          id: string
+          motivo: string | null
+          origem: string
+          remessa_id: string
+          status: string
+          tipo_chave_pix: string | null
+          tipo_conta: string | null
+          valor: number
+        }
+        Insert: {
+          agencia?: string | null
+          agencia_dv?: string | null
+          banco_codigo?: string | null
+          banco_nome?: string | null
+          chave_pix?: string | null
+          codigo_barras?: string | null
+          conta?: string | null
+          conta_a_pagar_id: string
+          conta_dv?: string | null
+          created_at?: string
+          documento?: string | null
+          escola_id: string
+          favorecido_id: string
+          favorecido_nome: string
+          forma_pagamento: string
+          id?: string
+          motivo?: string | null
+          origem: string
+          remessa_id: string
+          status?: string
+          tipo_chave_pix?: string | null
+          tipo_conta?: string | null
+          valor: number
+        }
+        Update: {
+          agencia?: string | null
+          agencia_dv?: string | null
+          banco_codigo?: string | null
+          banco_nome?: string | null
+          chave_pix?: string | null
+          codigo_barras?: string | null
+          conta?: string | null
+          conta_a_pagar_id?: string
+          conta_dv?: string | null
+          created_at?: string
+          documento?: string | null
+          escola_id?: string
+          favorecido_id?: string
+          favorecido_nome?: string
+          forma_pagamento?: string
+          id?: string
+          motivo?: string | null
+          origem?: string
+          remessa_id?: string
+          status?: string
+          tipo_chave_pix?: string | null
+          tipo_conta?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remessas_pagamento_itens_conta_a_pagar_id_fkey"
+            columns: ["conta_a_pagar_id"]
+            isOneToOne: false
+            referencedRelation: "contas_a_pagar"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_itens_conta_a_pagar_id_fkey"
+            columns: ["conta_a_pagar_id"]
+            isOneToOne: false
+            referencedRelation: "v_pagamentos_funcionarios_export"
+            referencedColumns: ["conta_id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_itens_conta_a_pagar_id_fkey"
+            columns: ["conta_a_pagar_id"]
+            isOneToOne: false
+            referencedRelation: "v_pagamentos_professores_export"
+            referencedColumns: ["conta_id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_itens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_itens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_resumo"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_itens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpis_por_escola"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "remessas_pagamento_itens_remessa_id_fkey"
+            columns: ["remessa_id"]
+            isOneToOne: false
+            referencedRelation: "remessas_pagamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saas_contratos: {
         Row: {
           cidade_contratante: string | null
@@ -7068,6 +7276,10 @@ export type Database = {
           revertidos_pendente: number
         }[]
       }
+      atualizar_status_remessa: {
+        Args: { p_acao: string; p_remessa_id: string }
+        Returns: undefined
+      }
       baixar_titulo_por_cobranca_bancaria: {
         Args: {
           p_conta_bancaria_id?: string
@@ -7249,6 +7461,16 @@ export type Database = {
           p_dias_trial?: number
           p_nome_escola: string
           p_plano_id: string
+        }
+        Returns: string
+      }
+      criar_remessa_pagamento: {
+        Args: {
+          p_conta_bancaria_id: string
+          p_contas: string[]
+          p_data_pagamento: string
+          p_escola_id: string
+          p_observacoes?: string
         }
         Returns: string
       }
