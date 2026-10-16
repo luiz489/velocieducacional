@@ -1,3 +1,5 @@
+import { DadosBancariosFields } from "@/components/DadosBancariosFields";
+import { dadosBancariosDe, dadosBancariosParaSalvar, validarDadosBancarios } from "@/lib/dadosBancarios";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +68,9 @@ type Funcionario = {
   conta: string | null;
   tipo_conta: string | null;
   chave_pix: string | null;
+  agencia_dv: string | null;
+  conta_dv: string | null;
+  tipo_chave_pix: string | null;
   ativo: boolean;
   observacoes: string | null;
 };
@@ -79,7 +84,7 @@ const emptyForm = {
   tipo_contrato: "Indeterminado", data_admissao: "", jornada_semanal_horas: "44",
   horario_trabalho: "", salario_base: "", data_vigencia_salario: "", dia_pagamento: "5",
   vale_transporte: "0", vale_refeicao: "0", plano_saude: "0",
-  banco_codigo: "", banco_nome: "", agencia: "", conta: "", tipo_conta: "Corrente", chave_pix: "",
+  banco_codigo: "", banco_nome: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", tipo_conta: "corrente", tipo_chave_pix: "", chave_pix: "",
   ativo: true, observacoes: "",
 };
 
@@ -142,8 +147,7 @@ export default function Funcionarios() {
       vale_transporte: f.vale_transporte != null ? String(f.vale_transporte) : "0",
       vale_refeicao: f.vale_refeicao != null ? String(f.vale_refeicao) : "0",
       plano_saude: f.plano_saude != null ? String(f.plano_saude) : "0",
-      banco_codigo: f.banco_codigo ?? "", banco_nome: f.banco_nome ?? "", agencia: f.agencia ?? "",
-      conta: f.conta ?? "", tipo_conta: f.tipo_conta ?? "Corrente", chave_pix: f.chave_pix ?? "",
+      ...dadosBancariosDe(f),
       ativo: f.ativo, observacoes: f.observacoes ?? "",
     });
     setOpen(true);
@@ -168,6 +172,8 @@ export default function Funcionarios() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const errosBanco = validarDadosBancarios(form);
+      if (errosBanco.length) throw new Error(errosBanco[0]);
       const payload = {
         nome: form.nome,
         cpf: form.cpf,
@@ -209,12 +215,8 @@ export default function Funcionarios() {
         vale_transporte: Number(form.vale_transporte) || 0,
         vale_refeicao: Number(form.vale_refeicao) || 0,
         plano_saude: Number(form.plano_saude) || 0,
-        banco_codigo: form.banco_codigo || null,
+        ...dadosBancariosParaSalvar(form),
         banco_nome: form.banco_nome || null,
-        agencia: form.agencia || null,
-        conta: form.conta || null,
-        tipo_conta: form.tipo_conta || null,
-        chave_pix: form.chave_pix || null,
         ativo: form.ativo,
         observacoes: form.observacoes || null,
       };
@@ -578,39 +580,11 @@ export default function Funcionarios() {
             </div>
 
             <div className="border-t pt-4">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Dados bancários (para depósito/PIX)</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Banco</Label>
-                  <Input value={form.banco_nome} onChange={(e) => setForm({ ...form, banco_nome: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Código do Banco</Label>
-                  <Input value={form.banco_codigo} onChange={(e) => setForm({ ...form, banco_codigo: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Agência</Label>
-                  <Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Conta</Label>
-                  <Input value={form.conta} onChange={(e) => setForm({ ...form, conta: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Tipo de Conta</Label>
-                  <Select value={form.tipo_conta} onValueChange={(v) => setForm({ ...form, tipo_conta: v })}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Corrente">Corrente</SelectItem>
-                      <SelectItem value="Poupança">Poupança</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Chave PIX</Label>
-                  <Input value={form.chave_pix} onChange={(e) => setForm({ ...form, chave_pix: e.target.value })} />
-                </div>
-              </div>
+              <DadosBancariosFields
+                value={dadosBancariosDe(form)}
+                onChange={(patch) => setForm({ ...form, ...patch })}
+                descricao="Usados para gerar o pagamento do salário por arquivo bancário ou Pix."
+              />
             </div>
 
             <div className="border-t pt-4">

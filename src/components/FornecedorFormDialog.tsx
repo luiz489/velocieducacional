@@ -11,6 +11,8 @@ import {
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
 import { mascaraCPF, mascaraTelefone } from "@/lib/masks";
+import { DadosBancariosFields } from "@/components/DadosBancariosFields";
+import { DADOS_BANCARIOS_VAZIO, dadosBancariosDe, dadosBancariosParaSalvar, validarDadosBancarios } from "@/lib/dadosBancarios";
 
 /** Aplica máscara de CPF (até 11 dígitos) ou CNPJ (12-14 dígitos), conforme o tamanho digitado. */
 function mascaraCnpjOuCpf(valor: string): string {
@@ -37,13 +39,17 @@ export type FornecedorCompleto = {
   conta: string | null;
   tipo_conta: string | null;
   chave_pix: string | null;
+  banco_codigo: string | null;
+  agencia_dv: string | null;
+  conta_dv: string | null;
+  tipo_chave_pix: string | null;
   observacoes: string | null;
 };
 
 const emptyForm = {
   nome: "", razao_social: "", cnpj_cpf: "", categoria: "", telefone: "", email: "",
   cep: "", endereco: "", bairro: "", cidade: "", uf: "",
-  banco: "", agencia: "", conta: "", tipo_conta: "", chave_pix: "", observacoes: "",
+  ...DADOS_BANCARIOS_VAZIO, observacoes: "",
 };
 
 export function FornecedorFormDialog({
@@ -72,8 +78,7 @@ export function FornecedorFormDialog({
               categoria: editing.categoria ?? "", telefone: editing.telefone ?? "", email: editing.email ?? "",
               cep: editing.cep ?? "", endereco: editing.endereco ?? "", bairro: editing.bairro ?? "",
               cidade: editing.cidade ?? "", uf: editing.uf ?? "",
-              banco: editing.banco ?? "", agencia: editing.agencia ?? "", conta: editing.conta ?? "",
-              tipo_conta: editing.tipo_conta ?? "", chave_pix: editing.chave_pix ?? "",
+              ...dadosBancariosDe(editing),
               observacoes: editing.observacoes ?? "",
             }
           : emptyForm
@@ -118,6 +123,11 @@ export function FornecedorFormDialog({
       toast.error("Nome é obrigatório.");
       return;
     }
+    const errosBanco = validarDadosBancarios(form);
+    if (errosBanco.length) {
+      toast.error(errosBanco[0]);
+      return;
+    }
     setSaving(true);
     const payload = {
       nome: form.nome.trim(),
@@ -131,11 +141,8 @@ export function FornecedorFormDialog({
       bairro: form.bairro || null,
       cidade: form.cidade || null,
       uf: form.uf || null,
-      banco: form.banco || null,
-      agencia: form.agencia || null,
-      conta: form.conta || null,
-      tipo_conta: form.tipo_conta || null,
-      chave_pix: form.chave_pix || null,
+      banco: form.banco_nome || null,
+      ...dadosBancariosParaSalvar(form),
       observacoes: form.observacoes || null,
     };
     const query = editing
@@ -229,38 +236,11 @@ export function FornecedorFormDialog({
           </div>
 
           <div className="border-t pt-4">
-            <p className="text-sm font-medium text-muted-foreground mb-2">Dados bancários</p>
-            <p className="text-xs text-muted-foreground -mt-1 mb-2">Usados pra gerar/enviar pagamentos a este fornecedor.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Banco</Label>
-                <Input value={form.banco} onChange={(e) => setForm({ ...form, banco: e.target.value })} />
-              </div>
-              <div>
-                <Label>Tipo de Conta</Label>
-                <select
-                  value={form.tipo_conta}
-                  onChange={(e) => setForm({ ...form, tipo_conta: e.target.value })}
-                  className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Não informado</option>
-                  <option value="corrente">Conta Corrente</option>
-                  <option value="poupanca">Poupança</option>
-                </select>
-              </div>
-              <div>
-                <Label>Agência</Label>
-                <Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} />
-              </div>
-              <div>
-                <Label>Conta</Label>
-                <Input value={form.conta} onChange={(e) => setForm({ ...form, conta: e.target.value })} />
-              </div>
-              <div className="col-span-2">
-                <Label>Chave Pix</Label>
-                <Input value={form.chave_pix} onChange={(e) => setForm({ ...form, chave_pix: e.target.value })} />
-              </div>
-            </div>
+            <DadosBancariosFields
+              value={dadosBancariosDe(form)}
+              onChange={(patch) => setForm({ ...form, ...patch })}
+              descricao="Usados para gerar o pagamento a este fornecedor por arquivo bancário ou Pix."
+            />
           </div>
 
           <div>

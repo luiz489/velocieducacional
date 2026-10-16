@@ -1,3 +1,5 @@
+import { DadosBancariosFields } from "@/components/DadosBancariosFields";
+import { dadosBancariosDe, dadosBancariosParaSalvar, validarDadosBancarios } from "@/lib/dadosBancarios";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +48,9 @@ type Professor = {
   conta: string | null;
   tipo_conta: string | null;
   chave_pix: string | null;
+  agencia_dv: string | null;
+  conta_dv: string | null;
+  tipo_chave_pix: string | null;
   valor_mensal: number | null;
   dia_pagamento: number | null;
 };
@@ -74,8 +79,11 @@ const emptyForm = {
   banco_codigo: "",
   banco_nome: "",
   agencia: "",
+  agencia_dv: "",
   conta: "",
-  tipo_conta: "Corrente",
+  conta_dv: "",
+  tipo_conta: "corrente",
+  tipo_chave_pix: "",
   chave_pix: "",
   valor_mensal: "",
   dia_pagamento: "5",
@@ -144,12 +152,7 @@ export default function Professores() {
       tipo_contratacao: p.tipo_contratacao ?? "CLT",
       cnpj: p.cnpj ?? "",
       razao_social: p.razao_social ?? "",
-      banco_codigo: p.banco_codigo ?? "",
-      banco_nome: p.banco_nome ?? "",
-      agencia: p.agencia ?? "",
-      conta: p.conta ?? "",
-      tipo_conta: p.tipo_conta ?? "Corrente",
-      chave_pix: p.chave_pix ?? "",
+      ...dadosBancariosDe(p),
       valor_mensal: p.valor_mensal != null ? String(p.valor_mensal) : "",
       dia_pagamento: p.dia_pagamento != null ? String(p.dia_pagamento) : "5",
     });
@@ -175,6 +178,8 @@ export default function Professores() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const errosBanco = validarDadosBancarios(form);
+      if (errosBanco.length) throw new Error(errosBanco[0]);
       const payload = {
         nome: form.nome,
         email: form.email || null,
@@ -199,12 +204,8 @@ export default function Professores() {
         tipo_contratacao: form.tipo_contratacao,
         cnpj: form.tipo_contratacao === "PJ" ? (form.cnpj || null) : null,
         razao_social: form.tipo_contratacao === "PJ" ? (form.razao_social || null) : null,
-        banco_codigo: form.banco_codigo || null,
+        ...dadosBancariosParaSalvar(form),
         banco_nome: form.banco_nome || null,
-        agencia: form.agencia || null,
-        conta: form.conta || null,
-        tipo_conta: form.tipo_conta || null,
-        chave_pix: form.chave_pix || null,
         valor_mensal: form.tipo_contratacao === "PJ" && form.valor_mensal ? Number(form.valor_mensal) : null,
         dia_pagamento: form.tipo_contratacao === "PJ" && form.dia_pagamento ? Number(form.dia_pagamento) : null,
       };
@@ -482,36 +483,12 @@ export default function Professores() {
                 </>
               )}
 
-              <div className="col-span-2 text-xs text-muted-foreground -mb-1">Dados bancários (para depósito/PIX)</div>
-              <div>
-                <Label>Banco</Label>
-                <Input value={form.banco_nome} onChange={(e) => setForm({ ...form, banco_nome: e.target.value })} placeholder="Ex: Banco do Brasil" />
-              </div>
-              <div>
-                <Label>Código do Banco</Label>
-                <Input value={form.banco_codigo} onChange={(e) => setForm({ ...form, banco_codigo: e.target.value })} placeholder="Ex: 001" />
-              </div>
-              <div>
-                <Label>Agência</Label>
-                <Input value={form.agencia} onChange={(e) => setForm({ ...form, agencia: e.target.value })} />
-              </div>
-              <div>
-                <Label>Conta</Label>
-                <Input value={form.conta} onChange={(e) => setForm({ ...form, conta: e.target.value })} />
-              </div>
-              <div>
-                <Label>Tipo de Conta</Label>
-                <Select value={form.tipo_conta} onValueChange={(v) => setForm({ ...form, tipo_conta: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Corrente">Corrente</SelectItem>
-                    <SelectItem value="Poupança">Poupança</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Chave PIX</Label>
-                <Input value={form.chave_pix} onChange={(e) => setForm({ ...form, chave_pix: e.target.value })} placeholder="CPF, e-mail, telefone ou aleatória" />
+              <div className="col-span-2">
+                <DadosBancariosFields
+                  value={dadosBancariosDe(form)}
+                  onChange={(patch) => setForm({ ...form, ...patch })}
+                  descricao="Usados para gerar o pagamento por arquivo bancário ou Pix."
+                />
               </div>
             </div>
           </div>

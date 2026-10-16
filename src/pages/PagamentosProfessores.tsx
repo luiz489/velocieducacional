@@ -33,6 +33,9 @@ type PagamentoRow = {
   conta: string | null;
   tipo_conta: string | null;
   chave_pix: string | null;
+  agencia_dv: string | null;
+  conta_dv: string | null;
+  tipo_chave_pix: string | null;
   valor: number;
   data_vencimento: string;
   competencia_mes: number;
@@ -126,8 +129,8 @@ export default function PagamentosProfessores() {
     }
 
     const cabecalho = [
-      "Favorecido", "CNPJ", "Banco", "Codigo_Banco", "Agencia", "Conta",
-      "Tipo_Conta", "Chave_PIX", "Valor", "Data_Vencimento",
+      "Favorecido", "CNPJ", "Banco", "Codigo_Banco", "Agencia", "Agencia_DV", "Conta", "Conta_DV",
+      "Tipo_Conta", "Tipo_Chave_PIX", "Chave_PIX", "Valor", "Data_Vencimento",
     ];
     const linhasCSV = linhas.map((p) => [
       p.razao_social || p.professor_nome,
@@ -135,8 +138,11 @@ export default function PagamentosProfessores() {
       p.banco_nome || "",
       p.banco_codigo || "",
       p.agencia || "",
+      p.agencia_dv || "",
       p.conta || "",
+      p.conta_dv || "",
       p.tipo_conta || "",
+      p.tipo_chave_pix || "",
       p.chave_pix || "",
       p.valor.toFixed(2).replace(".", ","),
       dataBR(p.data_vencimento),

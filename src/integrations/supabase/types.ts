@@ -1651,10 +1651,12 @@ export type Database = {
       contas_a_pagar: {
         Row: {
           categoria: string
+          codigo_barras: string | null
           competencia_ano: number | null
           competencia_mes: number | null
           competencia_referencia: string | null
           comprovante_url: string | null
+          conta_bancaria_id: string | null
           contrato_id: string | null
           created_at: string
           data_pagamento: string | null
@@ -1665,6 +1667,7 @@ export type Database = {
           escola_id: string
           faturado: boolean
           faturado_em: string | null
+          forma_pagamento: string | null
           fornecedor: string
           fornecedor_id: string | null
           funcionario_id: string | null
@@ -1678,10 +1681,12 @@ export type Database = {
         }
         Insert: {
           categoria?: string
+          codigo_barras?: string | null
           competencia_ano?: number | null
           competencia_mes?: number | null
           competencia_referencia?: string | null
           comprovante_url?: string | null
+          conta_bancaria_id?: string | null
           contrato_id?: string | null
           created_at?: string
           data_pagamento?: string | null
@@ -1692,6 +1697,7 @@ export type Database = {
           escola_id: string
           faturado?: boolean
           faturado_em?: string | null
+          forma_pagamento?: string | null
           fornecedor: string
           fornecedor_id?: string | null
           funcionario_id?: string | null
@@ -1705,10 +1711,12 @@ export type Database = {
         }
         Update: {
           categoria?: string
+          codigo_barras?: string | null
           competencia_ano?: number | null
           competencia_mes?: number | null
           competencia_referencia?: string | null
           comprovante_url?: string | null
+          conta_bancaria_id?: string | null
           contrato_id?: string | null
           created_at?: string
           data_pagamento?: string | null
@@ -1719,6 +1727,7 @@ export type Database = {
           escola_id?: string
           faturado?: boolean
           faturado_em?: string | null
+          forma_pagamento?: string | null
           fornecedor?: string
           fornecedor_id?: string | null
           funcionario_id?: string | null
@@ -1731,6 +1740,13 @@ export type Database = {
           valor?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "contas_a_pagar_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contas_a_pagar_contrato_id_fkey"
             columns: ["contrato_id"]
@@ -3365,15 +3381,18 @@ export type Database = {
       fornecedores: {
         Row: {
           agencia: string | null
+          agencia_dv: string | null
           ativo: boolean
           bairro: string | null
           banco: string | null
+          banco_codigo: string | null
           categoria: string | null
           cep: string | null
           chave_pix: string | null
           cidade: string | null
           cnpj_cpf: string | null
           conta: string | null
+          conta_dv: string | null
           created_at: string
           email: string | null
           endereco: string | null
@@ -3383,21 +3402,25 @@ export type Database = {
           observacoes: string | null
           razao_social: string | null
           telefone: string | null
+          tipo_chave_pix: string | null
           tipo_conta: string | null
           uf: string | null
           updated_at: string
         }
         Insert: {
           agencia?: string | null
+          agencia_dv?: string | null
           ativo?: boolean
           bairro?: string | null
           banco?: string | null
+          banco_codigo?: string | null
           categoria?: string | null
           cep?: string | null
           chave_pix?: string | null
           cidade?: string | null
           cnpj_cpf?: string | null
           conta?: string | null
+          conta_dv?: string | null
           created_at?: string
           email?: string | null
           endereco?: string | null
@@ -3407,21 +3430,25 @@ export type Database = {
           observacoes?: string | null
           razao_social?: string | null
           telefone?: string | null
+          tipo_chave_pix?: string | null
           tipo_conta?: string | null
           uf?: string | null
           updated_at?: string
         }
         Update: {
           agencia?: string | null
+          agencia_dv?: string | null
           ativo?: boolean
           bairro?: string | null
           banco?: string | null
+          banco_codigo?: string | null
           categoria?: string | null
           cep?: string | null
           chave_pix?: string | null
           cidade?: string | null
           cnpj_cpf?: string | null
           conta?: string | null
+          conta_dv?: string | null
           created_at?: string
           email?: string | null
           endereco?: string | null
@@ -3431,6 +3458,7 @@ export type Database = {
           observacoes?: string | null
           razao_social?: string | null
           telefone?: string | null
+          tipo_chave_pix?: string | null
           tipo_conta?: string | null
           uf?: string | null
           updated_at?: string
@@ -3621,6 +3649,7 @@ export type Database = {
       funcionarios: {
         Row: {
           agencia: string | null
+          agencia_dv: string | null
           ativo: boolean
           bairro: string | null
           banco_codigo: string | null
@@ -3632,6 +3661,7 @@ export type Database = {
           cidade: string | null
           codigo_cbo: string | null
           conta: string | null
+          conta_dv: string | null
           cor_raca: string | null
           cpf: string
           created_at: string
@@ -3668,6 +3698,7 @@ export type Database = {
           salario_base: number
           sexo: string | null
           telefone: string | null
+          tipo_chave_pix: string | null
           tipo_conta: string | null
           tipo_contrato: string
           uf: string | null
@@ -3677,6 +3708,7 @@ export type Database = {
         }
         Insert: {
           agencia?: string | null
+          agencia_dv?: string | null
           ativo?: boolean
           bairro?: string | null
           banco_codigo?: string | null
@@ -3688,6 +3720,7 @@ export type Database = {
           cidade?: string | null
           codigo_cbo?: string | null
           conta?: string | null
+          conta_dv?: string | null
           cor_raca?: string | null
           cpf: string
           created_at?: string
@@ -3724,6 +3757,7 @@ export type Database = {
           salario_base?: number
           sexo?: string | null
           telefone?: string | null
+          tipo_chave_pix?: string | null
           tipo_conta?: string | null
           tipo_contrato?: string
           uf?: string | null
@@ -3733,6 +3767,7 @@ export type Database = {
         }
         Update: {
           agencia?: string | null
+          agencia_dv?: string | null
           ativo?: boolean
           bairro?: string | null
           banco_codigo?: string | null
@@ -3744,6 +3779,7 @@ export type Database = {
           cidade?: string | null
           codigo_cbo?: string | null
           conta?: string | null
+          conta_dv?: string | null
           cor_raca?: string | null
           cpf?: string
           created_at?: string
@@ -3780,6 +3816,7 @@ export type Database = {
           salario_base?: number
           sexo?: string | null
           telefone?: string | null
+          tipo_chave_pix?: string | null
           tipo_conta?: string | null
           tipo_contrato?: string
           uf?: string | null
@@ -5105,6 +5142,7 @@ export type Database = {
       professores: {
         Row: {
           agencia: string | null
+          agencia_dv: string | null
           ativo: boolean
           bairro: string | null
           banco_codigo: string | null
@@ -5114,6 +5152,7 @@ export type Database = {
           cidade: string | null
           cnpj: string | null
           conta: string | null
+          conta_dv: string | null
           cpf: string | null
           created_at: string
           data_admissao: string | null
@@ -5131,6 +5170,7 @@ export type Database = {
           razao_social: string | null
           rg: string | null
           telefone: string | null
+          tipo_chave_pix: string | null
           tipo_conta: string | null
           tipo_contratacao: string
           uf: string | null
@@ -5139,6 +5179,7 @@ export type Database = {
         }
         Insert: {
           agencia?: string | null
+          agencia_dv?: string | null
           ativo?: boolean
           bairro?: string | null
           banco_codigo?: string | null
@@ -5148,6 +5189,7 @@ export type Database = {
           cidade?: string | null
           cnpj?: string | null
           conta?: string | null
+          conta_dv?: string | null
           cpf?: string | null
           created_at?: string
           data_admissao?: string | null
@@ -5165,6 +5207,7 @@ export type Database = {
           razao_social?: string | null
           rg?: string | null
           telefone?: string | null
+          tipo_chave_pix?: string | null
           tipo_conta?: string | null
           tipo_contratacao?: string
           uf?: string | null
@@ -5173,6 +5216,7 @@ export type Database = {
         }
         Update: {
           agencia?: string | null
+          agencia_dv?: string | null
           ativo?: boolean
           bairro?: string | null
           banco_codigo?: string | null
@@ -5182,6 +5226,7 @@ export type Database = {
           cidade?: string | null
           cnpj?: string | null
           conta?: string | null
+          conta_dv?: string | null
           cpf?: string | null
           created_at?: string
           data_admissao?: string | null
@@ -5199,6 +5244,7 @@ export type Database = {
           razao_social?: string | null
           rg?: string | null
           telefone?: string | null
+          tipo_chave_pix?: string | null
           tipo_conta?: string | null
           tipo_contratacao?: string
           uf?: string | null
@@ -6406,6 +6452,29 @@ export type Database = {
         }
         Relationships: []
       }
+      v_favorecidos_pagamento: {
+        Row: {
+          agencia: string | null
+          agencia_dv: string | null
+          ativo: boolean | null
+          banco_codigo: string | null
+          banco_nome: string | null
+          chave_pix: string | null
+          conta: string | null
+          conta_dv: string | null
+          documento: string | null
+          escola_id: string | null
+          id: string | null
+          nome: string | null
+          origem: string | null
+          pendencias: string | null
+          pronto_para_pagar: boolean | null
+          tipo_chave_pix: string | null
+          tipo_conta: string | null
+          vinculo: string | null
+        }
+        Relationships: []
+      }
       v_frequencia_chamada: {
         Row: {
           aulas: number | null
@@ -6450,6 +6519,7 @@ export type Database = {
       v_funcionarios_seguro: {
         Row: {
           agencia: string | null
+          agencia_dv: string | null
           ativo: boolean | null
           bairro: string | null
           banco_codigo: string | null
@@ -6461,6 +6531,7 @@ export type Database = {
           cidade: string | null
           codigo_cbo: string | null
           conta: string | null
+          conta_dv: string | null
           cor_raca: string | null
           cpf: string | null
           created_at: string | null
@@ -6497,6 +6568,7 @@ export type Database = {
           salario_base: number | null
           sexo: string | null
           telefone: string | null
+          tipo_chave_pix: string | null
           tipo_conta: string | null
           tipo_contrato: string | null
           uf: string | null
@@ -6506,6 +6578,7 @@ export type Database = {
         }
         Insert: {
           agencia?: never
+          agencia_dv?: never
           ativo?: boolean | null
           bairro?: string | null
           banco_codigo?: never
@@ -6517,6 +6590,7 @@ export type Database = {
           cidade?: string | null
           codigo_cbo?: string | null
           conta?: never
+          conta_dv?: never
           cor_raca?: string | null
           cpf?: never
           created_at?: string | null
@@ -6553,6 +6627,7 @@ export type Database = {
           salario_base?: never
           sexo?: string | null
           telefone?: string | null
+          tipo_chave_pix?: never
           tipo_conta?: never
           tipo_contrato?: string | null
           uf?: string | null
@@ -6562,6 +6637,7 @@ export type Database = {
         }
         Update: {
           agencia?: never
+          agencia_dv?: never
           ativo?: boolean | null
           bairro?: string | null
           banco_codigo?: never
@@ -6573,6 +6649,7 @@ export type Database = {
           cidade?: string | null
           codigo_cbo?: string | null
           conta?: never
+          conta_dv?: never
           cor_raca?: string | null
           cpf?: never
           created_at?: string | null
@@ -6609,6 +6686,7 @@ export type Database = {
           salario_base?: never
           sexo?: string | null
           telefone?: string | null
+          tipo_chave_pix?: never
           tipo_conta?: never
           tipo_contrato?: string | null
           uf?: string | null
@@ -6691,6 +6769,7 @@ export type Database = {
       v_pagamentos_funcionarios_export: {
         Row: {
           agencia: string | null
+          agencia_dv: string | null
           banco_codigo: string | null
           banco_nome: string | null
           cargo: string | null
@@ -6698,6 +6777,7 @@ export type Database = {
           competencia_ano: number | null
           competencia_mes: number | null
           conta: string | null
+          conta_dv: string | null
           conta_id: string | null
           cpf: string | null
           data_vencimento: string | null
@@ -6705,6 +6785,7 @@ export type Database = {
           funcionario_id: string | null
           funcionario_nome: string | null
           status: string | null
+          tipo_chave_pix: string | null
           tipo_conta: string | null
           valor: number | null
         }
@@ -6735,6 +6816,7 @@ export type Database = {
       v_pagamentos_professores_export: {
         Row: {
           agencia: string | null
+          agencia_dv: string | null
           banco_codigo: string | null
           banco_nome: string | null
           chave_pix: string | null
@@ -6742,6 +6824,7 @@ export type Database = {
           competencia_ano: number | null
           competencia_mes: number | null
           conta: string | null
+          conta_dv: string | null
           conta_id: string | null
           data_vencimento: string | null
           escola_id: string | null
@@ -6749,6 +6832,7 @@ export type Database = {
           professor_nome: string | null
           razao_social: string | null
           status: string | null
+          tipo_chave_pix: string | null
           tipo_conta: string | null
           valor: number | null
         }
@@ -6791,6 +6875,7 @@ export type Database = {
       v_professores_seguro: {
         Row: {
           agencia: string | null
+          agencia_dv: string | null
           ativo: boolean | null
           bairro: string | null
           banco_codigo: string | null
@@ -6800,6 +6885,7 @@ export type Database = {
           cidade: string | null
           cnpj: string | null
           conta: string | null
+          conta_dv: string | null
           cpf: string | null
           created_at: string | null
           data_admissao: string | null
@@ -6817,6 +6903,7 @@ export type Database = {
           razao_social: string | null
           rg: string | null
           telefone: string | null
+          tipo_chave_pix: string | null
           tipo_conta: string | null
           tipo_contratacao: string | null
           uf: string | null
@@ -6825,6 +6912,7 @@ export type Database = {
         }
         Insert: {
           agencia?: never
+          agencia_dv?: never
           ativo?: boolean | null
           bairro?: string | null
           banco_codigo?: never
@@ -6834,6 +6922,7 @@ export type Database = {
           cidade?: string | null
           cnpj?: never
           conta?: never
+          conta_dv?: never
           cpf?: never
           created_at?: string | null
           data_admissao?: string | null
@@ -6851,6 +6940,7 @@ export type Database = {
           razao_social?: never
           rg?: never
           telefone?: string | null
+          tipo_chave_pix?: never
           tipo_conta?: never
           tipo_contratacao?: string | null
           uf?: string | null
@@ -6859,6 +6949,7 @@ export type Database = {
         }
         Update: {
           agencia?: never
+          agencia_dv?: never
           ativo?: boolean | null
           bairro?: string | null
           banco_codigo?: never
@@ -6868,6 +6959,7 @@ export type Database = {
           cidade?: string | null
           cnpj?: never
           conta?: never
+          conta_dv?: never
           cpf?: never
           created_at?: string | null
           data_admissao?: string | null
@@ -6885,6 +6977,7 @@ export type Database = {
           razao_social?: never
           rg?: never
           telefone?: string | null
+          tipo_chave_pix?: never
           tipo_conta?: never
           tipo_contratacao?: string | null
           uf?: string | null
