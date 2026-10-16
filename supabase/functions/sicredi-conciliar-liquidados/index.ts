@@ -1,8 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  corsHeaders, json, clienteAdmin, usuarioTemPermissao, carregarConfig, listarLiquidadosDoDia,
-  type ConfigIntegracao,
+  corsHeaders, json, clienteAdmin, usuarioTemPermissao, carregarConfig, listarLiquidadosDoDia, consultarPorNossoNumero,
+  type ConfigIntegracao, type BoletoLiquidado,
 } from "../_shared/sicredi.ts";
+import { casarLiquidacaoExterna, type ParcelaCandidata } from "../_shared/sicredi-core.ts";
 
 // Rede de segurança do webhook: pergunta ao Sicredi o que foi liquidado nos últimos dias e dá baixa
 // no que o webhook não entregou. É idempotente (título já Pago não é tocado).
@@ -11,6 +12,65 @@ import {
 //    (ou só na escola informada em { escola_id }, qualquer ambiente);
 //  - tela: usuário logado com permissão na escola informada.
 const DIAS_PARA_TRAS = 3; // hoje + 2 anteriores: cobre o Pix de fim de semana lançado no dia útil seguinte
+const MAX_DIAS_SIMULACAO = 15;
+const MAX_CONSULTAS_SIMULACAO = 60;
+
+// Modo "simular" ({ modo: "simular", dias? }): NÃO baixa nada. Para cada liquidado que não existe no financeiro (boleto
+// emitido no Internet Banking), consulta o nosso número no Sicredi e diz qual parcela seria escolhida. Dados pessoais saem mascarados.
+const primeiroNome = (n: string | null | undefined) => String(n ?? "").trim().split(/\s+/)[0] ?? "";
+const mascarar = (doc: string | null) => (doc ? `***${doc.slice(-2)}` : null);
+
+async function candidatasDoVencimento(admin: ReturnType<typeof clienteAdmin>, escolaId: string, vencimento: string): Promise<ParcelaCandidata[]> {
+  const { data } = await admin.from("financeiro")
+    .select("id, valor, valor_integral, data_vencimento, gateway_status, matriculas ( alunos ( nome, responsavel_cpf ) )")
+    .eq("escola_id", escolaId).eq("data_vencimento", vencimento).in("status", ["Pendente", "Atrasado"]).limit(2000);
+  // deno-lint-ignore no-explicit-any
+  return (data ?? []).map((t: any) => ({
+    id: t.id, valor: Number(t.valor), valor_integral: t.valor_integral == null ? null : Number(t.valor_integral),
+    data_vencimento: t.data_vencimento, documento_responsavel: t.matriculas?.alunos?.responsavel_cpf ?? null,
+    aluno: t.matriculas?.alunos?.nome ?? null, tem_boleto_api: t.gateway_status === "registrado",
+  }));
+}
+
+async function simularExternas(admin: ReturnType<typeof clienteAdmin>, cfg: ConfigIntegracao, escolaId: string, porNN: Map<string, BoletoLiquidado>) {
+  const nns = [...porNN.keys()];
+  const conhecidos = new Set<string>();
+  for (let i = 0; i < nns.length; i += 200) {
+    const { data } = await admin.from("financeiro").select("gateway_cobranca_id").eq("escola_id", escolaId).in("gateway_cobranca_id", nns.slice(i, i + 200));
+    for (const r of data ?? []) conhecidos.add(r.gateway_cobranca_id as string);
+  }
+  const desconhecidos = nns.filter((n) => !conhecidos.has(n));
+  const alvo = desconhecidos.slice(0, MAX_CONSULTAS_SIMULACAO);
+  const cacheVenc = new Map<string, ParcelaCandidata[]>();
+  const resultados: Record<string, unknown>[] = [];
+
+  const fila = [...alvo];
+  await Promise.all(Array.from({ length: Math.min(3, fila.length) }, async () => {
+    for (let nn = fila.shift(); nn; nn = fila.shift()) {
+      const liq = porNN.get(nn)!;
+      const base = { prefixo: nn.slice(0, 2), valor_pago: liq.valorLiquidado, data_pagamento: liq.dataPagamento };
+      try {
+        const dados = await consultarPorNossoNumero(admin, cfg, nn);
+        if (!dados) { resultados.push({ ...base, resultado: "nenhum", motivo: "O Sicredi não devolveu os dados deste nosso número." }); continue; }
+        let cand = dados.vencimento ? cacheVenc.get(dados.vencimento) : [];
+        if (dados.vencimento && !cand) { cand = await candidatasDoVencimento(admin, escolaId, dados.vencimento); cacheVenc.set(dados.vencimento, cand); }
+        const r = casarLiquidacaoExterna(dados, cand ?? []);
+        const comum = { ...base, pagador: primeiroNome(dados.nomePagador), documento: mascarar(dados.documentoPagador), vencimento: dados.vencimento, valor_nominal: dados.valorNominal };
+        if (r.tipo === "unico") resultados.push({ ...comum, resultado: "unico", aluno: primeiroNome(r.parcela.aluno), tem_boleto_api: r.parcela.tem_boleto_api });
+        else if (r.tipo === "ambiguo") resultados.push({ ...comum, resultado: "ambiguo", alunos: r.parcelas.map((p) => primeiroNome(p.aluno)) });
+        else resultados.push({ ...comum, resultado: "nenhum", motivo: r.motivo });
+      } catch (e) {
+        resultados.push({ ...base, resultado: "erro", motivo: (e instanceof Error ? e.message : String(e)).slice(0, 160) });
+      }
+    }
+  }));
+
+  const contagem = (t: string) => resultados.filter((r) => r.resultado === t).length;
+  return {
+    liquidados: nns.length, ja_no_sistema: conhecidos.size, sem_parcela: desconhecidos.length, consultados: alvo.length,
+    unico: contagem("unico"), ambiguo: contagem("ambiguo"), nenhum: contagem("nenhum"), erro: contagem("erro"), resultados,
+  };
+}
 
 const ddmmyyyy = (d: Date) => {
   const p = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" })
@@ -24,7 +84,16 @@ Deno.serve(async (req: Request) => {
 
   const admin = clienteAdmin();
   let escolaId: string | null = null;
-  try { escolaId = (await req.json())?.escola_id ?? null; } catch { /* sem corpo */ }
+  let modo: string | null = null;
+  let diasPedidos: number | null = null;
+  try {
+    const corpo = await req.json();
+    escolaId = corpo?.escola_id ?? null;
+    modo = corpo?.modo ?? null;
+    diasPedidos = Number.isFinite(Number(corpo?.dias)) ? Number(corpo.dias) : null;
+  } catch { /* sem corpo */ }
+  const simular = modo === "simular";
+  const diasConsulta = simular ? Math.min(Math.max(diasPedidos ?? DIAS_PARA_TRAS, 1), MAX_DIAS_SIMULACAO) : DIAS_PARA_TRAS;
 
   const segredo = req.headers.get("x-cron-secret");
   if (segredo) {
@@ -45,18 +114,25 @@ Deno.serve(async (req: Request) => {
   const resumo: Record<string, unknown>[] = [];
 
   for (const { escola_id } of escolas ?? []) {
-    const item = { escola_id, consultados: 0, baixados: 0, erro: null as string | null };
+    const item: { escola_id: string; consultados: number; baixados: number; erro: string | null; simulacao?: unknown } =
+      { escola_id, consultados: 0, baixados: 0, erro: null };
     try {
       const cfg: ConfigIntegracao = await carregarConfig(admin, escola_id);
       const chave = `${cfg.agencia.replace(/\D/g, "")}-${cfg.posto.replace(/\D/g, "")}-${cfg.codigo_beneficiario.replace(/\D/g, "")}`;
 
       // 1) tudo que o banco liquidou nos últimos dias (sem repetir nosso número)
       const porNN = new Map<string, { nossoNumero: string; valorLiquidado: number; dataPagamento: string; tipoLiquidacao: string }>();
-      for (let i = 0; i < DIAS_PARA_TRAS; i++) {
+      for (let i = 0; i < diasConsulta; i++) {
         const dia = ddmmyyyy(new Date(Date.now() - i * 86_400_000));
         for (const b of await listarLiquidadosDoDia(admin, cfg, dia)) porNN.set(b.nossoNumero, b);
       }
       item.consultados = porNN.size;
+
+      if (simular) {
+        item.simulacao = await simularExternas(admin, cfg, escola_id, porNN);
+        resumo.push(item);
+        continue;
+      }
 
       // 2) só interessa o que existe aqui e ainda NÃO está pago (consulta em lote, 200 por vez)
       const nns = [...porNN.keys()];

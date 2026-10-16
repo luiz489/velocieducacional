@@ -4,6 +4,7 @@ import {
   uuidParaBase36, base36ParaUuid, idTituloEmpresaDe, seuNumeroDe,
   montarPayloadBoleto, parseRespostaRegistro, parseWebhook, dataDoEvento,
   chaveBeneficiario, ehLiquidacao, ehEstorno, formaPagamentoDoMovimento,
+  parseConsultaPorNossoNumero, casarLiquidacaoExterna, type ParcelaCandidata,
 } from "../../supabase/functions/_shared/sicredi-core";
 
 const UUID = "f69d2a00-76fb-4ea2-bddd-7babd1200525";
@@ -277,5 +278,63 @@ describe("webhook (payload do manual)", () => {
   it("dataDoEvento aceita string ISO", () => {
     expect(dataDoEvento("2027-01-05T10:00:00")).toBe("2027-01-05");
     expect(dataDoEvento([2027, 1, 5])).toBe("2027-01-05");
+  });
+});
+
+
+describe("liquidação de boleto emitido fora do sistema", () => {
+  const resposta = {
+    nossoNumero: "261001760", seuNumero: "0001",
+    pagador: { codigo: "X", documento: "075.713.828-40", nome: "JOANA SOLEIDE DIAS" },
+    dataVencimento: "2026-03-10", valorNominal: 1548, situacao: "LIQUIDADO",
+  };
+  const parcela = (o: Partial<ParcelaCandidata> = {}): ParcelaCandidata => ({
+    id: "p1", valor: 1000, valor_integral: 1548, data_vencimento: "2026-03-10",
+    documento_responsavel: "07571382840", aluno: "ISABELE", tem_boleto_api: false, ...o,
+  });
+
+  it("lê a consulta por nosso número (objeto, lista ou items)", () => {
+    const a = parseConsultaPorNossoNumero(resposta)!;
+    expect(a.documentoPagador).toBe("07571382840");
+    expect(a.vencimento).toBe("2026-03-10");
+    expect(a.valorNominal).toBe(1548);
+    expect(parseConsultaPorNossoNumero([resposta])!.nossoNumero).toBe("261001760");
+    expect(parseConsultaPorNossoNumero({ items: [resposta] })!.nossoNumero).toBe("261001760");
+    expect(parseConsultaPorNossoNumero({})).toBeNull();
+    expect(parseConsultaPorNossoNumero(null)).toBeNull();
+  });
+
+  it("casa com a única parcela do mesmo CPF, vencimento e valor (cheio ou com desconto)", () => {
+    const b = parseConsultaPorNossoNumero(resposta)!;
+    const r = casarLiquidacaoExterna(b, [parcela(), parcela({ id: "outra", documento_responsavel: "11111111111" })]);
+    expect(r.tipo).toBe("unico");
+    if (r.tipo === "unico") expect(r.parcela.id).toBe("p1");
+    // boleto emitido pelo valor com desconto
+    const c = casarLiquidacaoExterna({ ...b, valorNominal: 1000 }, [parcela()]);
+    expect(c.tipo).toBe("unico");
+  });
+
+  it("não adivinha: dois irmãos com a mesma mensalidade viram ambíguo", () => {
+    const b = parseConsultaPorNossoNumero(resposta)!;
+    const r = casarLiquidacaoExterna(b, [parcela({ id: "a", aluno: "ANA" }), parcela({ id: "b", aluno: "BIA" })]);
+    expect(r.tipo).toBe("ambiguo");
+    if (r.tipo === "ambiguo") expect(r.parcelas).toHaveLength(2);
+  });
+
+  it("recusa quando CPF, vencimento ou valor não batem, dizendo o motivo", () => {
+    const b = parseConsultaPorNossoNumero(resposta)!;
+    expect(casarLiquidacaoExterna(b, [parcela({ documento_responsavel: "99999999999" })])).toMatchObject({ tipo: "nenhum" });
+    expect(casarLiquidacaoExterna(b, [parcela({ data_vencimento: "2026-04-10" })])).toMatchObject({ tipo: "nenhum" });
+    const v = casarLiquidacaoExterna({ ...b, valorNominal: 900 }, [parcela()]);
+    expect(v.tipo).toBe("nenhum");
+    if (v.tipo === "nenhum") expect(v.motivo).toMatch(/valor diferente/i);
+    expect(casarLiquidacaoExterna({ ...b, documentoPagador: null }, [parcela()])).toMatchObject({ tipo: "nenhum" });
+    expect(casarLiquidacaoExterna({ ...b, vencimento: null }, [parcela()])).toMatchObject({ tipo: "nenhum" });
+  });
+
+  it("aceita CNPJ como pagador", () => {
+    const b = { documentoPagador: "00987778000136", vencimento: "2026-03-10", valorNominal: 100 };
+    const r = casarLiquidacaoExterna(b, [parcela({ valor: 100, valor_integral: 100, documento_responsavel: "00.987.778/0001-36" })]);
+    expect(r.tipo).toBe("unico");
   });
 });

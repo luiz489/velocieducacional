@@ -276,3 +276,79 @@ export const chaveBeneficiario = (agencia: string, posto: string, beneficiario: 
 export const ehLiquidacao = (movimento: string) => movimento.startsWith("LIQUIDACAO_");
 export const ehEstorno = (movimento: string) => movimento.startsWith("ESTORNO_");
 export const formaPagamentoDoMovimento = (movimento: string) => (movimento === "LIQUIDACAO_PIX" ? "Pix" : "Boleto");
+
+// ---------------------------------------------------------------------------
+// Liquidação de boleto emitido FORA do sistema (Internet Banking)
+// O webhook só avisa os boletos registrados pela API; os manuais aparecem só na consulta de liquidados do dia
+// (nosso número, valor, data). O pagador, o vencimento e o valor nominal vêm da consulta por nosso número.
+// ---------------------------------------------------------------------------
+export type DadosBoletoConsultado = {
+  nossoNumero: string;
+  seuNumero: string | null;
+  documentoPagador: string | null;
+  nomePagador: string | null;
+  vencimento: string | null; // YYYY-MM-DD
+  valorNominal: number | null;
+  situacao: string | null;
+};
+
+// deno-lint-ignore no-explicit-any
+export function parseConsultaPorNossoNumero(json: any): DadosBoletoConsultado | null {
+  const bruto = Array.isArray(json) ? json[0] : (json?.items?.[0] ?? json?.boletos?.[0] ?? json?.content?.[0] ?? json);
+  if (!bruto || typeof bruto !== "object" || !bruto.nossoNumero) return null;
+  const valor = Number(bruto.valorNominal ?? bruto.valor);
+  return {
+    nossoNumero: String(bruto.nossoNumero),
+    seuNumero: bruto.seuNumero ? String(bruto.seuNumero) : null,
+    documentoPagador: bruto.pagador?.documento ? somenteDigitos(String(bruto.pagador.documento)) : null,
+    nomePagador: bruto.pagador?.nome ? String(bruto.pagador.nome) : null,
+    vencimento: bruto.dataVencimento ? String(bruto.dataVencimento).slice(0, 10) : null,
+    valorNominal: Number.isFinite(valor) ? valor : null,
+    situacao: bruto.situacao ? String(bruto.situacao) : null,
+  };
+}
+
+export type ParcelaCandidata = {
+  id: string;
+  valor: number; // com desconto de pontualidade
+  valor_integral: number | null; // valor cheio
+  data_vencimento: string;
+  documento_responsavel: string | null;
+  aluno: string | null;
+  tem_boleto_api: boolean; // a parcela também já tem boleto registrado pela API (cobrança em duplicidade)
+};
+
+export type ResultadoCasamento =
+  | { tipo: "unico"; parcela: ParcelaCandidata }
+  | { tipo: "ambiguo"; parcelas: ParcelaCandidata[] }
+  | { tipo: "nenhum"; motivo: string };
+
+const igual2 = (a: number, b: number) => Math.abs(a - b) < 0.005;
+
+/**
+ * Casa um boleto manual com a parcela: mesmo CPF/CNPJ do responsável, mesmo vencimento e valor nominal igual ao
+ * valor cheio OU ao valor com desconto. Só devolve "unico" quando existe exatamente UMA parcela.
+ */
+export function casarLiquidacaoExterna(
+  boleto: Pick<DadosBoletoConsultado, "documentoPagador" | "vencimento" | "valorNominal">,
+  candidatas: ParcelaCandidata[]
+): ResultadoCasamento {
+  const doc = somenteDigitos(boleto.documentoPagador);
+  if (doc.length !== 11 && doc.length !== 14) return { tipo: "nenhum", motivo: "Boleto sem CPF/CNPJ válido do pagador." };
+  if (!boleto.vencimento) return { tipo: "nenhum", motivo: "Boleto sem data de vencimento." };
+  if (boleto.valorNominal == null) return { tipo: "nenhum", motivo: "Boleto sem valor nominal." };
+  const nominal = boleto.valorNominal;
+
+  const doMesmoPagador = candidatas.filter(
+    (p) => p.data_vencimento === boleto.vencimento && somenteDigitos(p.documento_responsavel) === doc
+  );
+  if (doMesmoPagador.length === 0) {
+    return { tipo: "nenhum", motivo: "Nenhuma parcela em aberto deste CPF/CNPJ neste vencimento." };
+  }
+  const iguais = doMesmoPagador.filter(
+    (p) => igual2(nominal, Number(p.valor_integral ?? p.valor)) || igual2(nominal, Number(p.valor))
+  );
+  if (iguais.length === 0) return { tipo: "nenhum", motivo: "Há parcela deste CPF/CNPJ neste vencimento, mas com valor diferente." };
+  if (iguais.length > 1) return { tipo: "ambiguo", parcelas: iguais };
+  return { tipo: "unico", parcela: iguais[0] };
+}

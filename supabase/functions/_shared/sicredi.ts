@@ -3,8 +3,8 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   cooperativaDe, postoDe, beneficiarioDe, usernameSicredi, urlToken, urlBoletos,
-  montarPayloadBoleto, parseRespostaRegistro, idTituloEmpresaDe, urlsWebhookContrato,
-  type RegistroBoleto,
+  montarPayloadBoleto, parseRespostaRegistro, idTituloEmpresaDe, urlsWebhookContrato, parseConsultaPorNossoNumero,
+  type RegistroBoleto, type DadosBoletoConsultado,
 } from "./sicredi-core.ts";
 
 export const corsHeaders = {
@@ -234,6 +234,15 @@ export async function baixarPdfBoleto(admin: SupabaseClient, cfg: ConfigIntegrac
   const r = await chamar(admin, cfg, { metodo: "GET", url: `${urlBoletos(cfg.ambiente)}/pdf?linhaDigitavel=${linha}`, binario: true });
   if (!r.ok || !r.bytes) throw new ErroSicredi(mensagemDeErro(r.status, r.texto), r.status);
   return r.bytes;
+}
+
+/** Dados de UM boleto pelo nosso número (pagador, vencimento, valor). Serve também para boleto emitido no Internet Banking. */
+export async function consultarPorNossoNumero(admin: SupabaseClient, cfg: ConfigIntegracao, nossoNumero: string): Promise<DadosBoletoConsultado | null> {
+  const url = `${urlBoletos(cfg.ambiente)}?codigoBeneficiario=${beneficiarioDe(cfg.codigo_beneficiario)}&nossoNumero=${encodeURIComponent(nossoNumero)}`;
+  const r = await chamar(admin, cfg, { metodo: "GET", url });
+  if (r.status === 404 || r.status === 422) return null;
+  if (!r.ok) throw new ErroSicredi(mensagemDeErro(r.status, r.texto), r.status);
+  try { return parseConsultaPorNossoNumero(JSON.parse(r.texto)); } catch { return null; }
 }
 
 /** Recupera um boleto já registrado pelo idTituloEmpresa (idempotência quando a resposta do cadastro se perdeu). */
