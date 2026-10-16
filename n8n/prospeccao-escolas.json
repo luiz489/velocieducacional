@@ -1,0 +1,136 @@
+{
+  "name": "Prospecção Escolas - Veloci Educacional",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Disparo diário 9h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "read-sheet",
+      "name": "Ler planilha de leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [460, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME_GOOGLE_SHEETS_CRED",
+          "name": "Google Sheets - Prospecção Educacional"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const INTERVALO_DIAS = 2;\nconst TOTAL_EMAILS = 4;\nconst hoje = new Date();\n\nconst templates = {\n  1: {\n    assunto: \"Como a {{escola}} pode simplificar a gestão escolar\",\n    corpo: `Olá{{contatoSaudacao}},\n\nSou da Veloci Educacional, um sistema de gestão escolar (matrícula, financeiro, boletos, assinatura digital de documentos) pensado para o dia a dia de escolas como a {{escola}}.\n\nQueria entender rapidamente como vocês lidam hoje com matrícula, cobrança e assinatura de documentos — e mostrar como podemos simplificar isso.\n\nTopa uma conversa de 15 minutos nesta semana?\n\nAbraço,\nEquipe Veloci Educacional`\n  },\n  2: {\n    assunto: \"Re: Como a {{escola}} pode simplificar a gestão escolar\",\n    corpo: `Olá{{contatoSaudacao}},\n\nSó retomando o contato anterior — sei que a rotina da escola é corrida.\n\nSe fizer sentido, posso te mostrar em poucos minutos como escolas parceiras reduziram o trabalho manual com boletos e assinaturas de documentos.\n\nTem 15 minutos essa semana?\n\nAbraço,\nEquipe Veloci Educacional`\n  },\n  3: {\n    assunto: \"Um exemplo rápido para a {{escola}}\",\n    corpo: `Olá{{contatoSaudacao}},\n\nSeparei um exemplo rápido de como a Veloci Educacional funciona na prática para escolas do mesmo porte da {{escola}}: matrícula, emissão de boletos e assinatura digital de documentos em um só lugar.\n\nSe quiser, te mando um vídeo curto ou agendamos uma call rápida.\n\nAbraço,\nEquipe Veloci Educacional`\n  },\n  4: {\n    assunto: \"Último contato — Veloci Educacional\",\n    corpo: `Olá{{contatoSaudacao}},\n\nEsse é meu último contato por aqui — não quero ocupar sua caixa de entrada sem necessidade.\n\nSe em algum momento a {{escola}} quiser simplificar matrícula, cobrança e assinatura de documentos, vou estar à disposição.\n\nAbraço,\nEquipe Veloci Educacional`\n  }\n};\n\nconst resultados = [];\n\nfor (const item of $input.all()) {\n  const d = item.json;\n  const status = String(d.status || \"\").trim().toLowerCase();\n\n  if (status === \"respondeu\" || status === \"parar\") continue;\n  if (!d.email) continue;\n\n  const numeroEnvios = Number(d.numero_envios || 0);\n  if (numeroEnvios >= TOTAL_EMAILS) continue;\n\n  if (numeroEnvios > 0) {\n    if (!d.data_ultimo_envio) continue;\n    const diffDias = (hoje - new Date(d.data_ultimo_envio)) / (1000 * 60 * 60 * 24);\n    if (diffDias < INTERVALO_DIAS) continue;\n  }\n\n  const proximoNumero = numeroEnvios + 1;\n  const tpl = templates[proximoNumero];\n  const contatoSaudacao = d.contato ? `, ${d.contato}` : \"\";\n\n  resultados.push({\n    json: {\n      row_number: d.row_number,\n      escola: d.escola,\n      email: d.email,\n      numero_envios_novo: proximoNumero,\n      status_novo: proximoNumero >= TOTAL_EMAILS ? \"finalizado\" : \"enviado\",\n      assunto: tpl.assunto.replaceAll(\"{{escola}}\", d.escola || \"\"),\n      corpo: tpl.corpo\n        .replaceAll(\"{{escola}}\", d.escola || \"\")\n        .replaceAll(\"{{contatoSaudacao}}\", contatoSaudacao),\n      data_envio_hoje: hoje.toISOString().slice(0, 10)\n    }\n  });\n}\n\nreturn resultados;"
+      },
+      "id": "decide-next-email",
+      "name": "Decidir próximo e-mail",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "prospeccao@SEUDOMINIO.com.br",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.assunto }}",
+        "emailFormat": "text",
+        "text": "={{ $json.corpo }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Enviar e-mail de prospecção",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [900, 300],
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_ME_SMTP_CRED",
+          "name": "SMTP - Prospecção Educacional (separado)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["row_number"],
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "status": "={{ $json.status_novo }}",
+            "numero_envios": "={{ $json.numero_envios_novo }}",
+            "data_ultimo_envio": "={{ $json.data_envio_hoje }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "update-sheet",
+      "name": "Atualizar status na planilha",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1120, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME_GOOGLE_SHEETS_CRED",
+          "name": "Google Sheets - Prospecção Educacional"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Disparo diário 9h": {
+      "main": [[{ "node": "Ler planilha de leads", "type": "main", "index": 0 }]]
+    },
+    "Ler planilha de leads": {
+      "main": [[{ "node": "Decidir próximo e-mail", "type": "main", "index": 0 }]]
+    },
+    "Decidir próximo e-mail": {
+      "main": [[{ "node": "Enviar e-mail de prospecção", "type": "main", "index": 0 }]]
+    },
+    "Enviar e-mail de prospecção": {
+      "main": [[{ "node": "Atualizar status na planilha", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
