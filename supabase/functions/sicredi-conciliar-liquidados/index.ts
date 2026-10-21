@@ -13,7 +13,8 @@ import { casarLiquidacaoExterna, type ParcelaCandidata, type DadosBoletoConsulta
 //  - tela: usuário logado com permissão na escola informada.
 const DIAS_PARA_TRAS = 3; // hoje + 2 anteriores: cobre o Pix de fim de semana lançado no dia útil seguinte
 const MAX_DIAS_SIMULACAO = 15;
-const MAX_CONSULTAS_SIMULACAO = 60;
+const MAX_CONSULTAS_SIMULACAO = 120;
+const MAX_INICIO_DIAS = 180; // { inicio } desloca a janela para trás (retroativo); sem ele a janela começa hoje
 
 // Modo "simular" ({ modo: "simular", dias? }): NÃO baixa nada. Para cada liquidado que não existe no financeiro (boleto
 // emitido no Internet Banking), consulta o nosso número no Sicredi e diz qual parcela seria escolhida. Dados pessoais saem mascarados.
@@ -41,7 +42,7 @@ const paraCandidato = (p: ParcelaCandidata): Candidato => ({ id: p.id, aluno: p.
  */
 async function processarExternas(
   admin: ReturnType<typeof clienteAdmin>, cfg: ConfigIntegracao, escolaId: string, chave: string,
-  porNN: Map<string, BoletoLiquidado>, aplicar: boolean
+  porNN: Map<string, BoletoLiquidado>, aplicar: boolean, gravarResto = aplicar
 ) {
   const nns = [...porNN.keys()];
   const conhecidos = new Set<string>();
@@ -71,8 +72,10 @@ async function processarExternas(
     }, { onConflict: "escola_id,nosso_numero" });
 
   const fila = [...alvo];
-  await Promise.all(Array.from({ length: Math.min(3, fila.length) }, async () => {
+  const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  await Promise.all(Array.from({ length: Math.min(2, fila.length) }, async () => {
     for (let nn = fila.shift(); nn; nn = fila.shift()) {
+      await dormir(150);
       const liq = porNN.get(nn)!;
       const base = { prefixo: nn.slice(0, 2), valor_pago: liq.valorLiquidado, data_pagamento: liq.dataPagamento };
       try {
@@ -83,7 +86,7 @@ async function processarExternas(
         // boleto registrado pela API que não está em nenhuma parcela: não é "boleto manual", é algo a investigar
         if (dados.idTituloEmpresa) {
           resultados.push({ ...comum, resultado: "api_sem_parcela" });
-          if (aplicar) await gravar(liq, dados, { resultado: "api_sem_parcela", motivo: "Boleto registrado pela API sem parcela correspondente no sistema.", situacao: "conferir", candidatos: [] });
+          if (gravarResto) await gravar(liq, dados, { resultado: "api_sem_parcela", motivo: "Boleto registrado pela API sem parcela correspondente no sistema.", situacao: "conferir", candidatos: [] });
           continue;
         }
 
@@ -109,16 +112,16 @@ async function processarExternas(
                 detalhe: "Baixa de boleto emitido fora do sistema (casado por CPF, vencimento e valor).",
               }, { onConflict: "chave_beneficiario,id_evento", ignoreDuplicates: true });
             } else {
-              await gravar(liq, dados, { resultado: "nenhum", motivo: "A parcela encontrada deixou de estar em aberto.", situacao: "conferir", candidatos: [paraCandidato(r.parcela)] });
+              if (gravarResto) await gravar(liq, dados, { resultado: "nenhum", motivo: "A parcela encontrada deixou de estar em aberto.", situacao: "conferir", candidatos: [paraCandidato(r.parcela)] });
             }
           }
           resultados.push({ ...comum, resultado: "unico", aluno: primeiroNome(r.parcela.aluno), tem_boleto_api: r.parcela.tem_boleto_api, baixada });
         } else if (r.tipo === "ambiguo") {
           resultados.push({ ...comum, resultado: "ambiguo", alunos: r.parcelas.map((p) => primeiroNome(p.aluno)) });
-          if (aplicar) await gravar(liq, dados, { resultado: "ambiguo", motivo: "Mais de uma parcela com o mesmo CPF, vencimento e valor.", situacao: "conferir", candidatos: r.parcelas.map(paraCandidato) });
+          if (gravarResto) await gravar(liq, dados, { resultado: "ambiguo", motivo: "Mais de uma parcela com o mesmo CPF, vencimento e valor.", situacao: "conferir", candidatos: r.parcelas.map(paraCandidato) });
         } else {
           resultados.push({ ...comum, resultado: "nenhum", motivo: r.motivo });
-          if (aplicar) await gravar(liq, dados, { resultado: "nenhum", motivo: r.motivo, situacao: "conferir", candidatos: (r.proximas ?? []).map(paraCandidato) });
+          if (gravarResto) await gravar(liq, dados, { resultado: "nenhum", motivo: r.motivo, situacao: "conferir", candidatos: (r.proximas ?? []).map(paraCandidato) });
         }
       } catch (e) {
         resultados.push({ ...base, resultado: "erro", motivo: (e instanceof Error ? e.message : String(e)).slice(0, 160) });
@@ -148,14 +151,23 @@ Deno.serve(async (req: Request) => {
   let escolaId: string | null = null;
   let modo: string | null = null;
   let diasPedidos: number | null = null;
+  let inicioPedido = 0;
+  let permitir: { data: string; valor: number }[] | null = null;
   try {
     const corpo = await req.json();
     escolaId = corpo?.escola_id ?? null;
     modo = corpo?.modo ?? null;
     diasPedidos = Number.isFinite(Number(corpo?.dias)) ? Number(corpo.dias) : null;
+    inicioPedido = Number.isFinite(Number(corpo?.inicio)) ? Math.min(Math.max(Math.trunc(Number(corpo.inicio)), 0), MAX_INICIO_DIAS) : 0;
+    if (Array.isArray(corpo?.permitir)) {
+      permitir = corpo.permitir.map((x: { data?: string; valor?: number }) => ({ data: String(x?.data ?? ""), valor: Number(x?.valor) }));
+    }
   } catch { /* sem corpo */ }
   const simular = modo === "simular";
-  const diasConsulta = simular ? Math.min(Math.max(diasPedidos ?? DIAS_PARA_TRAS, 1), MAX_DIAS_SIMULACAO) : DIAS_PARA_TRAS;
+  // Baixa retroativa e pontual: só o que estiver na lista "permitir" (data do pagamento + valor), uma escola por vez,
+  // sem ligar a baixa automática e sem gravar na conferência o que não casou.
+  const baixarRetro = modo === "baixar_retroativo";
+  const diasConsulta = (simular || baixarRetro) ? Math.min(Math.max(diasPedidos ?? DIAS_PARA_TRAS, 1), MAX_DIAS_SIMULACAO) : DIAS_PARA_TRAS;
 
   const segredo = req.headers.get("x-cron-secret");
   if (segredo) {
@@ -166,6 +178,10 @@ Deno.serve(async (req: Request) => {
     if (!(await usuarioTemPermissao(req, escolaId, "financeiro", "editar"))) {
       return json({ ok: false, erro: "Você não tem permissão para conciliar boletos desta escola." }, 403);
     }
+  }
+
+  if (baixarRetro && (!escolaId || !permitir || permitir.length === 0)) {
+    return json({ ok: false, erro: "A baixa retroativa exige escola_id e a lista permitir (data + valor)." }, 400);
   }
 
   let alvo = admin.from("escolas_integracao_bancaria").select("escola_id").eq("ativo", true);
@@ -184,14 +200,27 @@ Deno.serve(async (req: Request) => {
 
       // 1) tudo que o banco liquidou nos últimos dias (sem repetir nosso número)
       const porNN = new Map<string, { nossoNumero: string; valorLiquidado: number; dataPagamento: string; tipoLiquidacao: string }>();
-      for (let i = 0; i < diasConsulta; i++) {
+      for (let i = inicioPedido; i < inicioPedido + diasConsulta; i++) {
         const dia = ddmmyyyy(new Date(Date.now() - i * 86_400_000));
         for (const b of await listarLiquidadosDoDia(admin, cfg, dia)) porNN.set(b.nossoNumero, b);
+      }
+      if (permitir && (simular || baixarRetro)) {
+        for (const [nn, b] of [...porNN]) {
+          if (!permitir.some((x) => x.data === b.dataPagamento && Math.abs(x.valor - b.valorLiquidado) < 0.005)) porNN.delete(nn);
+        }
       }
       item.consultados = porNN.size;
 
       if (simular) {
         item.simulacao = await processarExternas(admin, cfg, escola_id, chave, porNN, false);
+        resumo.push(item);
+        continue;
+      }
+
+      if (baixarRetro) {
+        const ext = await processarExternas(admin, cfg, escola_id, chave, porNN, true, false);
+        item.simulacao = ext;
+        item.baixados = ext.baixadas;
         resumo.push(item);
         continue;
       }

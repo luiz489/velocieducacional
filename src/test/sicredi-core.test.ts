@@ -4,7 +4,7 @@ import {
   uuidParaBase36, base36ParaUuid, idTituloEmpresaDe, seuNumeroDe,
   montarPayloadBoleto, parseRespostaRegistro, parseWebhook, dataDoEvento,
   chaveBeneficiario, ehLiquidacao, ehEstorno, formaPagamentoDoMovimento,
-  parseConsultaPorNossoNumero, casarLiquidacaoExterna, type ParcelaCandidata,
+  parseConsultaPorNossoNumero, casarLiquidacaoExterna, type ParcelaCandidata, dvNossoNumero, montarNossoNumero,
 } from "../../supabase/functions/_shared/sicredi-core";
 
 const UUID = "f69d2a00-76fb-4ea2-bddd-7babd1200525";
@@ -342,5 +342,19 @@ describe("liquidação de boleto emitido fora do sistema", () => {
     const b = { documentoPagador: "00987778000136", vencimento: "2026-03-10", valorNominal: 100 };
     const r = casarLiquidacaoExterna(b, [parcela({ valor: 100, valor_integral: 100, documento_responsavel: "00.987.778/0001-36" })]);
     expect(r.tipo).toBe("unico");
+  });
+});
+
+describe("nosso número do Sicredi", () => {
+  it("reproduz o dígito verificador de um boleto real emitido no Internet Banking (26/100176-0)", () => {
+    expect(montarNossoNumero("0715", "25", "60112", "26", 1, 176)).toBe("261001760");
+  });
+  it("completa com zeros e usa a cooperativa/posto/beneficiário normalizados", () => {
+    const nn = montarNossoNumero("715", "25", "60112", "26", 1, 1);
+    expect(nn).toHaveLength(9);
+    expect(nn.startsWith("26100001")).toBe(true);
+  });
+  it("recusa base com letras", () => {
+    expect(() => dvNossoNumero("12a")).toThrow();
   });
 });

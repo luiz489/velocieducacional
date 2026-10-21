@@ -356,3 +356,22 @@ export function casarLiquidacaoExterna(
   if (iguais.length > 1) return { tipo: "ambiguo", parcelas: iguais };
   return { tipo: "unico", parcela: iguais[0] };
 }
+
+// ---------------------------------------------------------------------------
+// Nosso número do Sicredi: AA + byte + sequencial(5) + DV (9 dígitos). O DV é módulo 11 (pesos 2..9 da direita para a
+// esquerda) sobre cooperativa(4) + posto(2) + beneficiário(5) + AA + byte + sequencial. Usado para varrer boletos manuais.
+// ---------------------------------------------------------------------------
+export function dvNossoNumero(base: string): number {
+  if (!/^\d+$/.test(base)) throw new Error("Base do nosso número deve ter só dígitos.");
+  let soma = 0;
+  for (let i = 0; i < base.length; i++) soma += Number(base[base.length - 1 - i]) * (2 + (i % 8));
+  const d = 11 - (soma % 11);
+  return d > 9 ? 0 : d;
+}
+
+export function montarNossoNumero(
+  agencia: string, posto: string, beneficiario: string, ano: string, byte: number, sequencial: number
+): string {
+  const sufixo = ano.padStart(2, "0") + String(byte) + String(sequencial).padStart(5, "0");
+  return sufixo + dvNossoNumero(cooperativaDe(agencia) + postoDe(posto) + beneficiarioDe(beneficiario) + sufixo);
+}
