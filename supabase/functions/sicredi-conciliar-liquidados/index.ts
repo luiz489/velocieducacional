@@ -3,7 +3,7 @@ import {
   corsHeaders, json, clienteAdmin, usuarioTemPermissao, carregarConfig, listarLiquidadosDoDia, consultarPorNossoNumero,
   type ConfigIntegracao, type BoletoLiquidado,
 } from "../_shared/sicredi.ts";
-import { casarLiquidacaoExterna, type ParcelaCandidata, type DadosBoletoConsultado } from "../_shared/sicredi-core.ts";
+import { casarLiquidacaoExterna, somenteDigitos, type ParcelaCandidata, type DadosBoletoConsultado } from "../_shared/sicredi-core.ts";
 
 // Rede de segurança do webhook: pergunta ao Sicredi o que foi liquidado nos últimos dias e dá baixa
 // no que o webhook não entregou. É idempotente (título já Pago não é tocado).
@@ -137,6 +137,64 @@ async function processarExternas(
   };
 }
 
+/**
+ * Baixa pontual de boleto manual por nosso número + parcela EXPLÍCITA (lista aprovada pelo usuário). Serve para pagamentos cujo
+ * valor difere por centavos do cadastro (o casamento exato não pega). Revalida no banco: mesmo CPF do responsável, mesmo
+ * vencimento e valor nominal a até R$ 1,00 do valor/integral da parcela. Nada fora da lista é tocado.
+ */
+async function baixarPorNossoNumero(
+  admin: ReturnType<typeof clienteAdmin>, cfg: ConfigIntegracao, escolaId: string, chave: string,
+  porNN: Map<string, BoletoLiquidado>, itens: { nosso_numero: string; financeiro_id: string }[]
+) {
+  const resultados: Record<string, unknown>[] = [];
+  const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  for (const it of itens) {
+    const liq = porNN.get(it.nosso_numero);
+    if (!liq) continue; // fora desta janela de dias
+    const nn = it.nosso_numero;
+    try {
+      await dormir(150);
+      const dados = await consultarPorNossoNumero(admin, cfg, nn);
+      const { data: p } = await admin.from("financeiro")
+        .select("id, valor, valor_integral, data_vencimento, status, matriculas ( alunos ( responsavel_cpf ) )")
+        .eq("id", it.financeiro_id).eq("escola_id", escolaId).maybeSingle();
+      // deno-lint-ignore no-explicit-any
+      const cpf = somenteDigitos((p as any)?.matriculas?.alunos?.responsavel_cpf);
+      if (!dados || !p) { resultados.push({ nn, resultado: "recusado", motivo: "boleto ou parcela não encontrados" }); continue; }
+      if (dados.idTituloEmpresa) { resultados.push({ nn, resultado: "recusado", motivo: "boleto registrado pela API" }); continue; }
+      if (!cpf || somenteDigitos(dados.documentoPagador) !== cpf) { resultados.push({ nn, resultado: "recusado", motivo: "CPF do pagador diferente do responsável" }); continue; }
+      if (dados.vencimento !== p.data_vencimento) { resultados.push({ nn, resultado: "recusado", motivo: "vencimento diferente" }); continue; }
+      const nominal = Number(dados.valorNominal);
+      const dif = Math.min(Math.abs(nominal - Number(p.valor)), Math.abs(nominal - Number(p.valor_integral ?? p.valor)));
+      if (!Number.isFinite(dif) || dif > 1.0) { resultados.push({ nn, resultado: "recusado", motivo: "valor difere mais de R$ 1,00" }); continue; }
+      if (p.status !== "Pendente" && p.status !== "Atrasado" && p.status !== "Pago") { resultados.push({ nn, resultado: "recusado", motivo: "parcela " + p.status }); continue; }
+
+      const { data: tituloId, error: errBaixa } = await admin.rpc("baixar_parcela_por_boleto_externo", {
+        p_escola_id: escolaId, p_financeiro_id: it.financeiro_id, p_nosso_numero: nn, p_valor_pago: liq.valorLiquidado,
+        p_data_pagamento: liq.dataPagamento, p_conta_bancaria_id: cfg.conta_bancaria_id,
+        p_forma_pagamento: /PIX/i.test(liq.tipoLiquidacao) ? "Pix" : "Boleto", p_ref_evento: `sicredi:poll-externo:${nn}:${liq.dataPagamento}`,
+      });
+      if (errBaixa) throw new Error(errBaixa.message);
+      if (!tituloId) { resultados.push({ nn, resultado: "recusado", motivo: "a parcela não está em aberto" }); continue; }
+      await admin.from("liquidacoes_externas").upsert({
+        escola_id: escolaId, nosso_numero: nn, data_pagamento: liq.dataPagamento || null, valor_pago: liq.valorLiquidado,
+        tipo_liquidacao: liq.tipoLiquidacao || null, pagador_nome: dados.nomePagador, pagador_doc_final: cpf.slice(-2),
+        vencimento: dados.vencimento, valor_nominal: dados.valorNominal, resultado: "unico", motivo: "Baixa por lista aprovada (valor com diferença de centavos).",
+        situacao: "baixada", financeiro_id: tituloId, candidatos: [], resolvido_em: new Date().toISOString(), atualizado_em: new Date().toISOString(),
+      }, { onConflict: "escola_id,nosso_numero" });
+      await admin.from("cobranca_eventos").upsert({
+        escola_id: escolaId, chave_beneficiario: chave, id_evento: `poll-externo:${nn}:${liq.dataPagamento}`,
+        movimento: `CONSULTA_EXTERNO_${liq.tipoLiquidacao || "LIQUIDADO"}`, nosso_numero: nn, payload: liq, status: "processado",
+        detalhe: "Baixa de boleto emitido fora do sistema por lista aprovada (CPF e vencimento conferem; valor a até R$ 1,00).",
+      }, { onConflict: "chave_beneficiario,id_evento", ignoreDuplicates: true });
+      resultados.push({ nn, resultado: "baixada", data_pagamento: liq.dataPagamento, valor_pago: liq.valorLiquidado, dif: Math.round(dif * 100) / 100 });
+    } catch (e) {
+      resultados.push({ nn, resultado: "erro", motivo: (e instanceof Error ? e.message : String(e)).slice(0, 160) });
+    }
+  }
+  return resultados;
+}
+
 const ddmmyyyy = (d: Date) => {
   const p = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" })
     .formatToParts(d);
@@ -153,6 +211,7 @@ Deno.serve(async (req: Request) => {
   let diasPedidos: number | null = null;
   let inicioPedido = 0;
   let permitir: { data: string; valor: number }[] | null = null;
+  let itensNN: { nosso_numero: string; financeiro_id: string }[] | null = null;
   try {
     const corpo = await req.json();
     escolaId = corpo?.escola_id ?? null;
@@ -162,12 +221,16 @@ Deno.serve(async (req: Request) => {
     if (Array.isArray(corpo?.permitir)) {
       permitir = corpo.permitir.map((x: { data?: string; valor?: number }) => ({ data: String(x?.data ?? ""), valor: Number(x?.valor) }));
     }
+    if (Array.isArray(corpo?.itens)) {
+      itensNN = corpo.itens.map((x: { nosso_numero?: string; financeiro_id?: string }) => ({ nosso_numero: String(x?.nosso_numero ?? ""), financeiro_id: String(x?.financeiro_id ?? "") }));
+    }
   } catch { /* sem corpo */ }
   const simular = modo === "simular";
   // Baixa retroativa e pontual: só o que estiver na lista "permitir" (data do pagamento + valor), uma escola por vez,
   // sem ligar a baixa automática e sem gravar na conferência o que não casou.
   const baixarRetro = modo === "baixar_retroativo";
-  const diasConsulta = (simular || baixarRetro) ? Math.min(Math.max(diasPedidos ?? DIAS_PARA_TRAS, 1), MAX_DIAS_SIMULACAO) : DIAS_PARA_TRAS;
+  const baixarNN = modo === "baixar_nn";
+  const diasConsulta = (simular || baixarRetro || baixarNN) ? Math.min(Math.max(diasPedidos ?? DIAS_PARA_TRAS, 1), MAX_DIAS_SIMULACAO) : DIAS_PARA_TRAS;
 
   const segredo = req.headers.get("x-cron-secret");
   if (segredo) {
@@ -182,6 +245,10 @@ Deno.serve(async (req: Request) => {
 
   if (baixarRetro && (!escolaId || !permitir || permitir.length === 0)) {
     return json({ ok: false, erro: "A baixa retroativa exige escola_id e a lista permitir (data + valor)." }, 400);
+  }
+
+  if (baixarNN && (!escolaId || !itensNN || itensNN.length === 0)) {
+    return json({ ok: false, erro: "A baixa por nosso número exige escola_id e a lista itens (nosso_numero + financeiro_id)." }, 400);
   }
 
   let alvo = admin.from("escolas_integracao_bancaria").select("escola_id").eq("ativo", true);
@@ -210,6 +277,15 @@ Deno.serve(async (req: Request) => {
         }
       }
       item.consultados = porNN.size;
+
+      if (baixarNN) {
+        for (const nn of [...porNN.keys()]) if (!itensNN!.some((x) => x.nosso_numero === nn)) porNN.delete(nn);
+        const res = await baixarPorNossoNumero(admin, cfg, escola_id, chave, porNN, itensNN!);
+        item.simulacao = { resultados: res, baixadas: res.filter((r) => r.resultado === "baixada").length, recusadas: res.filter((r) => r.resultado === "recusado").length, erros: res.filter((r) => r.resultado === "erro").length };
+        item.baixados = res.filter((r) => r.resultado === "baixada").length;
+        resumo.push(item);
+        continue;
+      }
 
       if (simular) {
         item.simulacao = await processarExternas(admin, cfg, escola_id, chave, porNN, false);

@@ -86,9 +86,9 @@ Deno.serve(async (req: Request) => {
           };
           if (d.idTituloEmpresa) { encontrados.push({ ...comum, resultado: "api" }); continue; }
           const r = casarLiquidacaoExterna(d, d.vencimento ? await candidatas(d.vencimento) : []);
-          if (r.tipo === "unico") encontrados.push({ ...comum, resultado: "unico", aluno: primeiroNome(r.parcela.aluno), tem_boleto_api: r.parcela.tem_boleto_api });
-          else if (r.tipo === "ambiguo") encontrados.push({ ...comum, resultado: "ambiguo", alunos: r.parcelas.map((p) => primeiroNome(p.aluno)) });
-          else encontrados.push({ ...comum, resultado: "nenhum", motivo: r.motivo });
+          if (r.tipo === "unico") encontrados.push({ ...comum, resultado: "unico", aluno: primeiroNome(r.parcela.aluno), tem_boleto_api: r.parcela.tem_boleto_api, parcela_ids: [r.parcela.id] });
+          else if (r.tipo === "ambiguo") encontrados.push({ ...comum, resultado: "ambiguo", alunos: r.parcelas.map((p) => primeiroNome(p.aluno)), parcela_ids: r.parcelas.map((p) => p.id) });
+          else encontrados.push({ ...comum, resultado: "nenhum", motivo: r.motivo, parcela_ids: (r.proximas ?? []).map((p) => p.id) });
         } catch (e) {
           erros++;
           if (e instanceof ErroSicredi && e.status === 429) limite = true;
