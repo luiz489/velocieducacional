@@ -49,6 +49,34 @@ function getStatusBadge(status: string) {
 // ao escolher a opção - já aconteceu em Cidade/UF e depois em Turma.
 const CLASSE_SELECT_MATRICULA = "mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50";
 
+const montarDatasTaxa = (parcelas: number, primeira: string, extras: string[]): string[] | undefined => {
+  if (parcelas <= 1 || !primeira) return undefined;
+  const lista = [primeira, ...Array.from({ length: Math.min(parcelas, 24) - 1 }, (_, k) => extras[k] ?? "")];
+  return lista.every(Boolean) ? lista : undefined;
+};
+
+function DatasDemaisParcelasTaxa({ parcelas, valores, onChange }: { parcelas: number; valores: string[]; onChange: (v: string[]) => void }) {
+  if (!(parcelas > 1)) return null;
+  const n = Math.min(parcelas, 24) - 1;
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <p className="text-xs text-muted-foreground">
+        Datas das demais parcelas da matrícula (podem ser em qualquer dia, ex.: 20/11 e 10/12). Se deixar alguma em
+        branco, as parcelas vencem de mês em mês a partir da primeira data.
+      </p>
+      {Array.from({ length: n }, (_, k) => (
+        <div key={k}>
+          <Label>Vencimento da {k + 2}ª parcela da matrícula</Label>
+          <Input
+            type="date" className="mt-1" value={valores[k] ?? ""}
+            onChange={(e) => { const novo = [...valores]; novo[k] = e.target.value; onChange(novo); }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
   const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro } = useMatriculas();
@@ -169,6 +197,7 @@ export default function Matriculas() {
   const [formDataVencimentoMatricula, setFormDataVencimentoMatricula] = useState("");
   const [formDiaVencimentoMensalidade, setFormDiaVencimentoMensalidade] = useState("");
   const [formParcelasTaxa, setFormParcelasTaxa] = useState("1");
+  const [formDatasExtrasTaxa, setFormDatasExtrasTaxa] = useState<string[]>([]);
   const [formDesconto, setFormDesconto] = useState("0");
   const [formValorNegociado, setFormValorNegociado] = useState("");
   const [formBolsa, setFormBolsa] = useState(false);
@@ -183,6 +212,7 @@ export default function Matriculas() {
   const [editDataVencimentoMatricula, setEditDataVencimentoMatricula] = useState("");
   const [editDiaVencimentoMensalidade, setEditDiaVencimentoMensalidade] = useState("");
   const [editParcelasTaxa, setEditParcelasTaxa] = useState("1");
+  const [editDatasExtrasTaxa, setEditDatasExtrasTaxa] = useState<string[]>([]);
   const [editDesconto, setEditDesconto] = useState("0");
   const [editBolsa, setEditBolsa] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -315,6 +345,7 @@ export default function Matriculas() {
     setFormDataVencimentoMatricula("");
     setFormDiaVencimentoMensalidade("");
     setFormParcelasTaxa("1");
+    setFormDatasExtrasTaxa([]);
     setFormDesconto("0");
     setFormValorNegociado("");
     setFormModalidadeId("");
@@ -387,6 +418,7 @@ export default function Matriculas() {
         percentual_desconto: formBolsa ? 0 : Number(formDesconto || 0),
         bolsa_100: formBolsa,
         parcelas_taxa_matricula: Number(formParcelasTaxa || 1),
+        datas_taxa_matricula: montarDatasTaxa(Number(formParcelasTaxa || 1), formDataVencimentoMatricula, formDatasExtrasTaxa),
         modalidade_financeira_id: formModalidadeId || undefined,
       });
 
@@ -415,6 +447,7 @@ export default function Matriculas() {
     setEditDataVencimentoMatricula(m.data_vencimento_matricula ?? "");
     setEditDiaVencimentoMensalidade(m.dia_vencimento_mensalidade != null ? String(m.dia_vencimento_mensalidade) : "");
     setEditParcelasTaxa(String(m.parcelas_taxa_matricula ?? 1));
+    setEditDatasExtrasTaxa((m.datas_taxa_matricula ?? []).slice(1));
     setEditDesconto(String(m.percentual_desconto ?? 0));
     setEditValorNegociado("");
     setEditBolsa(m.bolsa_100);
@@ -448,7 +481,10 @@ export default function Matriculas() {
       opcionaisMudaram ||
       Number(editDesconto || 0) !== (editingMatricula.percentual_desconto ?? 0) ||
       editBolsa !== editingMatricula.bolsa_100 ||
-      (editDiaVencimentoMensalidade ? Number(editDiaVencimentoMensalidade) : null) !== (editingMatricula.dia_vencimento_mensalidade ?? null);
+      (editDiaVencimentoMensalidade ? Number(editDiaVencimentoMensalidade) : null) !== (editingMatricula.dia_vencimento_mensalidade ?? null) ||
+      Number(editParcelasTaxa || 1) !== (editingMatricula.parcelas_taxa_matricula ?? 1) ||
+      (editDataVencimentoMatricula || null) !== (editingMatricula.data_vencimento_matricula ?? null) ||
+      JSON.stringify(montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null) !== JSON.stringify(editingMatricula.datas_taxa_matricula ?? null);
 
     const ok = await updateMatricula(editingMatricula.id, {
       turma_id: editTurmaId,
@@ -458,6 +494,7 @@ export default function Matriculas() {
       percentual_desconto: Number(editDesconto || 0),
       bolsa_100: editBolsa,
       parcelas_taxa_matricula: Number(editParcelasTaxa || 1),
+      datas_taxa_matricula: montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null,
       modalidade_financeira_id: editModalidadeId || null,
     });
 
@@ -476,7 +513,7 @@ export default function Matriculas() {
 
       if (dadosAlteraramFinanceiro) {
         const quer = confirm(
-          "Você alterou dados que afetam o valor/vencimento das parcelas (turma, data de ingresso, desconto, bolsa ou dia de vencimento negociado).\n\n" +
+          "Você alterou dados que afetam o valor/vencimento das parcelas (turma, data de ingresso, desconto, bolsa, dia de vencimento negociado ou parcelas/datas da matrícula).\n\n" +
           "Quer recalcular as parcelas financeiras com os dados novos agora?\n\n" +
           "Parcelas já pagas serão mantidas como estão - só as pendentes/atrasadas são recriadas."
         );
@@ -630,7 +667,7 @@ export default function Matriculas() {
                   </p>
                 </div>
                 <div>
-                  <Label>Vencimento da Taxa de Matrícula (opcional)</Label>
+                  <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
                   <Input type="date" value={formDataVencimentoMatricula} onChange={(e) => setFormDataVencimentoMatricula(e.target.value)} className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-1">
                     Se não preencher, usa a mesma data de ingresso.
@@ -638,11 +675,13 @@ export default function Matriculas() {
                 </div>
                 <div>
                   <Label>Parcelas da Taxa de Matrícula</Label>
-                  <Input type="number" min="1" value={formParcelasTaxa} onChange={(e) => setFormParcelasTaxa(e.target.value)} className="mt-1" />
+                  <Input type="number" min="1" max="24" value={formParcelasTaxa} onChange={(e) => setFormParcelasTaxa(e.target.value)} className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-1">
-                    1 = à vista. Mais de 1 divide o valor em parcelas mensais.
+                    1 = à vista. Mais de 1 divide o valor da matrícula em parcelas (você pode escolher a data de cada uma).
+                    {planoTurma?.taxa_matricula ? ` Valor da matrícula desta turma: R$ ${Number(planoTurma.taxa_matricula).toFixed(2)}.` : " Esta turma não tem valor de matrícula no plano: cobra o equivalente a uma mensalidade."}
                   </p>
                 </div>
+                <DatasDemaisParcelasTaxa parcelas={Number(formParcelasTaxa || 1)} valores={formDatasExtrasTaxa} onChange={setFormDatasExtrasTaxa} />
                 <div>
                   <Label>Dia de vencimento da mensalidade negociado (opcional)</Label>
                   <Input
@@ -709,6 +748,14 @@ export default function Matriculas() {
                         <div className="flex justify-between border-t pt-1 mt-1">
                           <span className="font-medium">Mensalidade após desconto</span>
                           <span className="font-bold text-success">R$ {(valorFinal ?? 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Matrícula (taxa)</span>
+                          <span className="font-medium">
+                            R$ {(planoTurma?.taxa_matricula && Number(planoTurma.taxa_matricula) > 0
+                              ? (formBolsa ? 0 : Number(planoTurma.taxa_matricula) * (1 - Number(formDesconto || 0) / 100))
+                              : (valorFinal ?? 0)).toFixed(2)}
+                          </span>
                         </div>
                       </>
                     )}
@@ -1012,13 +1059,14 @@ export default function Matriculas() {
               <Input type="date" value={editDataIngresso} onChange={(e) => setEditDataIngresso(e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label>Vencimento da Taxa de Matrícula (opcional)</Label>
+              <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
               <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
             </div>
             <div>
               <Label>Parcelas da Taxa de Matrícula</Label>
-              <Input type="number" min="1" value={editParcelasTaxa} onChange={(e) => setEditParcelasTaxa(e.target.value)} className="mt-1" />
+              <Input type="number" min="1" max="24" value={editParcelasTaxa} onChange={(e) => setEditParcelasTaxa(e.target.value)} className="mt-1" />
             </div>
+            <DatasDemaisParcelasTaxa parcelas={Number(editParcelasTaxa || 1)} valores={editDatasExtrasTaxa} onChange={setEditDatasExtrasTaxa} />
             <div>
               <Label>Dia de vencimento da mensalidade negociado (opcional)</Label>
               <Input

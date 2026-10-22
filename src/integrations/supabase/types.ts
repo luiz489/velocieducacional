@@ -4136,6 +4136,7 @@ export type Database = {
           escola_id: string
           id: string
           modalidade_financeira_id: string | null
+          datas_taxa_matricula: string[] | null
           parcelas_taxa_matricula: number
           percentual_desconto: number | null
           status_pagamento: string
@@ -4152,6 +4153,7 @@ export type Database = {
           escola_id: string
           id?: string
           modalidade_financeira_id?: string | null
+          datas_taxa_matricula?: string[] | null
           parcelas_taxa_matricula?: number
           percentual_desconto?: number | null
           status_pagamento?: string
@@ -4168,6 +4170,7 @@ export type Database = {
           escola_id?: string
           id?: string
           modalidade_financeira_id?: string | null
+          datas_taxa_matricula?: string[] | null
           parcelas_taxa_matricula?: number
           percentual_desconto?: number | null
           status_pagamento?: string
