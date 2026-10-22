@@ -706,18 +706,18 @@ export default function Matriculas() {
                   </p>
                 </div>
                 <div>
-                  <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
-                  <Input type="date" value={formDataVencimentoMatricula} onChange={(e) => setFormDataVencimentoMatricula(e.target.value)} className="mt-1" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Se não preencher, usa a mesma data de ingresso.
-                  </p>
-                </div>
-                <div>
                   <Label>Parcelas da Taxa de Matrícula</Label>
                   <Input type="number" min="1" max="24" value={formParcelasTaxa} onChange={(e) => setFormParcelasTaxa(e.target.value)} className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-1">
                     1 = à vista. Mais de 1 divide o valor da matrícula em parcelas (você pode escolher a data de cada uma).
                     {planoTurma?.taxa_matricula ? ` Valor da matrícula desta turma: R$ ${Number(planoTurma.taxa_matricula).toFixed(2)}.` : " Esta turma não tem valor de matrícula no plano: cobra o equivalente a uma mensalidade."}
+                  </p>
+                </div>
+                <div>
+                  <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
+                  <Input type="date" value={formDataVencimentoMatricula} onChange={(e) => setFormDataVencimentoMatricula(e.target.value)} className="mt-1" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Se não preencher, usa a mesma data de ingresso.
                   </p>
                 </div>
                 <DatasDemaisParcelasTaxa parcelas={Number(formParcelasTaxa || 1)} valores={formDatasExtrasTaxa} onChange={setFormDatasExtrasTaxa} />
@@ -1108,12 +1108,12 @@ export default function Matriculas() {
               </p>
             </div>
             <div>
-              <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
-              <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
-            </div>
-            <div>
               <Label>Parcelas da Taxa de Matrícula</Label>
               <Input type="number" min="1" max="24" value={editParcelasTaxa} onChange={(e) => setEditParcelasTaxa(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
+              <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
             </div>
             <DatasDemaisParcelasTaxa parcelas={Number(editParcelasTaxa || 1)} valores={editDatasExtrasTaxa} onChange={setEditDatasExtrasTaxa} />
             <div>
