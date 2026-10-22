@@ -18,6 +18,7 @@ export type MatriculaResumo = {
   dia_vencimento_mensalidade: number | null;
   parcelas_taxa_matricula: number;
   datas_taxa_matricula: string[] | null;
+  valor_taxa_matricula: number | null;
   modalidade_financeira_id: string | null;
   status_pagamento: string;
   percentual_desconto: number | null;
@@ -49,7 +50,7 @@ export function useMatriculas() {
     const { data, error } = await supabase
       .from("matriculas")
       .select(`
-        id, aluno_id, turma_id, data_ingresso, data_vencimento_matricula, dia_vencimento_mensalidade, parcelas_taxa_matricula, datas_taxa_matricula, modalidade_financeira_id, status_pagamento, percentual_desconto, bolsa_100,
+        id, aluno_id, turma_id, data_ingresso, data_vencimento_matricula, dia_vencimento_mensalidade, parcelas_taxa_matricula, datas_taxa_matricula, valor_taxa_matricula, modalidade_financeira_id, status_pagamento, percentual_desconto, bolsa_100,
         alunos ( nome ),
         turmas ( nome, turno, ano_letivo ),
         financeiro ( status, valor )
@@ -78,6 +79,7 @@ export function useMatriculas() {
         dia_vencimento_mensalidade: m.dia_vencimento_mensalidade,
         parcelas_taxa_matricula: m.parcelas_taxa_matricula,
         datas_taxa_matricula: m.datas_taxa_matricula ?? null,
+        valor_taxa_matricula: m.valor_taxa_matricula != null ? Number(m.valor_taxa_matricula) : null,
         modalidade_financeira_id: m.modalidade_financeira_id,
         status_pagamento: m.status_pagamento,
         percentual_desconto: m.percentual_desconto,
@@ -155,7 +157,7 @@ export function useMatriculas() {
 
   const updateMatricula = useCallback(async (
     id: string,
-    dados: { turma_id: string; data_ingresso: string; data_vencimento_matricula?: string | null; dia_vencimento_mensalidade?: number | null; percentual_desconto: number; bolsa_100: boolean; parcelas_taxa_matricula?: number; datas_taxa_matricula?: string[] | null; modalidade_financeira_id?: string | null }
+    dados: { turma_id: string; data_ingresso: string; data_vencimento_matricula?: string | null; dia_vencimento_mensalidade?: number | null; percentual_desconto: number; bolsa_100: boolean; parcelas_taxa_matricula?: number; datas_taxa_matricula?: string[] | null; valor_taxa_matricula?: number | null; modalidade_financeira_id?: string | null }
   ) => {
     const { error } = await supabase.from("matriculas").update({
       turma_id: dados.turma_id,
@@ -164,6 +166,7 @@ export function useMatriculas() {
       dia_vencimento_mensalidade: dados.dia_vencimento_mensalidade ?? null,
       parcelas_taxa_matricula: dados.parcelas_taxa_matricula ?? 1,
       datas_taxa_matricula: dados.datas_taxa_matricula?.length ? dados.datas_taxa_matricula : null,
+      valor_taxa_matricula: dados.valor_taxa_matricula ?? null,
       modalidade_financeira_id: dados.modalidade_financeira_id ?? null,
       percentual_desconto: dados.bolsa_100 ? 0 : dados.percentual_desconto,
       bolsa_100: dados.bolsa_100,
