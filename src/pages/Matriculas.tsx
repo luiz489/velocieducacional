@@ -690,13 +690,6 @@ export default function Matriculas() {
                   </p>
                 </div>
                 <div>
-                  <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
-                  <Input type="date" value={formDataVencimentoMatricula} onChange={(e) => setFormDataVencimentoMatricula(e.target.value)} className="mt-1" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Se não preencher, usa a mesma data de ingresso.
-                  </p>
-                </div>
-                <div>
                   <Label>Valor da Matrícula (R$)</Label>
                   <Input
                     type="number" step="0.01" min="0" className="mt-1"
@@ -710,6 +703,13 @@ export default function Matriculas() {
                       : "Esta turma não tem valor de matrícula no plano: o padrão é o valor de uma mensalidade."}
                     {" "}Altere se o valor combinado com esta família for outro: ele vale como valor final (o desconto % não incide).
                     0 = matrícula isenta.
+                  </p>
+                </div>
+                <div>
+                  <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
+                  <Input type="date" value={formDataVencimentoMatricula} onChange={(e) => setFormDataVencimentoMatricula(e.target.value)} className="mt-1" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Se não preencher, usa a mesma data de ingresso.
                   </p>
                 </div>
                 <div>
@@ -1096,10 +1096,6 @@ export default function Matriculas() {
               <Input type="date" value={editDataIngresso} onChange={(e) => setEditDataIngresso(e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
-              <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
-            </div>
-            <div>
               <Label>Valor da Matrícula (R$)</Label>
               <Input
                 type="number" step="0.01" min="0" className="mt-1"
@@ -1110,6 +1106,10 @@ export default function Matriculas() {
                 Valor padrão da turma{planoTurmaEdit?.taxa_matricula && Number(planoTurmaEdit.taxa_matricula) > 0 ? "" : " (sem taxa no plano: uma mensalidade)"}.
                 Se alterar, vale como valor final (o desconto % não incide). 0 = isenta.
               </p>
+            </div>
+            <div>
+              <Label>Vencimento da Taxa de Matrícula (1ª parcela) (opcional)</Label>
+              <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
             </div>
             <div>
               <Label>Parcelas da Taxa de Matrícula</Label>
