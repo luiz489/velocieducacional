@@ -34,6 +34,7 @@ export default function PlanosFinanceirosTurma() {
   const [valorMensalidade, setValorMensalidade] = useState("");
   const [numeroParcelas, setNumeroParcelas] = useState("12");
   const [diaVencimento, setDiaVencimento] = useState("10");
+  const [taxaMatricula, setTaxaMatricula] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const [editandoAno, setEditandoAno] = useState<TurmaComPlano | null>(null);
@@ -109,6 +110,7 @@ export default function PlanosFinanceirosTurma() {
     setValorMensalidade(t.valor_mensalidade != null ? String(t.valor_mensalidade) : "");
     setNumeroParcelas(t.numero_parcelas != null ? String(t.numero_parcelas) : "12");
     setDiaVencimento(t.dia_vencimento != null ? String(t.dia_vencimento) : "10");
+    setTaxaMatricula(t.taxa_matricula ? String(t.taxa_matricula) : "");
   };
 
   const handleSalvar = async () => {
@@ -120,7 +122,7 @@ export default function PlanosFinanceirosTurma() {
       valor_mensalidade: Number(valorMensalidade),
       numero_parcelas: Number(numeroParcelas),
       dia_vencimento: Number(diaVencimento),
-      taxa_matricula: 0,
+      taxa_matricula: Number(taxaMatricula || 0),
     });
     setSalvando(false);
     if (ok) setEditando(null);
@@ -168,6 +170,7 @@ export default function PlanosFinanceirosTurma() {
                 <TableHead>Turno</TableHead>
                 <TableHead>Ano Letivo</TableHead>
                 <TableHead>Mensalidade</TableHead>
+                <TableHead>Matrícula</TableHead>
                 <TableHead>Parcelas</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
@@ -192,6 +195,9 @@ export default function PlanosFinanceirosTurma() {
                   </TableCell>
                   <TableCell>
                     {t.valor_mensalidade != null ? `R$ ${Number(t.valor_mensalidade).toFixed(2)}` : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {t.taxa_matricula && Number(t.taxa_matricula) > 0 ? `R$ ${Number(t.taxa_matricula).toFixed(2)}` : "= mensalidade"}
                   </TableCell>
                   <TableCell>{t.numero_parcelas ?? "—"}</TableCell>
                   <TableCell>{t.dia_vencimento ? `Dia ${t.dia_vencimento}` : "—"}</TableCell>
@@ -240,8 +246,8 @@ export default function PlanosFinanceirosTurma() {
             <DialogTitle>Plano Financeiro — {editando?.turma_nome}</DialogTitle>
             <DialogDescription>
               Esses valores serão usados para gerar automaticamente o carnê de cada aluno matriculado nesta turma.
-              A Taxa de Matrícula é calculada automaticamente (valor de uma mensalidade, já com desconto) - não
-              precisa configurar separadamente.
+              Valor da matrícula: se preencher, é cobrado esse valor (com o desconto da matrícula, se houver); se deixar
+              em branco, a matrícula é cobrada com o valor de uma mensalidade.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -251,6 +257,14 @@ export default function PlanosFinanceirosTurma() {
                 type="number" step="0.01" min="0"
                 value={valorMensalidade} onChange={(e) => setValorMensalidade(e.target.value)}
                 placeholder="Ex: 850.00" className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Valor da Matrícula (R$) (opcional)</Label>
+              <Input
+                type="number" step="0.01" min="0"
+                value={taxaMatricula} onChange={(e) => setTaxaMatricula(e.target.value)}
+                placeholder="Em branco = igual à mensalidade" className="mt-1"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
