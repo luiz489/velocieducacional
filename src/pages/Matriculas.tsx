@@ -49,6 +49,20 @@ function getStatusBadge(status: string) {
 // ao escolher a opção - já aconteceu em Cidade/UF e depois em Turma.
 const CLASSE_SELECT_MATRICULA = "mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50";
 
+/** Valor da matrícula que o sistema cobraria sem nenhuma alteração manual (plano da turma com desconto; sem taxa no plano = 1 mensalidade). */
+const valorPadraoMatricula = (taxaPlano: number | null | undefined, bolsa: boolean, descontoPct: number, mensalidadeFinal: number | null): number | null => {
+  if (taxaPlano && Number(taxaPlano) > 0) return bolsa ? 0 : Math.round(Number(taxaPlano) * (1 - descontoPct / 100) * 100) / 100;
+  return mensalidadeFinal != null ? Math.round(mensalidadeFinal * 100) / 100 : null;
+};
+
+/** Só grava o valor na matrícula se a pessoa mudou em relação ao padrão; senão deixa vazio (acompanha o plano). */
+const valorMatriculaParaSalvar = (texto: string | null, padrao: number | null): number | null => {
+  if (texto == null || texto.trim() === "") return null;
+  const n = Number(texto);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return padrao != null && Math.abs(n - padrao) < 0.005 ? null : n;
+};
+
 const montarDatasTaxa = (parcelas: number, primeira: string, extras: string[]): string[] | undefined => {
   if (parcelas <= 1 || !primeira) return undefined;
   const lista = [primeira, ...Array.from({ length: Math.min(parcelas, 24) - 1 }, (_, k) => extras[k] ?? "")];
@@ -198,7 +212,7 @@ export default function Matriculas() {
   const [formDiaVencimentoMensalidade, setFormDiaVencimentoMensalidade] = useState("");
   const [formParcelasTaxa, setFormParcelasTaxa] = useState("1");
   const [formDatasExtrasTaxa, setFormDatasExtrasTaxa] = useState<string[]>([]);
-  const [formValorTaxa, setFormValorTaxa] = useState("");
+  const [formValorTaxa, setFormValorTaxa] = useState<string | null>(null);
   const [formDesconto, setFormDesconto] = useState("0");
   const [formValorNegociado, setFormValorNegociado] = useState("");
   const [formBolsa, setFormBolsa] = useState(false);
@@ -214,7 +228,7 @@ export default function Matriculas() {
   const [editDiaVencimentoMensalidade, setEditDiaVencimentoMensalidade] = useState("");
   const [editParcelasTaxa, setEditParcelasTaxa] = useState("1");
   const [editDatasExtrasTaxa, setEditDatasExtrasTaxa] = useState<string[]>([]);
-  const [editValorTaxa, setEditValorTaxa] = useState("");
+  const [editValorTaxa, setEditValorTaxa] = useState<string | null>(null);
   const [editDesconto, setEditDesconto] = useState("0");
   const [editBolsa, setEditBolsa] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -259,7 +273,7 @@ export default function Matriculas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("planos_financeiros_turma")
-        .select("valor_mensalidade")
+        .select("valor_mensalidade, taxa_matricula")
         .eq("turma_id", editTurmaId)
         .maybeSingle();
       if (error) throw error;
@@ -279,6 +293,7 @@ export default function Matriculas() {
   const valorFinalEdit = valorBaseEditSemOpcionais != null
     ? (valorBaseEditSemOpcionais - (valorDescontoEdit ?? 0)) + somaOpcionaisEdit
     : null;
+  const valorPadraoEdit = valorPadraoMatricula(planoTurmaEdit?.taxa_matricula, editBolsa, Number(editDesconto || 0), valorFinalEdit);
 
   const { data: modalidadesForm } = useQuery({
     queryKey: ["modalidades-turma", formTurmaId],
@@ -318,6 +333,7 @@ export default function Matriculas() {
   const valorFinal = valorBaseSemOpcionais != null
     ? (valorBaseSemOpcionais - (valorDesconto ?? 0)) + somaOpcionaisForm
     : null;
+  const valorPadraoForm = valorPadraoMatricula(planoTurma?.taxa_matricula, formBolsa, Number(formDesconto || 0), valorFinal);
 
   const turmasFormFiltradas = formCategoriaId
     ? turmasComVagas.filter((t) => t.categoria_id === formCategoriaId)
@@ -348,7 +364,7 @@ export default function Matriculas() {
     setFormDiaVencimentoMensalidade("");
     setFormParcelasTaxa("1");
     setFormDatasExtrasTaxa([]);
-    setFormValorTaxa("");
+    setFormValorTaxa(null);
     setFormDesconto("0");
     setFormValorNegociado("");
     setFormModalidadeId("");
@@ -422,7 +438,7 @@ export default function Matriculas() {
         bolsa_100: formBolsa,
         parcelas_taxa_matricula: Number(formParcelasTaxa || 1),
         datas_taxa_matricula: montarDatasTaxa(Number(formParcelasTaxa || 1), formDataVencimentoMatricula, formDatasExtrasTaxa),
-        valor_taxa_matricula: formValorTaxa.trim() === "" ? null : Number(formValorTaxa),
+        valor_taxa_matricula: valorMatriculaParaSalvar(formValorTaxa, valorPadraoForm),
         modalidade_financeira_id: formModalidadeId || undefined,
       });
 
@@ -452,7 +468,7 @@ export default function Matriculas() {
     setEditDiaVencimentoMensalidade(m.dia_vencimento_mensalidade != null ? String(m.dia_vencimento_mensalidade) : "");
     setEditParcelasTaxa(String(m.parcelas_taxa_matricula ?? 1));
     setEditDatasExtrasTaxa((m.datas_taxa_matricula ?? []).slice(1));
-    setEditValorTaxa(m.valor_taxa_matricula != null ? String(m.valor_taxa_matricula) : "");
+    setEditValorTaxa(m.valor_taxa_matricula != null ? String(m.valor_taxa_matricula) : null);
     setEditDesconto(String(m.percentual_desconto ?? 0));
     setEditValorNegociado("");
     setEditBolsa(m.bolsa_100);
@@ -487,7 +503,7 @@ export default function Matriculas() {
       Number(editDesconto || 0) !== (editingMatricula.percentual_desconto ?? 0) ||
       editBolsa !== editingMatricula.bolsa_100 ||
       (editDiaVencimentoMensalidade ? Number(editDiaVencimentoMensalidade) : null) !== (editingMatricula.dia_vencimento_mensalidade ?? null) ||
-      (editValorTaxa.trim() === "" ? null : Number(editValorTaxa)) !== (editingMatricula.valor_taxa_matricula ?? null) ||
+      valorMatriculaParaSalvar(editValorTaxa, valorPadraoEdit) !== (editingMatricula.valor_taxa_matricula ?? null) ||
       Number(editParcelasTaxa || 1) !== (editingMatricula.parcelas_taxa_matricula ?? 1) ||
       (editDataVencimentoMatricula || null) !== (editingMatricula.data_vencimento_matricula ?? null) ||
       JSON.stringify(montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null) !== JSON.stringify(editingMatricula.datas_taxa_matricula ?? null);
@@ -501,7 +517,7 @@ export default function Matriculas() {
       bolsa_100: editBolsa,
       parcelas_taxa_matricula: Number(editParcelasTaxa || 1),
       datas_taxa_matricula: montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null,
-      valor_taxa_matricula: editValorTaxa.trim() === "" ? null : Number(editValorTaxa),
+      valor_taxa_matricula: valorMatriculaParaSalvar(editValorTaxa, valorPadraoEdit),
       modalidade_financeira_id: editModalidadeId || null,
     });
 
@@ -681,15 +697,19 @@ export default function Matriculas() {
                   </p>
                 </div>
                 <div>
-                  <Label>Valor da Matrícula (R$) (opcional)</Label>
+                  <Label>Valor da Matrícula (R$)</Label>
                   <Input
                     type="number" step="0.01" min="0" className="mt-1"
-                    value={formValorTaxa} onChange={(e) => setFormValorTaxa(e.target.value)}
-                    placeholder={planoTurma?.taxa_matricula && Number(planoTurma.taxa_matricula) > 0 ? `Em branco = R$ ${Number(planoTurma.taxa_matricula).toFixed(2)} (valor da turma)` : "Em branco = igual a uma mensalidade"}
+                    value={formValorTaxa ?? (valorPadraoForm != null ? valorPadraoForm.toFixed(2) : "")}
+                    onChange={(e) => setFormValorTaxa(e.target.value)}
+                    placeholder="Selecione a turma"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Preencha só se o valor combinado com esta família for diferente do valor da turma. É o valor final
-                    (o desconto % não incide sobre ele). 0 = matrícula isenta.
+                    {planoTurma?.taxa_matricula && Number(planoTurma.taxa_matricula) > 0
+                      ? `Valor da matrícula desta turma: R$ ${Number(planoTurma.taxa_matricula).toFixed(2)} (com o desconto da matrícula, se houver).`
+                      : "Esta turma não tem valor de matrícula no plano: o padrão é o valor de uma mensalidade."}
+                    {" "}Altere se o valor combinado com esta família for outro: ele vale como valor final (o desconto % não incide).
+                    0 = matrícula isenta.
                   </p>
                 </div>
                 <div>
@@ -771,10 +791,7 @@ export default function Matriculas() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Matrícula (taxa)</span>
                           <span className="font-medium">
-                            R$ {(formValorTaxa.trim() !== "" ? Number(formValorTaxa)
-                              : planoTurma?.taxa_matricula && Number(planoTurma.taxa_matricula) > 0
-                              ? (formBolsa ? 0 : Number(planoTurma.taxa_matricula) * (1 - Number(formDesconto || 0) / 100))
-                              : (valorFinal ?? 0)).toFixed(2)}
+                            R$ {(valorMatriculaParaSalvar(formValorTaxa, valorPadraoForm) ?? valorPadraoForm ?? 0).toFixed(2)}
                           </span>
                         </div>
                       </>
@@ -1083,12 +1100,16 @@ export default function Matriculas() {
               <Input type="date" value={editDataVencimentoMatricula} onChange={(e) => setEditDataVencimentoMatricula(e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label>Valor da Matrícula (R$) (opcional)</Label>
+              <Label>Valor da Matrícula (R$)</Label>
               <Input
                 type="number" step="0.01" min="0" className="mt-1"
-                value={editValorTaxa} onChange={(e) => setEditValorTaxa(e.target.value)}
-                placeholder="Em branco = valor da turma"
+                value={editValorTaxa ?? (valorPadraoEdit != null ? valorPadraoEdit.toFixed(2) : "")}
+                onChange={(e) => setEditValorTaxa(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Valor padrão da turma{planoTurmaEdit?.taxa_matricula && Number(planoTurmaEdit.taxa_matricula) > 0 ? "" : " (sem taxa no plano: uma mensalidade)"}.
+                Se alterar, vale como valor final (o desconto % não incide). 0 = isenta.
+              </p>
             </div>
             <div>
               <Label>Parcelas da Taxa de Matrícula</Label>
