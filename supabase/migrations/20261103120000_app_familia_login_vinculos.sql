@@ -1,4 +1,5 @@
 -- App dos pais (projeto app-educacional): login por código (WhatsApp ou e-mail do cadastro) e vínculos
+-- APLICADO em produção em 03/11/2026 (via MCP, nome app_familia_login_vinculos). Testado antes em Postgres local e depois em produção com rollback.
 -- pessoa <-> aluno. O app NUNCA lê a tabela alunos direto: só enxerga o que estas funções devolvem.
 --
 -- Como funciona:
