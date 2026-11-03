@@ -1,1 +1,8 @@
 project_id = "mqjsfmhqxdbtanrqizvr"
+
+# App dos pais: quem chama ainda não está logado, as funções se protegem sozinhas (código com hash, limite de tentativas).
+[functions.familia-enviar-codigo]
+verify_jwt = false
+
+[functions.familia-verificar-codigo]
+verify_jwt = false
