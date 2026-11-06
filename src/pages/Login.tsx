@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap } from "lucide-react";
+import { VelociSymbol } from "@/components/VelociLogo";
 import { useToast } from "@/hooks/use-toast";
 
 /**
@@ -59,9 +59,9 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <GraduationCap className="h-14 w-14 text-primary" />
+            <VelociSymbol className="h-14 w-14" />
           </div>
-          <CardTitle className="text-2xl">Veloci Educacional</CardTitle>
+          <CardTitle className="text-2xl">Veloci <span className="text-[#B8500A] dark:text-[#F47E1A]">Educacional</span></CardTitle>
           <CardDescription>Faça login para acessar o sistema</CardDescription>
         </CardHeader>
         <CardContent>

@@ -35,6 +35,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
+import { VelociSymbol } from "@/components/VelociLogo";
 import { useLocation } from "react-router-dom";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { ROTA_MODULO } from "@/lib/permissoesRotas";
@@ -167,7 +168,7 @@ export function AppSidebar() {
             {escolaLogo ? (
               <img src={escolaLogo} alt="Logo" className="h-full w-full object-cover" />
             ) : (
-              <GraduationCap className="h-5 w-5 text-sidebar-primary" />
+              <VelociSymbol className="h-6 w-6" />
             )}
           </div>
           {!collapsed && (
