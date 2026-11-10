@@ -117,7 +117,7 @@ export function useAlunos() {
     alunoId: string,
     turmaId: string,
     escolaId: string,
-    opcoes?: { data_ingresso?: string; data_vencimento_matricula?: string; dia_vencimento_mensalidade?: number; percentual_desconto?: number; bolsa_100?: boolean; parcelas_taxa_matricula?: number; datas_taxa_matricula?: string[]; valor_taxa_matricula?: number | null; modalidade_financeira_id?: string }
+    opcoes?: { data_ingresso?: string; data_vencimento_matricula?: string; dia_vencimento_mensalidade?: number; percentual_desconto?: number; bolsa_100?: boolean; parcelas_taxa_matricula?: number; datas_taxa_matricula?: string[]; valor_taxa_matricula?: number | null; valor_mensalidade_negociado?: number | null; modalidade_financeira_id?: string }
   ) => {
     // Validação client-side de matrícula duplicada (mesmo aluno + mesma turma/período)
     const { data: existente } = await supabase
@@ -148,6 +148,7 @@ export function useAlunos() {
       parcelas_taxa_matricula: opcoes?.parcelas_taxa_matricula ?? 1,
       datas_taxa_matricula: opcoes?.datas_taxa_matricula?.length ? opcoes.datas_taxa_matricula : null,
       valor_taxa_matricula: opcoes?.valor_taxa_matricula ?? null,
+      valor_mensalidade_negociado: opcoes?.valor_mensalidade_negociado ?? null,
       modalidade_financeira_id: opcoes?.modalidade_financeira_id || null,
     }).select("id").single();
     if (error) {

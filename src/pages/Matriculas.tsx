@@ -287,11 +287,14 @@ export default function Matriculas() {
     ? valorBaseEditSemOpcionais + somaOpcionaisEdit
     : null;
   // Desconto/bolsa incide só na mensalidade - valores opcionais (ex: Almoço) sempre somam no valor cheio.
+  const editValorNegociadoNum = editValorNegociado.trim() !== "" ? Number(editValorNegociado) : null;
   const valorDescontoEdit = valorBaseEditSemOpcionais != null
-    ? (editBolsa ? valorBaseEditSemOpcionais : valorBaseEditSemOpcionais * (Number(editDesconto || 0) / 100))
+    ? (editBolsa ? valorBaseEditSemOpcionais
+       : editValorNegociadoNum != null ? valorBaseEditSemOpcionais - editValorNegociadoNum
+       : valorBaseEditSemOpcionais * (Number(editDesconto || 0) / 100))
     : null;
   const valorFinalEdit = valorBaseEditSemOpcionais != null
-    ? (valorBaseEditSemOpcionais - (valorDescontoEdit ?? 0)) + somaOpcionaisEdit
+    ? (editValorNegociadoNum != null && !editBolsa ? editValorNegociadoNum : valorBaseEditSemOpcionais - (valorDescontoEdit ?? 0)) + somaOpcionaisEdit
     : null;
   const valorPadraoEdit = valorPadraoMatricula(planoTurmaEdit?.taxa_matricula, editBolsa, Number(editDesconto || 0), valorFinalEdit);
 
@@ -327,11 +330,15 @@ export default function Matriculas() {
   const somaOpcionaisForm = somaOpcionais(formOpcionaisIds);
   const valorBase = valorBaseSemOpcionais != null ? valorBaseSemOpcionais + somaOpcionaisForm : null;
   // Desconto/bolsa incide só na mensalidade - valores opcionais (ex: Almoço) sempre somam no valor cheio.
+  // Com "valor negociado" preenchido, ele vale como valor final exato (sem passar por % arredondado).
+  const formValorNegociadoNum = formValorNegociado.trim() !== "" ? Number(formValorNegociado) : null;
   const valorDesconto = valorBaseSemOpcionais != null
-    ? (formBolsa ? valorBaseSemOpcionais : valorBaseSemOpcionais * (Number(formDesconto || 0) / 100))
+    ? (formBolsa ? valorBaseSemOpcionais
+       : formValorNegociadoNum != null ? valorBaseSemOpcionais - formValorNegociadoNum
+       : valorBaseSemOpcionais * (Number(formDesconto || 0) / 100))
     : null;
   const valorFinal = valorBaseSemOpcionais != null
-    ? (valorBaseSemOpcionais - (valorDesconto ?? 0)) + somaOpcionaisForm
+    ? (formValorNegociadoNum != null && !formBolsa ? formValorNegociadoNum : valorBaseSemOpcionais - (valorDesconto ?? 0)) + somaOpcionaisForm
     : null;
   const valorPadraoForm = valorPadraoMatricula(planoTurma?.taxa_matricula, formBolsa, Number(formDesconto || 0), valorFinal);
 
@@ -435,6 +442,7 @@ export default function Matriculas() {
         data_vencimento_matricula: formDataVencimentoMatricula || undefined,
         dia_vencimento_mensalidade: formDiaVencimentoMensalidade ? Number(formDiaVencimentoMensalidade) : undefined,
         percentual_desconto: formBolsa ? 0 : Number(formDesconto || 0),
+        valor_mensalidade_negociado: formBolsa ? null : formValorNegociadoNum,
         bolsa_100: formBolsa,
         parcelas_taxa_matricula: Number(formParcelasTaxa || 1),
         datas_taxa_matricula: montarDatasTaxa(Number(formParcelasTaxa || 1), formDataVencimentoMatricula, formDatasExtrasTaxa),
@@ -470,7 +478,7 @@ export default function Matriculas() {
     setEditDatasExtrasTaxa((m.datas_taxa_matricula ?? []).slice(1));
     setEditValorTaxa(m.valor_taxa_matricula != null ? String(m.valor_taxa_matricula) : null);
     setEditDesconto(String(m.percentual_desconto ?? 0));
-    setEditValorNegociado("");
+    setEditValorNegociado(m.valor_mensalidade_negociado != null ? String(m.valor_mensalidade_negociado) : "");
     setEditBolsa(m.bolsa_100);
     const { data: opcionaisAtuais } = await supabase
       .from("matricula_valores_opcionais")
@@ -501,6 +509,7 @@ export default function Matriculas() {
       editModalidadeId !== (editingMatricula.modalidade_financeira_id ?? "") ||
       opcionaisMudaram ||
       Number(editDesconto || 0) !== (editingMatricula.percentual_desconto ?? 0) ||
+      (editBolsa ? null : editValorNegociadoNum) !== (editingMatricula.valor_mensalidade_negociado ?? null) ||
       editBolsa !== editingMatricula.bolsa_100 ||
       (editDiaVencimentoMensalidade ? Number(editDiaVencimentoMensalidade) : null) !== (editingMatricula.dia_vencimento_mensalidade ?? null) ||
       valorMatriculaParaSalvar(editValorTaxa, valorPadraoEdit) !== (editingMatricula.valor_taxa_matricula ?? null) ||
@@ -514,6 +523,7 @@ export default function Matriculas() {
       data_vencimento_matricula: editDataVencimentoMatricula || null,
       dia_vencimento_mensalidade: editDiaVencimentoMensalidade ? Number(editDiaVencimentoMensalidade) : null,
       percentual_desconto: Number(editDesconto || 0),
+      valor_mensalidade_negociado: editBolsa ? null : editValorNegociadoNum,
       bolsa_100: editBolsa,
       parcelas_taxa_matricula: Number(editParcelasTaxa || 1),
       datas_taxa_matricula: montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null,
@@ -739,7 +749,8 @@ export default function Matriculas() {
                     <Label>Desconto (%)</Label>
                     <Input
                       type="number" min="0" max="100" step="0.01"
-                      value={formDesconto} onChange={(e) => setFormDesconto(e.target.value)}
+                      value={formDesconto}
+                      onChange={(e) => { setFormDesconto(e.target.value); setFormValorNegociado(""); }}
                       disabled={formBolsa} className="mt-1"
                     />
                   </div>
@@ -765,7 +776,8 @@ export default function Matriculas() {
                     className="mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Ao digitar o valor fixo negociado, o desconto (%) acima é calculado automaticamente.
+                    Ao digitar o valor fixo negociado, ele vale como valor final exato (sem arredondar por %).
+                    O desconto (%) acima é só uma referência; editá-lo diretamente limpa este campo.
                   </p>
                 </div>
 
@@ -1134,7 +1146,8 @@ export default function Matriculas() {
                 <Label>Desconto (%)</Label>
                 <Input
                   type="number" min="0" max="100" step="0.01"
-                  value={editDesconto} onChange={(e) => setEditDesconto(e.target.value)}
+                  value={editDesconto}
+                  onChange={(e) => { setEditDesconto(e.target.value); setEditValorNegociado(""); }}
                   disabled={editBolsa} className="mt-1"
                 />
               </div>
@@ -1160,7 +1173,8 @@ export default function Matriculas() {
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Ao digitar o valor fixo negociado, o desconto (%) acima é calculado automaticamente.
+                Ao digitar o valor fixo negociado, ele vale como valor final exato (sem arredondar por %).
+                O desconto (%) acima é só uma referência; editá-lo diretamente limpa este campo.
               </p>
             </div>
 

@@ -4137,6 +4137,7 @@ export type Database = {
           id: string
           modalidade_financeira_id: string | null
           datas_taxa_matricula: string[] | null
+          valor_mensalidade_negociado: number | null
           valor_taxa_matricula: number | null
           parcelas_taxa_matricula: number
           percentual_desconto: number | null
@@ -4155,6 +4156,7 @@ export type Database = {
           id?: string
           modalidade_financeira_id?: string | null
           datas_taxa_matricula?: string[] | null
+          valor_mensalidade_negociado?: number | null
           valor_taxa_matricula?: number | null
           parcelas_taxa_matricula?: number
           percentual_desconto?: number | null
@@ -4173,6 +4175,7 @@ export type Database = {
           id?: string
           modalidade_financeira_id?: string | null
           datas_taxa_matricula?: string[] | null
+          valor_mensalidade_negociado?: number | null
           valor_taxa_matricula?: number | null
           parcelas_taxa_matricula?: number
           percentual_desconto?: number | null
