@@ -2832,6 +2832,8 @@ export type Database = {
           grupo_economico_id: string | null
           id: string
           logo_url: string | null
+          assinatura_padrao_path: string | null
+          assinatura_padrao_cargo: string | null
           modelo_avaliacao: string
           nome: string
           numero_empresa: number | null
@@ -2861,6 +2863,8 @@ export type Database = {
           grupo_economico_id?: string | null
           id?: string
           logo_url?: string | null
+          assinatura_padrao_path?: string | null
+          assinatura_padrao_cargo?: string | null
           modelo_avaliacao?: string
           nome: string
           numero_empresa?: number | null
@@ -2890,6 +2894,8 @@ export type Database = {
           grupo_economico_id?: string | null
           id?: string
           logo_url?: string | null
+          assinatura_padrao_path?: string | null
+          assinatura_padrao_cargo?: string | null
           modelo_avaliacao?: string
           nome?: string
           numero_empresa?: number | null

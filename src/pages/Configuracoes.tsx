@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ShieldCheck, UserPlus, UserCog, Plus, Settings } from "lucide-react";
+import { ShieldCheck, UserPlus, UserCog, Plus, Settings, Trash2 } from "lucide-react";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { useCepLookup, mascaraCEP } from "@/hooks/useCepLookup";
 import { useCnpjLookup, mascaraCNPJ } from "@/hooks/useCnpjLookup";
@@ -771,7 +771,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("escolas")
-        .select("id, nome, razao_social, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico, carteirinha_qr_url, carteirinha_validade_meses")
+        .select("id, nome, razao_social, modelo_avaliacao, logo_url, cnpj, cidade, uf, endereco, cep, telefone, email, campos_matricula_visiveis, dia_faturamento_automatico, carteirinha_qr_url, carteirinha_validade_meses, assinatura_padrao_path, assinatura_padrao_cargo")
         .eq("id", escolaId!)
         .single();
       if (error) throw error;
@@ -780,6 +780,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   });
 
   const { data: logoUrlAssinada } = useSignedUrl("escola-logos", escola?.logo_url);
+  const { data: assinaturaPadraoUrl } = useSignedUrl("escola-logos", (escola as any)?.assinatura_padrao_path);
   const [camposMatricula, setCamposMatricula] = useState<Record<string, boolean>>({});
   const [salvandoCampos, setSalvandoCampos] = useState(false);
   const [diaFaturamento, setDiaFaturamento] = useState("");
@@ -787,6 +788,9 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
   const [carteirinhaQr, setCarteirinhaQr] = useState("");
   const [carteirinhaValidade, setCarteirinhaValidade] = useState("12");
   const [salvandoCarteirinha, setSalvandoCarteirinha] = useState(false);
+  const [enviandoAssinatura, setEnviandoAssinatura] = useState(false);
+  const [cargoAssinaturaPadrao, setCargoAssinaturaPadrao] = useState("Diretora");
+  const [salvandoCargoAssinatura, setSalvandoCargoAssinatura] = useState(false);
 
   useEffect(() => {
     if (escola) {
@@ -794,6 +798,7 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
       setDiaFaturamento((escola as any).dia_faturamento_automatico ? String((escola as any).dia_faturamento_automatico) : "");
       setCarteirinhaQr((escola as any).carteirinha_qr_url ?? "");
       setCarteirinhaValidade(String((escola as any).carteirinha_validade_meses ?? 12));
+      setCargoAssinaturaPadrao((escola as any).assinatura_padrao_cargo ?? "Diretora");
     }
   }, [escola]);
 
@@ -945,6 +950,62 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
     qc.invalidateQueries({ queryKey: ["escola-logo", escolaId] });
   };
 
+  const enviarAssinaturaPadrao = async (file: File) => {
+    if (!escolaId) return;
+    setEnviandoAssinatura(true);
+    const extensao = file.name.split(".").pop();
+    const caminho = `${escolaId}/assinatura-padrao.${extensao}`;
+
+    const { error: erroUpload } = await supabase.storage
+      .from("escola-logos")
+      .upload(caminho, file, { upsert: true });
+
+    if (erroUpload) {
+      setEnviandoAssinatura(false);
+      toast.error("Erro ao enviar a assinatura: " + erroUpload.message);
+      return;
+    }
+
+    const { error: erroUpdate } = await supabase
+      .from("escolas")
+      .update({ assinatura_padrao_path: caminho, assinatura_padrao_cargo: cargoAssinaturaPadrao.trim() || "Diretora" })
+      .eq("id", escolaId);
+
+    setEnviandoAssinatura(false);
+    if (erroUpdate) {
+      toast.error("Assinatura enviada, mas erro ao salvar: " + erroUpdate.message);
+      return;
+    }
+    toast.success("Assinatura padrão salva! Quem tiver a permissão de assinar já pode usá-la com um clique.");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+    qc.invalidateQueries({ queryKey: ["signed-url", "escola-logos", caminho] });
+  };
+
+  const removerAssinaturaPadrao = async () => {
+    if (!escolaId || !(escola as any)?.assinatura_padrao_path) return;
+    if (!confirm("Remover a assinatura padrão? Quem for assinar volta a desenhar ou digitar a cada contrato.")) return;
+    const { error } = await supabase
+      .from("escolas")
+      .update({ assinatura_padrao_path: null })
+      .eq("id", escolaId);
+    if (error) { toast.error("Erro ao remover: " + error.message); return; }
+    toast.success("Assinatura padrão removida.");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+  };
+
+  const salvarCargoAssinaturaPadrao = async () => {
+    if (!escolaId) return;
+    setSalvandoCargoAssinatura(true);
+    const { error } = await supabase
+      .from("escolas")
+      .update({ assinatura_padrao_cargo: cargoAssinaturaPadrao.trim() || "Diretora" })
+      .eq("id", escolaId);
+    setSalvandoCargoAssinatura(false);
+    if (error) { toast.error("Erro ao salvar: " + error.message); return; }
+    toast.success("Cargo salvo.");
+    qc.invalidateQueries({ queryKey: ["escola-parametros", escolaId] });
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -1081,6 +1142,61 @@ function ParametrosTab({ escolaId }: { escolaId: string | null }) {
               />
               <p className="text-xs text-muted-foreground mt-1">PNG, JPG ou WEBP. Ficará melhor com fundo transparente e formato quadrado.</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Assinatura Padrão (contrato)</CardTitle>
+          <CardDescription>
+            Uma imagem da assinatura (digitalizada ou foto) que fica salva. Quem tiver a permissão de assinar
+            contratos pela escola passa a ter a opção de usá-la com um clique, em vez de desenhar ou digitar
+            a cada contrato. O registro do documento continua mostrando quem clicou, quando e de onde — é um
+            ato de quem assina, só que mais rápido.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-32 rounded-md border bg-white flex items-center justify-center overflow-hidden shrink-0">
+              {assinaturaPadraoUrl ? (
+                <img src={assinaturaPadraoUrl} alt="Assinatura padrão" className="h-full w-full object-contain" />
+              ) : (
+                <span className="text-xs text-muted-foreground text-center px-1">Nenhuma salva</span>
+              )}
+            </div>
+            <div className="flex-1 space-y-1">
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={enviandoAssinatura}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) enviarAssinaturaPadrao(file);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">PNG, JPG ou WEBP, fundo branco ou transparente.</p>
+            </div>
+            {(escola as any)?.assinatura_padrao_path && (
+              <Button type="button" variant="ghost" size="icon" className="text-destructive shrink-0" onClick={removerAssinaturaPadrao} title="Remover">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <div className="flex items-end gap-2 max-w-sm">
+            <div className="flex-1">
+              <Label htmlFor="cargo-assinatura-padrao">Cargo de quem assina</Label>
+              <Input
+                id="cargo-assinatura-padrao"
+                className="mt-1"
+                value={cargoAssinaturaPadrao}
+                onChange={(e) => setCargoAssinaturaPadrao(e.target.value)}
+                maxLength={80}
+              />
+            </div>
+            <Button type="button" variant="outline" disabled={salvandoCargoAssinatura} onClick={salvarCargoAssinaturaPadrao}>
+              Salvar
+            </Button>
           </div>
         </CardContent>
       </Card>
