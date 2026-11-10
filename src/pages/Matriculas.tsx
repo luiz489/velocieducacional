@@ -724,13 +724,14 @@ export default function Matriculas() {
                 <div>
                   <Label>Dia de vencimento da mensalidade negociado (opcional)</Label>
                   <Input
-                    type="number" min="1" max="28"
+                    type="number" min="1" max="31"
                     value={formDiaVencimentoMensalidade}
                     onChange={(e) => setFormDiaVencimentoMensalidade(e.target.value)}
                     className="mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Se não preencher, usa o dia padrão do plano da turma. Preencha só quando a família negociou um dia diferente.
+                    Em meses mais curtos (fevereiro, meses de 30 dias), a parcela cai no último dia daquele mês.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 items-end">
@@ -1119,13 +1120,13 @@ export default function Matriculas() {
             <div>
               <Label>Dia de vencimento da mensalidade negociado (opcional)</Label>
               <Input
-                type="number" min="1" max="28"
+                type="number" min="1" max="31"
                 value={editDiaVencimentoMensalidade}
                 onChange={(e) => setEditDiaVencimentoMensalidade(e.target.value)}
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Se não preencher, usa o dia padrão do plano da turma.
+                Se não preencher, usa o dia padrão do plano da turma. Em meses mais curtos, a parcela cai no último dia daquele mês.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 items-end">
