@@ -32,6 +32,7 @@ export const ROTA_MODULO: Record<string, string> = {
   "/periodos-letivos": "pedagogico",
   "/ocorrencias": "ocorrencias",
   "/avisos": "comunicacao",
+  "/avisos-whatsapp": "comunicacao",
   "/documentos": "relatorios_documentos",
   "/documentos/gerar": "relatorios_documentos",
   "/assinaturas": "relatorios_documentos",

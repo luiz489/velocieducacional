@@ -28,6 +28,7 @@ import {
   Wallet,
   Dumbbell,
   Send,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -113,6 +114,7 @@ const menuGroups = [
     label: "Comunicação",
     items: [
       { title: "Avisos", url: "/avisos", icon: Megaphone },
+      { title: "Avisos por WhatsApp", url: "/avisos-whatsapp", icon: MessageCircle },
     ],
   },
   {

@@ -31,6 +31,7 @@ import MatrizesCurriculares from "@/pages/MatrizesCurriculares";
 import Disciplinas from "@/pages/Disciplinas";
 import Categorias from "@/pages/Categorias";
 import Avisos from "@/pages/Avisos";
+import AvisosWhatsapp from "@/pages/AvisosWhatsapp";
 import Horarios from "@/pages/Horarios";
 import Professores from "@/pages/Professores";
 import Calendario from "@/pages/Calendario";
@@ -124,6 +125,7 @@ function ProtectedRoutes() {
             <Route path="/disciplinas" element={<Disciplinas />} />
             <Route path="/categorias" element={<Categorias />} />
             <Route path="/avisos" element={<Avisos />} />
+            <Route path="/avisos-whatsapp" element={<AvisosWhatsapp />} />
             <Route path="/horarios" element={<Horarios />} />
             <Route path="/calendario" element={<Calendario />} />
             <Route path="/rematricula" element={<Rematricula />} />
