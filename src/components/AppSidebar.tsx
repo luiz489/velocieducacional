@@ -29,6 +29,7 @@ import {
   Dumbbell,
   Send,
   MessageCircle,
+  ShoppingBag,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -115,6 +116,7 @@ const menuGroups = [
     items: [
       { title: "Avisos", url: "/avisos", icon: Megaphone },
       { title: "Avisos por WhatsApp", url: "/avisos-whatsapp", icon: MessageCircle },
+      { title: "Links de compra", url: "/links-compra", icon: ShoppingBag },
     ],
   },
   {
