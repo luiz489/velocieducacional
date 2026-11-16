@@ -53,6 +53,7 @@ type Professor = {
   tipo_chave_pix: string | null;
   valor_mensal: number | null;
   dia_pagamento: number | null;
+  user_id: string | null;
 };
 
 const emptyForm = {
@@ -87,6 +88,7 @@ const emptyForm = {
   chave_pix: "",
   valor_mensal: "",
   dia_pagamento: "5",
+  user_id: "" as string | null,
 };
 
 export default function Professores() {
@@ -118,6 +120,16 @@ export default function Professores() {
       const { data, error } = await supabase.from("v_professores_seguro").select("*").eq("escola_id", escolaAtivaId!).order("nome");
       if (error) throw error;
       return data as Professor[];
+    },
+  });
+
+  const { data: candidatosLogin } = useQuery({
+    queryKey: ["usuarios_disponiveis_para_professor", escolaAtivaId],
+    enabled: !!escolaAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("usuarios_disponiveis_para_professor", { p_escola_id: escolaAtivaId! });
+      if (error) throw error;
+      return data as { user_id: string; email: string; papel_nome: string }[];
     },
   });
 
@@ -155,6 +167,7 @@ export default function Professores() {
       ...dadosBancariosDe(p),
       valor_mensal: p.valor_mensal != null ? String(p.valor_mensal) : "",
       dia_pagamento: p.dia_pagamento != null ? String(p.dia_pagamento) : "5",
+      user_id: p.user_id,
     });
     setOpen(true);
   };
@@ -208,6 +221,7 @@ export default function Professores() {
         banco_nome: form.banco_nome || null,
         valor_mensal: form.tipo_contratacao === "PJ" && form.valor_mensal ? Number(form.valor_mensal) : null,
         dia_pagamento: form.tipo_contratacao === "PJ" && form.dia_pagamento ? Number(form.dia_pagamento) : null,
+        user_id: form.user_id || null,
       };
       if (editing) {
         const { error } = await supabase.from("professores").update(payload).eq("id", editing.id);
@@ -221,6 +235,7 @@ export default function Professores() {
       toast.success(editing ? "Professor atualizado" : "Professor cadastrado");
       qc.invalidateQueries({ queryKey: ["professores"] });
       qc.invalidateQueries({ queryKey: ["professores-ativos"] });
+      qc.invalidateQueries({ queryKey: ["usuarios_disponiveis_para_professor"] });
       setOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
@@ -438,6 +453,28 @@ export default function Professores() {
                 value={form.disciplinas}
                 onChange={(e) => setForm({ ...form, disciplinas: e.target.value })}
               />
+            </div>
+            <div className="col-span-2">
+              <Label>Conta de login (acesso ao app dos pais como professor)</Label>
+              <Select
+                value={form.user_id || "__nenhum__"}
+                onValueChange={(v) => setForm({ ...form, user_id: v === "__nenhum__" ? null : v })}
+              >
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__nenhum__">Sem login vinculado</SelectItem>
+                  {editing?.user_id && !candidatosLogin?.some((c) => c.user_id === editing.user_id) && (
+                    <SelectItem value={editing.user_id}>{editing.email ?? editing.user_id} (atual)</SelectItem>
+                  )}
+                  {candidatosLogin?.map((c) => (
+                    <SelectItem key={c.user_id} value={c.user_id}>{c.email} · {c.papel_nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Só aparecem usuários com login ativo nesta escola que ainda não estão vinculados a outro professor.
+                Crie o login em Configurações → Usuários antes de vincular.
+              </p>
             </div>
           </div>
 
