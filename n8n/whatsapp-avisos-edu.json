@@ -1,0 +1,1231 @@
+{
+  "name": "Avisos por WhatsApp (Educacional - DM Núcleo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-avisos-edu",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        160,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-segredo-cond",
+              "leftValue": "={{ $json.headers['x-automacao-secret'] }}",
+              "rightValue": "={{ $vars.AUTOMACAO_SECRET }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-segredo",
+      "name": "Confere segredo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        380,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": false, \"erro\": \"Não autorizado.\" } }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "respond-401",
+      "name": "Responde 401 (sem segredo)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-acao-status-cond",
+              "leftValue": "={{ $json.body.acao }}",
+              "rightValue": "status",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-acao-status",
+      "name": "Ação = status?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        600,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://waha:3000/api/sessions/{{ $('Webhook').item.json.body.sessao }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-status",
+      "name": "Consulta status (status)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        20
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst status = r.error ? \"STOPPED\" : (r.status || \"STOPPED\");\nreturn [{ json: { status } }];"
+      },
+      "id": "code-status",
+      "name": "Interpreta status (consulta)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true, \"habilitado\": true, \"status\": $json.status } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-status",
+      "name": "Responde status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1260,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-acao-qr-cond",
+              "leftValue": "={{ $json.body.acao }}",
+              "rightValue": "qr",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-acao-qr",
+      "name": "Ação = qr?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        820,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://waha:3000/api/{{ $('Webhook').item.json.body.sessao }}/auth/qr",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-qr",
+      "name": "Busca QR code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        140
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst imagem = (!r.error && r.data) ? `data:${r.mimetype || \"image/png\"};base64,${r.data}` : null;\nreturn [{ json: { imagem } }];"
+      },
+      "id": "code-qr",
+      "name": "Monta imagem do QR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true, \"habilitado\": true, \"imagem\": $json.imagem } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-qr",
+      "name": "Responde QR",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1480,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-acao-conectar-cond",
+              "leftValue": "={{ $json.body.acao }}",
+              "rightValue": "conectar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-acao-conectar",
+      "name": "Ação = conectar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://waha:3000/api/sessions/{{ $('Webhook').item.json.body.sessao }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-conectar-status",
+      "name": "Consulta status (conectar)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1260,
+        260
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst status = r.error ? \"STOPPED\" : (r.status || \"STOPPED\");\nreturn [{ json: { status } }];"
+      },
+      "id": "code-conectar-decide",
+      "name": "Decide iniciar ou reiniciar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-conectar-stopped-cond",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "STOPPED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-conectar-stopped",
+      "name": "Status = STOPPED?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://waha:3000/api/sessions/{{ $('Webhook').item.json.body.sessao }}/start",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-start",
+      "name": "Inicia sessão",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-conectar-failed-cond",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "FAILED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-conectar-failed",
+      "name": "Status = FAILED?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://waha:3000/api/sessions/{{ $('Webhook').item.json.body.sessao }}/restart",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-restart",
+      "name": "Reinicia sessão",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2140,
+        280
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "noop-conectar",
+      "name": "Já conectado/conectando",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2140,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-conectar",
+      "name": "Responde conectar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2360,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-acao-desconectar-cond",
+              "leftValue": "={{ $json.body.acao }}",
+              "rightValue": "desconectar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-acao-desconectar",
+      "name": "Ação = desconectar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://waha:3000/api/sessions/{{ $('Webhook').item.json.body.sessao }}/logout",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-logout",
+      "name": "Desconecta (logout)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1480,
+        400
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "wait-desconectar",
+      "name": "Espera 2s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1700,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://waha:3000/api/sessions/{{ $('Webhook').item.json.body.sessao }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-desconectar-status",
+      "name": "Consulta status (desconectar)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        400
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst status = r.error ? \"STOPPED\" : (r.status || \"STOPPED\");\nreturn [{ json: { status } }];"
+      },
+      "id": "code-desconectar-decide",
+      "name": "Interpreta status (desconectar)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2140,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-desconectar-stopped-cond",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "STOPPED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-desconectar-stopped",
+      "name": "Ficou STOPPED?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2360,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://waha:3000/api/sessions/{{ $('Webhook').item.json.body.sessao }}/start",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-desconectar-start",
+      "name": "Religa sessão (QR novo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2580,
+        360
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-desconectar",
+      "name": "Responde desconectar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2800,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-acao-enviar-cond",
+              "leftValue": "={{ $json.body.acao }}",
+              "rightValue": "enviar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-acao-enviar",
+      "name": "Ação = enviar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-enviar",
+      "name": "Responde já (enviar)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1700,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.itens",
+        "options": {}
+      },
+      "id": "split-out-itens",
+      "name": "Separa destinatários",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-itens",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2140,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://waha:3000/api/sendText",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"session\": $('Webhook').item.json.body.sessao, \"chatId\": $json.telefone + \"@c.us\", \"text\": $('Webhook').item.json.body.mensagem } }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-send",
+      "name": "Envia mensagem (WAHA)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2360,
+        500
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst original = $('Loop Over Items').item.json;\nconst erro = r.error ? (typeof r.error === \"string\" ? r.error : (r.error.message || \"Falha no envio.\")) : null;\nreturn [{ json: { item_id: original.item_id, status: erro ? \"erro\" : \"enviado\", erro } }];"
+      },
+      "id": "code-resultado",
+      "name": "Monta resultado do item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2580,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://mqjsfmhqxdbtanrqizvr.supabase.co/functions/v1/avisos-whatsapp-callback",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"itens\": [ { \"item_id\": $json.item_id, \"status\": $json.status, \"erro\": $json.erro } ] } }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-automacao-secret",
+              "value": "={{ $vars.AUTOMACAO_SECRET }}"
+            }
+          ]
+        }
+      },
+      "id": "http-callback",
+      "name": "Avisa o Supabase (callback)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2800,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "wait-loop",
+      "name": "Espera entre envios (5s)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3020,
+        500
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "noop-fim",
+      "name": "Envio concluído",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2360,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": false, \"erro\": \"Ação desconhecida.\" } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "respond-default",
+      "name": "Responde 400 (ação desconhecida)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1700,
+        720
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Confere segredo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confere segredo": {
+      "main": [
+        [
+          {
+            "node": "Ação = status?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responde 401 (sem segredo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ação = status?": {
+      "main": [
+        [
+          {
+            "node": "Consulta status (status)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ação = qr?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta status (status)": {
+      "main": [
+        [
+          {
+            "node": "Interpreta status (consulta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpreta status (consulta)": {
+      "main": [
+        [
+          {
+            "node": "Responde status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ação = qr?": {
+      "main": [
+        [
+          {
+            "node": "Busca QR code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ação = conectar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca QR code": {
+      "main": [
+        [
+          {
+            "node": "Monta imagem do QR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta imagem do QR": {
+      "main": [
+        [
+          {
+            "node": "Responde QR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ação = conectar?": {
+      "main": [
+        [
+          {
+            "node": "Consulta status (conectar)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ação = desconectar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta status (conectar)": {
+      "main": [
+        [
+          {
+            "node": "Decide iniciar ou reiniciar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide iniciar ou reiniciar": {
+      "main": [
+        [
+          {
+            "node": "Status = STOPPED?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status = STOPPED?": {
+      "main": [
+        [
+          {
+            "node": "Inicia sessão",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status = FAILED?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inicia sessão": {
+      "main": [
+        [
+          {
+            "node": "Responde conectar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status = FAILED?": {
+      "main": [
+        [
+          {
+            "node": "Reinicia sessão",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Já conectado/conectando",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reinicia sessão": {
+      "main": [
+        [
+          {
+            "node": "Responde conectar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Já conectado/conectando": {
+      "main": [
+        [
+          {
+            "node": "Responde conectar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ação = desconectar?": {
+      "main": [
+        [
+          {
+            "node": "Desconecta (logout)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ação = enviar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Desconecta (logout)": {
+      "main": [
+        [
+          {
+            "node": "Espera 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Espera 2s": {
+      "main": [
+        [
+          {
+            "node": "Consulta status (desconectar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta status (desconectar)": {
+      "main": [
+        [
+          {
+            "node": "Interpreta status (desconectar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpreta status (desconectar)": {
+      "main": [
+        [
+          {
+            "node": "Ficou STOPPED?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ficou STOPPED?": {
+      "main": [
+        [
+          {
+            "node": "Religa sessão (QR novo)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responde desconectar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Religa sessão (QR novo)": {
+      "main": [
+        [
+          {
+            "node": "Responde desconectar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ação = enviar?": {
+      "main": [
+        [
+          {
+            "node": "Responde já (enviar)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responde 400 (ação desconhecida)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responde já (enviar)": {
+      "main": [
+        [
+          {
+            "node": "Separa destinatários",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separa destinatários": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Envio concluído",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envia mensagem (WAHA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia mensagem (WAHA)": {
+      "main": [
+        [
+          {
+            "node": "Monta resultado do item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta resultado do item": {
+      "main": [
+        [
+          {
+            "node": "Avisa o Supabase (callback)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avisa o Supabase (callback)": {
+      "main": [
+        [
+          {
+            "node": "Espera entre envios (5s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Espera entre envios (5s)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
