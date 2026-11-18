@@ -1,4 +1,5 @@
 {
+  "id": "88d5d54f8f5e4ae4",
   "name": "Avisos por WhatsApp (Educacional - DM Núcleo)",
   "nodes": [
     {
@@ -15,7 +16,8 @@
       "position": [
         160,
         460
-      ]
+      ],
+      "webhookId": "e17b80ad-8bce-40d9-b5cb-892ff41a946e"
     },
     {
       "parameters": {
@@ -33,6 +35,15 @@
               "operator": {
                 "type": "string",
                 "operation": "equals"
+              }
+            },
+            {
+              "id": "if-segredo-cond-nao-vazio",
+              "leftValue": "={{ $json.headers['x-automacao-secret'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
