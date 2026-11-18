@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ShieldQuestion, RefreshCw, KeyRound } from "lucide-react";
 
@@ -40,7 +39,7 @@ const ERRO_LABEL: Record<string, string> = {
 
 export default function DiagnosticoLoginFamilia() {
   const qc = useQueryClient();
-  const [canal, setCanal] = useState<"email" | "whatsapp">("email");
+  const canal = "email" as const;
   const [destino, setDestino] = useState("");
   const [codigoGerado, setCodigoGerado] = useState<string | null>(null);
 
@@ -80,7 +79,7 @@ export default function DiagnosticoLoginFamilia() {
             <ShieldQuestion className="h-7 w-7 text-primary" /> Diagnóstico de login (app da família)
           </h1>
           <p className="text-muted-foreground">
-            Últimas 100 tentativas de pedir código (WhatsApp/e-mail), com o motivo real quando não foi enviado.
+            Últimas 100 tentativas de pedir código por e-mail, com o motivo real quando não foi enviado.
             A resposta que o app recebe é sempre a mesma por segurança; aqui dá pra ver o que de fato aconteceu.
           </p>
         </div>
@@ -93,27 +92,17 @@ export default function DiagnosticoLoginFamilia() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" /> Gerar código na hora</CardTitle>
           <CardDescription>
-            Quando o e-mail não chegar (ou foi pro spam), gere o código aqui e leia pro responsável por telefone/WhatsApp.
+            Quando o e-mail não chegar (ou foi pro spam), gere o código aqui e leia pro responsável por telefone.
             Só funciona se o contato já estiver cadastrado como responsável de um aluno ativo nesta escola.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-3">
-          <div>
-            <Label>Canal</Label>
-            <Select value={canal} onValueChange={(v) => setCanal(v as "email" | "whatsapp")}>
-              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="email">E-mail</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="flex-1 min-w-56">
-            <Label>{canal === "email" ? "E-mail do responsável" : "WhatsApp (com DDD)"}</Label>
+            <Label>E-mail do responsável</Label>
             <Input
               value={destino}
               onChange={(e) => { setDestino(e.target.value); setCodigoGerado(null); }}
-              placeholder={canal === "email" ? "nome@exemplo.com" : "(17) 99999-0000"}
+              placeholder="nome@exemplo.com"
             />
           </div>
           <Button onClick={() => gerar.mutate()} disabled={!destino || gerar.isPending}>
