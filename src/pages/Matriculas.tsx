@@ -93,7 +93,7 @@ function DatasDemaisParcelasTaxa({ parcelas, valores, onChange }: { parcelas: nu
 
 export default function Matriculas() {
   const { alunos, matricularAluno } = useAlunos();
-  const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro } = useMatriculas();
+  const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, infoExclusaoMatricula, recalcularFinanceiro } = useMatriculas();
   const navigate = useNavigate();
   const { escolaAtivaId } = useEscolaAtiva();
   const [alunoParaContrato, setAlunoParaContrato] = useState<string | null>(null);
@@ -194,6 +194,8 @@ export default function Matriculas() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  // Aluno inativado não conta mais como matriculado: por padrão essa tela mostra só alunos ativos.
+  const [alunoStatusFilter, setAlunoStatusFilter] = useState("Ativo");
   const [mostrarIndicadores, setMostrarIndicadores] = useState(() => {
     try { return localStorage.getItem("matriculas-mostrar-indicadores") !== "0"; } catch { return true; }
   });
@@ -359,7 +361,13 @@ export default function Matriculas() {
     ? turmasComVagas.filter((t) => t.categoria_id === editCategoriaId)
     : turmasComVagas;
 
-  const filtered = matriculas.filter((m) => {
+  // Base de alunos ativos (ou todos, se o filtro de status do aluno pedir) — é sobre essa lista que
+  // os indicadores do topo e a busca por status de pagamento são calculados.
+  const matriculasVisiveis = matriculas.filter(
+    (m) => alunoStatusFilter === "todos" || m.aluno_status === alunoStatusFilter
+  );
+
+  const filtered = matriculasVisiveis.filter((m) => {
     const matchSearch =
       m.aluno_nome.toLowerCase().includes(search.toLowerCase()) ||
       m.turma_nome.toLowerCase().includes(search.toLowerCase());
@@ -367,9 +375,9 @@ export default function Matriculas() {
     return matchSearch && matchStatus;
   });
 
-  const totalMatriculas = matriculas.length;
-  const emDia = matriculas.filter((m) => m.status_pagamento === "Pago").length;
-  const atrasados = matriculas.filter((m) => m.status_pagamento === "Atrasado").length;
+  const totalMatriculas = matriculasVisiveis.length;
+  const emDia = matriculasVisiveis.filter((m) => m.status_pagamento === "Pago").length;
+  const atrasados = matriculasVisiveis.filter((m) => m.status_pagamento === "Atrasado").length;
 
   const resetForm = () => {
     setAbaAluno("existente");
@@ -569,7 +577,18 @@ export default function Matriculas() {
   };
 
   const handleDeleteMatricula = async (m: typeof matriculas[number]) => {
-    if (!confirm(`Excluir a matrícula de "${m.aluno_nome}" na turma "${m.turma_nome}"? As parcelas pendentes também serão removidas.`)) return;
+    const info = await infoExclusaoMatricula(m.id);
+    if (info.pagas > 0) {
+      toast.error("Não é possível excluir: já existem parcelas pagas para esta matrícula.");
+      return;
+    }
+    const avisoBanco = info.registradasNoBanco > 0
+      ? ` ${info.registradasNoBanco} delas já tem boleto registrado no banco e será cancelado automaticamente.`
+      : "";
+    const mensagem = info.pendentes > 0
+      ? `Excluir a matrícula de "${m.aluno_nome}" na turma "${m.turma_nome}"? ${info.pendentes} parcela(s) pendente(s) também serão removidas do sistema.${avisoBanco}`
+      : `Excluir a matrícula de "${m.aluno_nome}" na turma "${m.turma_nome}"? Não há parcelas pendentes.`;
+    if (!confirm(mensagem)) return;
     await deleteMatricula(m.id);
   };
 
@@ -901,6 +920,14 @@ export default function Matriculas() {
             <SelectItem value="Sem cobrança">Sem cobrança</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={alunoStatusFilter} onValueChange={setAlunoStatusFilter}>
+          <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Ativo">Alunos ativos</SelectItem>
+            <SelectItem value="Inativo">Alunos inativos</SelectItem>
+            <SelectItem value="todos">Todos os alunos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-lg border bg-card shadow-sm">
@@ -919,7 +946,12 @@ export default function Matriculas() {
           <TableBody>
             {filtered.map((m) => (
               <TableRow key={m.id}>
-                <TableCell className="font-medium">{m.aluno_nome}</TableCell>
+                <TableCell className="font-medium">
+                  {m.aluno_nome}
+                  {m.aluno_status === "Inativo" && (
+                    <Badge variant="outline" className="ml-2 text-muted-foreground">Aluno inativo</Badge>
+                  )}
+                </TableCell>
                 <TableCell>{m.turma_nome}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">
                   {dataBR(m.data_ingresso)}
@@ -962,7 +994,7 @@ export default function Matriculas() {
       </div>
 
       <div className="text-sm text-muted-foreground">
-        Mostrando {filtered.length} de {matriculas.length} matrículas
+        Mostrando {filtered.length} de {matriculasVisiveis.length} matrículas
       </div>
 
       <Dialog open={!!alunoParaContrato} onOpenChange={(open) => !open && setAlunoParaContrato(null)}>

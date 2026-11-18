@@ -9,6 +9,7 @@ export type MatriculaResumo = {
   id: string;
   aluno_id: string;
   aluno_nome: string;
+  aluno_status: string;
   turma_id: string;
   turma_nome: string;
   turno: string;
@@ -52,7 +53,7 @@ export function useMatriculas() {
       .from("matriculas")
       .select(`
         id, aluno_id, turma_id, data_ingresso, data_vencimento_matricula, dia_vencimento_mensalidade, parcelas_taxa_matricula, datas_taxa_matricula, valor_taxa_matricula, valor_mensalidade_negociado, modalidade_financeira_id, status_pagamento, percentual_desconto, bolsa_100,
-        alunos ( nome ),
+        alunos ( nome, status ),
         turmas ( nome, turno, ano_letivo ),
         financeiro ( status, valor )
       `)
@@ -71,6 +72,7 @@ export function useMatriculas() {
         id: m.id,
         aluno_id: m.aluno_id,
         aluno_nome: m.alunos?.nome ?? "—",
+        aluno_status: m.alunos?.status ?? "Ativo",
         turma_id: m.turma_id,
         turma_nome: m.turmas?.nome ?? "—",
         turno: m.turmas?.turno ?? "",
@@ -193,6 +195,23 @@ export function useMatriculas() {
     return true;
   }, [refetch]);
 
+  // O que vai acontecer se a matrícula for excluída: quantas parcelas pagas (bloqueiam a exclusão),
+  // quantas pendentes (somem junto com a matrícula) e, dessas, quantas têm boleto vivo registrado no
+  // banco (Sicredi) — essas são automaticamente canceladas no banco por um gatilho já existente em
+  // financeiro (trg_financeiro_cobranca_del -> cobranca_fila -> sicredi-processar-fila), não é preciso
+  // fazer nada manual aqui além de deixar isso claro para quem está excluindo.
+  const infoExclusaoMatricula = useCallback(async (id: string) => {
+    const { data } = await supabase
+      .from("financeiro")
+      .select("status, gateway_status")
+      .eq("matricula_id", id);
+    const parcelas = data ?? [];
+    const pagas = parcelas.filter((p) => p.status === "Pago").length;
+    const pendentes = parcelas.length - pagas;
+    const registradasNoBanco = parcelas.filter((p) => p.status !== "Pago" && p.gateway_status === "registrado").length;
+    return { pagas, pendentes, registradasNoBanco };
+  }, []);
+
   const deleteMatricula = useCallback(async (id: string) => {
     const { count } = await supabase
       .from("financeiro")
@@ -208,10 +227,10 @@ export function useMatriculas() {
       toast.error("Erro ao excluir matrícula: " + error.message);
       return false;
     }
-    toast.success("Matrícula excluída (e as parcelas pendentes junto).");
+    toast.success("Matrícula excluída (e as parcelas pendentes junto, com os boletos registrados cancelados no banco).");
     await refetch();
     return true;
   }, [refetch]);
 
-  return { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, recalcularFinanceiro };
+  return { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, infoExclusaoMatricula, recalcularFinanceiro };
 }
