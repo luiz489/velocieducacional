@@ -37,6 +37,19 @@ export async function hashCodigo(canal: string, destino: string, codigo: string)
   return Array.from(new Uint8Array(h)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Confere no banco, com a identidade de QUEM CHAMA (não service_role), se ele tem a permissão na escola. */
+export async function usuarioTemPermissao(req: Request, escolaId: string, modulo: string, acao: string): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return false;
+  const caller = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data, error } = await caller.rpc("usuario_tem_permissao", {
+    p_escola_id: escolaId, p_modulo_codigo: modulo, p_acao: acao,
+  });
+  return !error && data === true;
+}
+
 export function iguais(a: string, b: string) {
   if (a.length !== b.length) return false;
   let r = 0;
