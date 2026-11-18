@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { dataBR } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, MoreHorizontal, ClipboardList, DollarSign, CheckCircle, UserPlus, UserCheck, FileSignature, Printer, PenLine, Copy, Send } from "lucide-react";
+import { Search, Plus, MoreHorizontal, ClipboardList, DollarSign, CheckCircle, UserPlus, UserCheck, FileSignature, Printer, PenLine, Copy, Send, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -194,6 +194,16 @@ export default function Matriculas() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [mostrarIndicadores, setMostrarIndicadores] = useState(() => {
+    try { return localStorage.getItem("matriculas-mostrar-indicadores") !== "0"; } catch { return true; }
+  });
+  const alternarIndicadores = () => {
+    setMostrarIndicadores((v) => {
+      const novo = !v;
+      try { localStorage.setItem("matriculas-mostrar-indicadores", novo ? "1" : "0"); } catch { /* ignora */ }
+      return novo;
+    });
+  };
   const [dialogOpen, setDialogOpen] = useState(false);
   const [carneDialogOpen, setCarneDialogOpen] = useState(false);
   const [selectedMatricula, setSelectedMatricula] = useState<typeof matriculas[number] | null>(null);
@@ -826,6 +836,20 @@ export default function Matriculas() {
         </Dialog>
       </div>
 
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-2 text-muted-foreground"
+          onClick={alternarIndicadores}
+          title={mostrarIndicadores ? "Ocultar números" : "Mostrar números"}
+        >
+          {mostrarIndicadores ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          {mostrarIndicadores ? "Ocultar números" : "Mostrar números"}
+        </Button>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="shadow-sm">
           <CardContent className="pt-5 pb-4 flex items-center gap-4">
@@ -834,7 +858,7 @@ export default function Matriculas() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total de Matrículas</p>
-              <p className="text-xl font-bold">{totalMatriculas}</p>
+              <p className="text-xl font-bold">{mostrarIndicadores ? totalMatriculas : "••••"}</p>
             </div>
           </CardContent>
         </Card>
@@ -845,7 +869,7 @@ export default function Matriculas() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Pagamentos em Dia</p>
-              <p className="text-xl font-bold">{emDia}</p>
+              <p className="text-xl font-bold">{mostrarIndicadores ? emDia : "••••"}</p>
             </div>
           </CardContent>
         </Card>
@@ -856,7 +880,7 @@ export default function Matriculas() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Pagamentos Atrasados</p>
-              <p className="text-xl font-bold">{atrasados}</p>
+              <p className="text-xl font-bold">{mostrarIndicadores ? atrasados : "••••"}</p>
             </div>
           </CardContent>
         </Card>
