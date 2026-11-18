@@ -31,11 +31,13 @@ Deno.serve(async (req) => {
     p_email: canal === "email" ? destino : null,
   });
   if (!achados || achados.length === 0) {
+    await db.from("familia_login_tentativas").insert({ canal, destino, resultado: "nao_cadastrado", detalhe: "gerado pela escola" });
     return json({ ok: false, erro: "nao_cadastrado" }, 404);
   }
 
   const escolaId = achados[0].escola_id as string;
   if (!(await usuarioTemPermissao(req, escolaId, "comunicacao", "editar"))) {
+    await db.from("familia_login_tentativas").insert({ canal, destino, resultado: "erro_envio", detalhe: "staff sem permissão de comunicacao nesta escola" });
     return json({ ok: false, erro: "sem_permissao" }, 403);
   }
 
