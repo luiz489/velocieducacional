@@ -34,6 +34,7 @@ import Avisos from "@/pages/Avisos";
 import AvisosWhatsapp from "@/pages/AvisosWhatsapp";
 import LinksCompra from "@/pages/LinksCompra";
 import ListasMateriais from "@/pages/ListasMateriais";
+import DiagnosticoLoginFamilia from "@/pages/DiagnosticoLoginFamilia";
 import Horarios from "@/pages/Horarios";
 import Professores from "@/pages/Professores";
 import Calendario from "@/pages/Calendario";
@@ -130,6 +131,7 @@ function ProtectedRoutes() {
             <Route path="/avisos-whatsapp" element={<AvisosWhatsapp />} />
             <Route path="/links-compra" element={<LinksCompra />} />
             <Route path="/listas-materiais" element={<ListasMateriais />} />
+            <Route path="/diagnostico-login-familia" element={<DiagnosticoLoginFamilia />} />
             <Route path="/horarios" element={<Horarios />} />
             <Route path="/calendario" element={<Calendario />} />
             <Route path="/rematricula" element={<Rematricula />} />

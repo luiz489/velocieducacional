@@ -15,6 +15,18 @@ function codigoAleatorio() {
   return String(n).padStart(6, "0");
 }
 
+type Resultado = "nao_cadastrado" | "limite_destino" | "limite_global" | "erro_envio" | "enviado";
+
+// Log só pra equipe diagnosticar ("não chegou o código") — nunca muda a resposta ao app
+// nem pode quebrar o fluxo principal, por isso o catch silencioso.
+async function registrar(db: ReturnType<typeof admin>, canal: Canal, destino: string, resultado: Resultado, detalhe?: string) {
+  try {
+    await db.from("familia_login_tentativas").insert({ canal, destino, resultado, detalhe: detalhe ?? null });
+  } catch {
+    /* log nunca pode quebrar o fluxo principal */
+  }
+}
+
 async function enviarEmail(db: ReturnType<typeof admin>, para: string, codigo: string) {
   const { data: segredo } = await db.rpc("email_n8n_segredo");
   if (!segredo) throw new Error("segredo do e-mail não configurado");
@@ -61,14 +73,23 @@ Deno.serve(async (req) => {
       p_telefone: canal === "whatsapp" ? destino : null,
       p_email: canal === "email" ? destino : null,
     });
-    if (!achados || achados.length === 0) return resposta;
+    if (!achados || achados.length === 0) {
+      await registrar(db, canal, destino, "nao_cadastrado");
+      return resposta;
+    }
 
     const desde = new Date(Date.now() - VALIDADE_MIN * 60_000).toISOString();
     const { count: doDestino } = await db.from("familia_codigos_login").select("id", { count: "exact", head: true })
       .eq("canal", canal).eq("destino", destino).gte("created_at", desde);
-    if ((doDestino ?? 0) >= MAX_POR_DESTINO) return resposta;
+    if ((doDestino ?? 0) >= MAX_POR_DESTINO) {
+      await registrar(db, canal, destino, "limite_destino");
+      return resposta;
+    }
     const { count: global } = await db.from("familia_codigos_login").select("id", { count: "exact", head: true }).gte("created_at", desde);
-    if ((global ?? 0) >= MAX_GLOBAL) return resposta;
+    if ((global ?? 0) >= MAX_GLOBAL) {
+      await registrar(db, canal, destino, "limite_global");
+      return resposta;
+    }
 
     const codigo = codigoAleatorio();
     const { error } = await db.from("familia_codigos_login").insert({
@@ -79,8 +100,11 @@ Deno.serve(async (req) => {
 
     if (canal === "email") await enviarEmail(db, destino, codigo);
     else await enviarWhatsapp(destino, codigo);
+    await registrar(db, canal, destino, "enviado");
   } catch (e) {
-    console.error("familia-enviar-codigo:", e instanceof Error ? e.message : e);
+    const mensagem = e instanceof Error ? e.message : String(e);
+    console.error("familia-enviar-codigo:", mensagem);
+    await registrar(db, canal, destino, "erro_envio", mensagem);
   }
   return resposta;
 });
