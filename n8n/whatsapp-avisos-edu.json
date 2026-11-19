@@ -31,7 +31,7 @@
             {
               "id": "if-segredo-cond",
               "leftValue": "={{ $json.headers['x-automacao-secret'] }}",
-              "rightValue": "={{ $vars.AUTOMACAO_SECRET }}",
+              "rightValue": "REPLACE_ME_AUTOMACAO_SECRET",
               "operator": {
                 "type": "string",
                 "operation": "equals"
@@ -765,7 +765,7 @@
           "parameters": [
             {
               "name": "x-automacao-secret",
-              "value": "={{ $vars.AUTOMACAO_SECRET }}"
+              "value": "REPLACE_ME_AUTOMACAO_SECRET"
             }
           ]
         }
