@@ -53,7 +53,13 @@ const STATUS_VARIANT: Record<Aviso["status"], "default" | "secondary" | "destruc
 
 async function chamar<T = any>(acao: string, extra: Record<string, unknown> = {}, escolaId?: string | null) {
   const { data, error } = await supabase.functions.invoke("avisos-whatsapp", { body: { acao, escola_id: escolaId, ...extra } });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Quando a function responde com status != 2xx, o cliente não lê o corpo da resposta sozinho
+    // (troca por um texto genérico tipo "Edge Function returned a non-2xx status code"). O corpo
+    // real, com a mensagem útil (ex.: "sem telefone cadastrado"), está em error.context.
+    const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(corpo?.erro ?? error.message);
+  }
   if (data && data.ok === false) throw new Error(data.erro ?? "Falha na operação.");
   return data as T;
 }
