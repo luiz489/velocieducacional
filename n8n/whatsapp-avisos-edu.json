@@ -200,6 +200,15 @@
         "method": "GET",
         "url": "=http://waha:3000/api/{{ $('Webhook').item.json.body.sessao }}/auth/qr",
         "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
@@ -364,7 +373,66 @@
       "typeVersion": 4.2,
       "position": [
         1920,
-        200
+        180
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_WAHA_CRED",
+          "name": "WAHA API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-start-falhou-cond",
+              "leftValue": "={{ $json.error ? 'sim' : 'nao' }}",
+              "rightValue": "sim",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-start-falhou",
+      "name": "Início falhou (sessão nunca criada)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2140,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://waha:3000/api/sessions",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"name\": $('Webhook').item.json.body.sessao, \"start\": true } }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "http-criar-sessao",
+      "name": "Cria e inicia sessão (nova)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2360,
+        140
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -991,6 +1059,35 @@
       ]
     },
     "Inicia sessão": {
+      "main": [
+        [
+          {
+            "node": "Início falhou (sessão nunca criada)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Início falhou (sessão nunca criada)?": {
+      "main": [
+        [
+          {
+            "node": "Cria e inicia sessão (nova)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responde conectar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria e inicia sessão (nova)": {
       "main": [
         [
           {
