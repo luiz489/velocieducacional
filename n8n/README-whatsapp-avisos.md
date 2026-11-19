@@ -14,14 +14,16 @@ Recebe pedidos do Edge Function `avisos-whatsapp` (Supabase) em `POST /webhook/w
 ## Antes de importar
 
 1. **Credencial do WAHA**: crie em Credentials → New → **Header Auth**, nome `WAHA API Key`, Header Name `X-Api-Key`, Value = a `WAHA_API_KEY` que você já usa no Tennis/outros fluxos.
-2. **Variável do segredo compartilhado**: em Settings → Variables, crie `AUTOMACAO_SECRET` com o **mesmo valor** que você já usa no fluxo de e-mail do boleto (onde hoje confere o `x-email-secret`) — os dois fluxos passam a citar a mesma variável em vez de ter o valor colado em dois lugares. Ver `[[n8n-credencial-smtp-separada]]` sobre não misturar credenciais de fluxos diferentes.
+
+> Esta instância do n8n (self-hosted, sem licença Enterprise) **não tem a feature de Variables** — "Settings → Environments" existe só pro recurso de sincronizar múltiplos ambientes via Git (Enterprise), não é a mesma coisa que a antiga tela "Variables". Por isso o segredo compartilhado (`x-automacao-secret`) **não usa `$vars`**: ele é literal nos nós "Confere segredo" e "Avisa o Supabase (callback)", igual ao padrão já usado no fluxo de e-mail do boleto (`x-email-secret`). O arquivo versionado no Git traz um placeholder (`REPLACE_ME_AUTOMACAO_SECRET`) nesses dois nós — **o valor real só existe dentro do n8n**, nunca commitado.
 
 ## Depois de importar no n8n
 
-1. **Credenciais**: nos 8 nodes de HTTP Request que chamam o WAHA (todos com "WAHA" ou "sessão"/"QR" no nome), selecione a credencial `WAHA API Key` criada acima — ela entra como `REPLACE_ME_WAHA_CRED` no JSON e precisa ser trocada pela credencial real.
-2. **Ativar o workflow**: a importação deixa o fluxo inativo. É preciso ativar (`active: true`) e **reiniciar o n8n** — import sem restart engana e o webhook não sobe de fato. Ver `[[n8n-import-desativa-workflow]]`.
-3. **Testar**: manda um `POST` de teste pro webhook com `{"acao":"status","sessao":"edu-0101"}` (sem o header certo deve voltar 401; com o header certo, deve voltar o status da sessão — `STOPPED` se a sessão ainda não existir no WAHA).
-4. Depois disso, a tela "Avisos por WhatsApp" (`/avisos-whatsapp`) já consegue conectar e mandar.
+1. **Credenciais**: nos 8 nodes de HTTP Request que chamam o WAHA (todos com "WAHA" ou "sessão"/"QR" no nome), selecione a credencial `WAHA API Key` criada acima — ela entra como `REPLACE_ME_WAHA_CRED` no JSON e precisa ser trocada pela credencial real. A tela de Credentials fica na página inicial do n8n (abas "Workflows" / "Credentials" no topo do Overview), não dentro de Settings.
+2. **Segredo**: se for reimportar este JSON do zero, troque as duas ocorrências de `REPLACE_ME_AUTOMACAO_SECRET` pelo valor real (mesmo do `x-email-secret`) antes de importar, ou edite os dois nós manualmente depois de importar.
+3. **Ativar o workflow**: a importação deixa o fluxo inativo. É preciso ativar (`active: true`) e **reiniciar o n8n** — import sem restart engana e o webhook não sobe de fato. Ver `[[n8n-import-desativa-workflow]]`.
+4. **Testar**: manda um `POST` de teste pro webhook com `{"acao":"status","sessao":"edu-0101"}` (sem o header certo deve voltar 401; com o header certo, deve voltar o status da sessão — `STOPPED` se a sessão ainda não existir no WAHA).
+5. Depois disso, a tela "Avisos por WhatsApp" (`/avisos-whatsapp`) já consegue conectar e mandar.
 
 ## Pontos de atenção
 
