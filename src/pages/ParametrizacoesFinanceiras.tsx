@@ -307,6 +307,10 @@ function SicrediDialog({
   const [ativandoWebhook, setAtivandoWebhook] = useState(false);
   const [confirmandoLote, setConfirmandoLote] = useState(false);
   const [enfileirando, setEnfileirando] = useState(false);
+  const [conciliando, setConciliando] = useState(false);
+  const [resultadoConciliacao, setResultadoConciliacao] = useState<
+    { baixados: number; ambiguos: number; semMatch: number; erros: number } | null
+  >(null);
   const [form, setForm] = useState(FORM_VAZIO);
   const jaConfigurado = !!config?.tem_credenciais;
 
@@ -407,6 +411,49 @@ function SicrediDialog({
       return;
     }
     toast.success(`Conexão OK (${data.ambiente === "producao" ? "produção" : "homologação"}) — o Sicredi autenticou as credenciais salvas.`);
+  };
+
+  // Conciliação retroativa: a baixa automática diária só olha os últimos dias (pega o que o webhook
+  // perder no dia a dia). Boletos manuais pagos há semanas/meses não são alcançados por ela. Esta
+  // função consulta o Sicredi em janelas de 15 dias, até 180 dias pra trás (limite da própria Edge
+  // Function), simulando e aplicando a baixa a cada janela — o usuário logado precisa ter permissão
+  // de editar o financeiro desta escola (a Edge Function confere isso sozinha).
+  const JANELA_DIAS = 15;
+  const MAX_INICIO = 180;
+  const conciliarRetroativo = async () => {
+    if (!escolaId) return;
+    setConciliando(true);
+    setResultadoConciliacao(null);
+    let baixados = 0, ambiguos = 0, semMatch = 0, erros = 0;
+    for (let inicio = 0; inicio < MAX_INICIO; inicio += JANELA_DIAS) {
+      const { data: sim, error: errSim } = await supabase.functions.invoke("sicredi-conciliar-liquidados", {
+        body: { escola_id: escolaId, modo: "simular", dias: JANELA_DIAS, inicio },
+      });
+      if (errSim) { erros++; continue; }
+      const resultados: { data_pagamento?: string; valor_pago?: number }[] = sim?.escolas?.[0]?.simulacao?.resultados ?? [];
+      const permitir = resultados
+        .filter((r) => r.data_pagamento != null && r.valor_pago != null)
+        .map((r) => ({ data: r.data_pagamento, valor: r.valor_pago }));
+      if (permitir.length === 0) continue;
+      const { data: ap, error: errAp } = await supabase.functions.invoke("sicredi-conciliar-liquidados", {
+        body: { escola_id: escolaId, modo: "baixar_retroativo", dias: JANELA_DIAS, inicio, permitir },
+      });
+      if (errAp) { erros++; continue; }
+      const item = ap?.escolas?.[0];
+      baixados += item?.baixados ?? 0;
+      const res2: { resultado?: string }[] = item?.simulacao?.resultados ?? [];
+      ambiguos += res2.filter((r) => r.resultado === "ambiguo").length;
+      semMatch += res2.filter((r) => r.resultado === "nenhum").length;
+    }
+    setConciliando(false);
+    setResultadoConciliacao({ baixados, ambiguos, semMatch, erros });
+    if (baixados > 0) qc.invalidateQueries({ queryKey: ["cobranca-pendentes", escolaId] });
+    toast.success(
+      `Conciliação concluída: ${baixados} boleto(s) baixado(s)` +
+      (ambiguos ? `, ${ambiguos} ambíguo(s) para conferir` : "") +
+      (semMatch ? `, ${semMatch} sem parcela correspondente` : "") +
+      (erros ? `, ${erros} janela(s) com erro de comunicação` : "") + "."
+    );
   };
 
   const { data: qtdPendentes } = useQuery({
@@ -574,6 +621,28 @@ function SicrediDialog({
             </div>
             <Switch checked={form.baixa_boleto_manual} onCheckedChange={(v) => setForm({ ...form, baixa_boleto_manual: v })} />
           </div>
+
+          {jaConfigurado && (
+            <div className="rounded-md border p-3 space-y-2">
+              <p className="text-sm font-medium">Conciliação retroativa (boletos manuais antigos)</p>
+              <p className="text-xs text-muted-foreground">
+                A baixa automática acima só olha os últimos dias — não alcança parcelas atrasadas de semanas
+                ou meses atrás que já foram pagas por boleto emitido direto no banco. Use este botão uma vez
+                para corrigir o histórico (consulta o Sicredi em lotes de 15 dias, até 180 dias pra trás).
+              </p>
+              <Button variant="outline" size="sm" onClick={conciliarRetroativo} disabled={conciliando}>
+                {conciliando ? "Conciliando (pode levar alguns minutos)…" : "Conciliar últimos 180 dias"}
+              </Button>
+              {resultadoConciliacao && (
+                <p className="text-xs">
+                  <strong>{resultadoConciliacao.baixados}</strong> parcela(s) baixada(s)
+                  {resultadoConciliacao.ambiguos > 0 && `, ${resultadoConciliacao.ambiguos} ambígua(s) (mesmo CPF/vencimento/valor em mais de uma parcela — confira manualmente)`}
+                  {resultadoConciliacao.semMatch > 0 && `, ${resultadoConciliacao.semMatch} sem parcela correspondente`}
+                  {resultadoConciliacao.erros > 0 && `, ${resultadoConciliacao.erros} janela(s) com erro de comunicação (pode rodar de novo)`}.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="rounded-md border p-3 space-y-3">
             <div className="flex items-start justify-between gap-3">
