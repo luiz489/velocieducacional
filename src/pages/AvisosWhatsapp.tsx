@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
@@ -36,8 +37,10 @@ function personasParaEnviar(p: Persona): string[] {
 
 type Contato = { parentesco: "pai" | "mae" | "responsavel"; nome: string | null; telefone: string | null };
 type AlunoBusca = { id: string; nome: string; contatos: Contato[] };
+type Turma = { id: string; nome: string; turno: string; ano_letivo: number };
+type Destino = "aluno" | "turma" | "todos";
 type Aviso = {
-  id: string; mensagem: string; destino_tipo: "aluno" | "todos"; aluno_nome: string | null;
+  id: string; mensagem: string; destino_tipo: "aluno" | "turma" | "todos"; aluno_nome: string | null; turma_nome: string | null;
   personas: string[]; status: "pendente" | "enviando" | "concluido" | "erro"; erro: string | null;
   total_destinatarios: number; total_enviados: number; total_erros: number; total_sem_telefone: number;
   criado_por_nome: string | null; created_at: string;
@@ -118,12 +121,20 @@ export default function AvisosWhatsapp() {
   });
 
   // --- Composição do aviso ---
-  const [destino, setDestino] = useState<"aluno" | "todos">("aluno");
+  const [destino, setDestino] = useState<Destino>("aluno");
   const [termo, setTermo] = useState("");
   const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoBusca | null>(null);
+  const [turmaModo, setTurmaModo] = useState<"uma" | "todas">("uma");
+  const [turmaSelecionada, setTurmaSelecionada] = useState<{ id: string; nome: string } | null>(null);
   const [persona, setPersona] = useState<Persona>("responsavel");
   const [mensagem, setMensagem] = useState("");
   const [confirmar, setConfirmar] = useState(false);
+
+  function selecionarDestino(d: Destino) {
+    setDestino(d);
+    setAlunoSelecionado(null); setTermo("");
+    setTurmaModo("uma"); setTurmaSelecionada(null);
+  }
 
   const { data: resultadoBusca, isFetching: buscando } = useQuery({
     queryKey: ["avisos-whatsapp-buscar", escolaAtivaId, termo],
@@ -131,22 +142,38 @@ export default function AvisosWhatsapp() {
     queryFn: () => chamar<{ alunos: AlunoBusca[] }>("buscar_alunos", { termo }, escolaAtivaId),
   });
 
+  const { data: turmas } = useQuery({
+    queryKey: ["avisos-whatsapp-turmas", escolaAtivaId],
+    enabled: !!escolaAtivaId && destino === "turma" && turmaModo === "uma",
+    queryFn: async () => {
+      const { data, error } = await supabase.from("turmas")
+        .select("id, nome, turno, ano_letivo").eq("escola_id", escolaAtivaId!).order("nome");
+      if (error) throw error;
+      return data as Turma[];
+    },
+  });
+
   const enviarMut = useMutation({
     mutationFn: () => chamar<{ total_destinatarios: number; total_sem_telefone: number }>("criar_envio", {
       mensagem,
       destino_tipo: destino,
       aluno_id: destino === "aluno" ? alunoSelecionado?.id : undefined,
+      turma_id: destino === "turma" && turmaModo === "uma" ? turmaSelecionada?.id : undefined,
       personas: personasParaEnviar(persona),
     }, escolaAtivaId),
     onSuccess: (r) => {
       toast.success(`Envio iniciado para ${r.total_destinatarios} destinatário(s)${r.total_sem_telefone ? ` (${r.total_sem_telefone} sem telefone cadastrado, não recebem)` : ""}.`);
-      setMensagem(""); setAlunoSelecionado(null); setTermo(""); setConfirmar(false);
+      setMensagem(""); setAlunoSelecionado(null); setTermo(""); setTurmaSelecionada(null); setConfirmar(false);
       qc.invalidateQueries({ queryKey: ["avisos-whatsapp-lista", escolaAtivaId] });
     },
     onError: (e: Error) => { toast.error(e.message); setConfirmar(false); },
   });
 
-  const podeEnviar = mensagem.trim().length > 0 && (destino === "todos" || !!alunoSelecionado) && status === "WORKING";
+  const podeEnviar = mensagem.trim().length > 0 && (
+    destino === "todos"
+    || (destino === "aluno" && !!alunoSelecionado)
+    || (destino === "turma" && (turmaModo === "todas" || !!turmaSelecionada))
+  ) && status === "WORKING";
 
   // --- Histórico ---
   const { data: avisos } = useQuery({
@@ -223,9 +250,10 @@ export default function AvisosWhatsapp() {
           <CardDescription>Escolha o destino, quem recebe e escreva a mensagem.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="flex gap-2">
-            <Button variant={destino === "aluno" ? "default" : "outline"} onClick={() => { setDestino("aluno"); }}>Um aluno</Button>
-            <Button variant={destino === "todos" ? "default" : "outline"} onClick={() => { setDestino("todos"); setAlunoSelecionado(null); setTermo(""); }}>Todos os alunos ativos</Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant={destino === "aluno" ? "default" : "outline"} onClick={() => selecionarDestino("aluno")}>Um aluno</Button>
+            <Button variant={destino === "turma" ? "default" : "outline"} onClick={() => selecionarDestino("turma")}>Por turma</Button>
+            <Button variant={destino === "todos" ? "default" : "outline"} onClick={() => selecionarDestino("todos")}>Todos os alunos ativos</Button>
           </div>
 
           {destino === "aluno" && (
@@ -254,6 +282,35 @@ export default function AvisosWhatsapp() {
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {destino === "turma" && (
+            <div className="space-y-3">
+              <Label>Turma</Label>
+              <div className="flex gap-2">
+                <Button type="button" variant={turmaModo === "uma" ? "default" : "outline"} size="sm" onClick={() => { setTurmaModo("uma"); }}>Uma turma</Button>
+                <Button type="button" variant={turmaModo === "todas" ? "default" : "outline"} size="sm" onClick={() => { setTurmaModo("todas"); setTurmaSelecionada(null); }}>Todas as turmas</Button>
+              </div>
+              {turmaModo === "uma" && (
+                <Select
+                  value={turmaSelecionada?.id ?? ""}
+                  onValueChange={(v) => {
+                    const t = turmas?.find((x) => x.id === v);
+                    setTurmaSelecionada(t ? { id: t.id, nome: t.nome } : null);
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Escolha a turma…" /></SelectTrigger>
+                  <SelectContent>
+                    {(turmas ?? []).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.nome} — {t.turno} ({t.ano_letivo})</SelectItem>
+                    ))}
+                    {turmas && turmas.length === 0 && (
+                      <p className="p-2 text-sm text-muted-foreground">Nenhuma turma cadastrada.</p>
+                    )}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           )}
@@ -295,6 +352,8 @@ export default function AvisosWhatsapp() {
             <AlertDialogDescription>
               {destino === "aluno"
                 ? `A mensagem será enviada para ${PERSONAS.find((p) => p.value === persona)?.label.toLowerCase()} de ${alunoSelecionado?.nome}.`
+                : destino === "turma"
+                ? `A mensagem será enviada para ${PERSONAS.find((p) => p.value === persona)?.label.toLowerCase()} de todos os alunos ativos ${turmaModo === "todas" ? "matriculados em alguma turma" : `da turma "${turmaSelecionada?.nome}"`}.`
                 : `A mensagem será enviada para ${PERSONAS.find((p) => p.value === persona)?.label.toLowerCase()} de todos os alunos ativos da escola.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -324,7 +383,9 @@ export default function AvisosWhatsapp() {
               {(avisos ?? []).map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(a.created_at).toLocaleString("pt-BR")}</TableCell>
-                  <TableCell className="text-sm">{a.destino_tipo === "aluno" ? a.aluno_nome : "Todos os alunos"}</TableCell>
+                  <TableCell className="text-sm">
+                    {a.destino_tipo === "aluno" ? a.aluno_nome : a.destino_tipo === "turma" ? (a.turma_nome ?? "Turma") : "Todos os alunos"}
+                  </TableCell>
                   <TableCell className="max-w-xs truncate text-sm" title={a.mensagem}>{a.mensagem}</TableCell>
                   <TableCell><Badge variant={STATUS_VARIANT[a.status]}>{STATUS_LABEL[a.status]}</Badge></TableCell>
                   <TableCell className="text-right text-sm">

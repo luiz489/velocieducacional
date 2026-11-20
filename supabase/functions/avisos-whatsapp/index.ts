@@ -2,7 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 // Avisos por WhatsApp: conectar o número por QR code e disparar uma mensagem de texto pro responsável
-// financeiro, pai, mãe ou ambos de um aluno específico, ou de todos os alunos ativos da escola.
+// financeiro, pai, mãe ou ambos de um aluno específico, de uma turma (ou todas as turmas), ou de todos
+// os alunos ativos da escola.
 //
 // O Supabase roda na nuvem e não alcança o WAHA (só existe na rede interna da VPS): por isso toda
 // conversa com o WAHA passa por um webhook do n8n, do mesmo jeito que o e-mail do boleto. Este
@@ -85,6 +86,25 @@ async function carregarAlunosComContatos(db: SupabaseClient, escolaId: string, t
   return data ?? [];
 }
 
+/** Alunos ativos MATRICULADOS (via join com matriculas) numa turma específica, ou em qualquer turma
+ * quando turmaId é null ("todas as turmas") — diferente de carregarAlunosComContatos, que pega todo
+ * aluno ativo independente de ter matrícula. Um aluno com mais de uma matrícula na mesma consulta
+ * (ex.: duas turmas) só entra uma vez. */
+async function carregarAlunosPorTurma(db: SupabaseClient, escolaId: string, turmaId: string | null, limite = MAX_DESTINATARIOS_TODOS) {
+  let q = db.from("matriculas")
+    .select("alunos!inner(id, nome, nome_pai, telefone_pai, nome_mae, telefone_mae, responsavel_financeiro, telefone_responsavel)")
+    .eq("escola_id", escolaId).eq("alunos.status", "Ativo").limit(limite);
+  if (turmaId) q = q.eq("turma_id", turmaId);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  const porId = new Map<string, Linha>();
+  for (const row of (data ?? []) as Linha[]) {
+    const a = row.alunos;
+    if (a && !porId.has(a.id)) porId.set(a.id, a);
+  }
+  return [...porId.values()];
+}
+
 type Contato = { parentesco: "pai" | "mae" | "responsavel"; nome: string | null; telefoneCru: string | null };
 function contatosDoAluno(a: Linha, personas: string[]): Contato[] {
   const todos: Contato[] = [
@@ -144,13 +164,15 @@ Deno.serve(async (req: Request) => {
 
       const mensagem = String(corpo.mensagem ?? "").trim();
       if (!mensagem) return json({ ok: false, erro: "A mensagem não pode ficar vazia." }, 400);
-      const destinoTipo = corpo.destino_tipo === "aluno" ? "aluno" : corpo.destino_tipo === "todos" ? "todos" : null;
-      if (!destinoTipo) return json({ ok: false, erro: "Informe o destino: um aluno ou todos." }, 400);
+      const destinoTipo = corpo.destino_tipo === "aluno" ? "aluno" : corpo.destino_tipo === "turma" ? "turma" : corpo.destino_tipo === "todos" ? "todos" : null;
+      if (!destinoTipo) return json({ ok: false, erro: "Informe o destino: um aluno, uma turma ou todos." }, 400);
       const personas = Array.isArray(corpo.personas) ? corpo.personas.filter((p: unknown) => ["pai", "mae", "responsavel"].includes(String(p))) : [];
       if (personas.length === 0) return json({ ok: false, erro: "Escolha quem recebe: responsável financeiro, pai, mãe ou ambos." }, 400);
 
       let alunoId: string | null = null;
       let alunoNomeUnico: string | null = null;
+      let turmaId: string | null = null;
+      let turmaNome: string | null = null;
       let alunos: Linha[];
       if (destinoTipo === "aluno") {
         alunoId = String(corpo.aluno_id ?? "");
@@ -160,6 +182,19 @@ Deno.serve(async (req: Request) => {
           .eq("id", alunoId).eq("escola_id", escolaId).maybeSingle();
         if (error || !a) return json({ ok: false, erro: "Aluno não encontrado nesta escola." }, 400);
         alunos = [a]; alunoNomeUnico = a.nome as string;
+      } else if (destinoTipo === "turma") {
+        const turmaIdPedido = corpo.turma_id ? String(corpo.turma_id) : null;
+        if (turmaIdPedido) {
+          const { data: t, error } = await db.from("turmas").select("id, nome").eq("id", turmaIdPedido).eq("escola_id", escolaId).maybeSingle();
+          if (error || !t) return json({ ok: false, erro: "Turma não encontrada nesta escola." }, 400);
+          turmaId = t.id as string; turmaNome = t.nome as string;
+        } else {
+          turmaNome = "Todas as turmas";
+        }
+        alunos = await carregarAlunosPorTurma(db, escolaId, turmaId, MAX_DESTINATARIOS_TODOS);
+        if (alunos.length === 0) {
+          return json({ ok: false, erro: turmaId ? "Nenhum aluno ativo matriculado nessa turma." : "Nenhum aluno ativo matriculado em alguma turma." }, 400);
+        }
       } else {
         alunos = await carregarAlunosComContatos(db, escolaId, undefined, MAX_DESTINATARIOS_TODOS);
         if (alunos.length === 0) return json({ ok: false, erro: "Nenhum aluno ativo encontrado." }, 400);
@@ -172,7 +207,7 @@ Deno.serve(async (req: Request) => {
         for (const c of contatosDoAluno(a, personas)) {
           const telefone = normalizarTelefone(c.telefoneCru);
           itens.push({
-            aluno_id: a.id, aluno_nome: a.nome, parentesco: c.parentesco,
+            aluno_id: a.id, aluno_nome: a.nome, turma_nome: turmaNome, parentesco: c.parentesco,
             destinatario_nome: c.nome ?? null, telefone,
             status: telefone ? "pendente" : "sem_telefone",
           });
@@ -188,6 +223,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: aviso, error: errAviso } = await db.from("avisos_whatsapp").insert({
         escola_id: escolaId, mensagem, destino_tipo: destinoTipo, aluno_id: alunoId, aluno_nome: alunoNomeUnico,
+        turma_id: turmaId, turma_nome: turmaNome,
         personas, status: "enviando", total_destinatarios: comTelefone, total_sem_telefone: semTelefone,
       }).select("id").single();
       if (errAviso || !aviso) return json({ ok: false, erro: errAviso?.message ?? "Falha ao criar o envio." }, 500);
