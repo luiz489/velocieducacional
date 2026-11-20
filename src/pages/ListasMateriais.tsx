@@ -8,12 +8,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ListChecks } from "lucide-react";
+import { Plus, Pencil, Trash2, ListChecks, MessageCircle, Loader2 } from "lucide-react";
+import { chamarAvisosWhatsapp, personasParaEnviar, PERSONAS, type Persona } from "@/lib/avisosWhatsapp";
+
+/** Monta a mensagem do WhatsApp a partir dos campos da lista, pulando os que estão vazios. */
+function montarMensagemLista(l: ListaMateriais): string {
+  const partes = [l.titulo];
+  if (l.orientacoes) partes.push(l.orientacoes);
+  partes.push("Itens:\n" + l.itens);
+  if (l.material_didatico_texto) partes.push("Material didático: " + l.material_didatico_texto);
+  if (l.material_didatico_url) partes.push(l.material_didatico_url);
+  if (l.mochila_texto) partes.push("Mochila diária: " + l.mochila_texto);
+  if (l.uniforme_texto) partes.push("Uniforme: " + l.uniforme_texto);
+  return partes.join("\n\n");
+}
 
 type ListaMateriais = {
   id: string;
@@ -148,6 +166,38 @@ export default function ListasMateriais() {
     const t = turmas?.find((x) => x.id === id);
     return t ? `${t.nome} (${t.ano_letivo})` : "Turma";
   };
+
+  // --- Enviar por WhatsApp ---
+  const [enviarAlvo, setEnviarAlvo] = useState<ListaMateriais | null>(null);
+  const [persona, setPersona] = useState<Persona>("responsavel");
+  const [mensagemEnvio, setMensagemEnvio] = useState("");
+
+  const abrirEnvio = (l: ListaMateriais) => {
+    setEnviarAlvo(l);
+    setPersona("responsavel");
+    setMensagemEnvio(montarMensagemLista(l));
+  };
+
+  const { data: statusWhatsapp } = useQuery({
+    queryKey: ["listas-materiais-whatsapp-status", escolaAtivaId],
+    enabled: !!escolaAtivaId && !!enviarAlvo,
+    queryFn: () => chamarAvisosWhatsapp<{ habilitado: boolean; status?: string }>("status", {}, escolaAtivaId),
+  });
+  const conectado = statusWhatsapp?.habilitado && statusWhatsapp.status === "WORKING";
+
+  const enviarMut = useMutation({
+    mutationFn: () => chamarAvisosWhatsapp<{ total_destinatarios: number; total_sem_telefone: number }>("criar_envio", {
+      mensagem: mensagemEnvio,
+      destino_tipo: "turma",
+      turma_id: enviarAlvo?.turma_id,
+      personas: personasParaEnviar(persona),
+    }, escolaAtivaId),
+    onSuccess: (r) => {
+      toast.success(`Envio iniciado para ${r.total_destinatarios} destinatário(s)${r.total_sem_telefone ? ` (${r.total_sem_telefone} sem telefone cadastrado, não recebem)` : ""}.`);
+      setEnviarAlvo(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -291,6 +341,7 @@ export default function ListasMateriais() {
                     <TableCell>{l.ano_letivo}</TableCell>
                     <TableCell>{l.ativo ? <Badge variant="default">Ativo</Badge> : <Badge variant="outline">Oculto</Badge>}</TableCell>
                     <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" title="Enviar por WhatsApp" onClick={() => abrirEnvio(l)}><MessageCircle className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => startEdit(l)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => remove.mutate(l.id)}><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
@@ -301,6 +352,52 @@ export default function ListasMateriais() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!enviarAlvo} onOpenChange={(o) => { if (!o) setEnviarAlvo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enviar por WhatsApp</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vai para todos os alunos ativos da turma "{enviarAlvo ? nomeTurma(enviarAlvo.turma_id) : ""}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4">
+            {statusWhatsapp && !conectado && (
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                O WhatsApp desta escola não está conectado. Conecte na tela "Avisos por WhatsApp" antes de enviar.
+              </p>
+            )}
+
+            <div className="space-y-2">
+              <Label>Quem recebe</Label>
+              <RadioGroup value={persona} onValueChange={(v) => setPersona(v as Persona)} className="flex flex-wrap gap-4">
+                {PERSONAS.map((p) => (
+                  <div key={p.value} className="flex items-center gap-2">
+                    <RadioGroupItem value={p.value} id={`envio-persona-${p.value}`} />
+                    <Label htmlFor={`envio-persona-${p.value}`} className="font-normal">{p.label}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Mensagem</Label>
+              <Textarea rows={8} value={mensagemEnvio} onChange={(e) => setMensagemEnvio(e.target.value)} />
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!mensagemEnvio.trim() || !conectado || enviarMut.isPending}
+              onClick={(e) => { e.preventDefault(); enviarMut.mutate(); }}
+            >
+              {enviarMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

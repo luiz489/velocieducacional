@@ -34,6 +34,7 @@ export const ROTA_MODULO: Record<string, string> = {
   "/avisos": "comunicacao",
   "/avisos-whatsapp": "comunicacao",
   "/links-compra": "comunicacao",
+  "/listas-materiais": "comunicacao",
   "/documentos": "relatorios_documentos",
   "/documentos/gerar": "relatorios_documentos",
   "/assinaturas": "relatorios_documentos",
