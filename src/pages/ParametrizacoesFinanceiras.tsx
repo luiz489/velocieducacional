@@ -456,6 +456,32 @@ function SicrediDialog({
     );
   };
 
+  // Diagnóstico pontual: o modo retroativo não guarda o detalhe de quem NÃO bateu (só conta). Pra
+  // investigar um caso específico ("fulano diz que já pagou"), busca em modo "simular" (não altera
+  // nada) tudo que o banco liquidou com aquele vencimento, nas 12 janelas de 15 dias.
+  const [vencimentoDiag, setVencimentoDiag] = useState("");
+  const [diagnosticando, setDiagnosticando] = useState(false);
+  const [resultadosDiag, setResultadosDiag] = useState<
+    { pagador?: string; documento?: string; valor_pago?: number; valor_nominal?: number; data_pagamento?: string; vencimento?: string; resultado?: string; motivo?: string; aluno?: string }[] | null
+  >(null);
+
+  const diagnosticarVencimento = async () => {
+    if (!escolaId || !vencimentoDiag) return;
+    setDiagnosticando(true);
+    setResultadosDiag(null);
+    const achados: typeof resultadosDiag = [];
+    for (let inicio = 0; inicio < MAX_INICIO; inicio += JANELA_DIAS) {
+      const { data: sim, error } = await supabase.functions.invoke("sicredi-conciliar-liquidados", {
+        body: { escola_id: escolaId, modo: "simular", dias: JANELA_DIAS, inicio },
+      });
+      if (error) continue;
+      const resultados = sim?.escolas?.[0]?.simulacao?.resultados ?? [];
+      for (const r of resultados) if (r.vencimento === vencimentoDiag) achados!.push(r);
+    }
+    setDiagnosticando(false);
+    setResultadosDiag(achados);
+  };
+
   const { data: qtdPendentes } = useQuery({
     queryKey: ["cobranca-pendentes", escolaId],
     enabled: open && !!escolaId && jaConfigurado,
@@ -641,6 +667,46 @@ function SicrediDialog({
                   {resultadoConciliacao.erros > 0 && `, ${resultadoConciliacao.erros} janela(s) com erro de comunicação (pode rodar de novo)`}.
                 </p>
               )}
+
+              <div className="border-t pt-2 space-y-2">
+                <p className="text-sm font-medium">Diagnóstico: "fulano diz que já pagou"</p>
+                <p className="text-xs text-muted-foreground">
+                  Informe o vencimento da parcela pra ver, sem alterar nada, tudo que o banco liquidou
+                  com esse vencimento nos últimos 180 dias (e por que não bateu automaticamente).
+                </p>
+                <div className="flex gap-2 items-end">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Vencimento da parcela</Label>
+                    <Input type="date" value={vencimentoDiag} onChange={(e) => setVencimentoDiag(e.target.value)} className="w-40" />
+                  </div>
+                  <Button variant="outline" size="sm" onClick={diagnosticarVencimento} disabled={diagnosticando || !vencimentoDiag}>
+                    {diagnosticando ? "Buscando…" : "Buscar"}
+                  </Button>
+                </div>
+                {resultadosDiag && (
+                  resultadosDiag.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Nada encontrado com esse vencimento nos últimos 180 dias — ou o pagamento ainda não foi
+                      compensado pelo Sicredi, ou foi feito com um documento (CPF) diferente do responsável
+                      financeiro cadastrado, ou não passou pelo Sicredi.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {resultadosDiag.map((r, i) => (
+                        <div key={i} className="text-xs rounded border p-2">
+                          <strong>{r.resultado === "unico" ? "Bateu com 1 parcela" : r.resultado === "ambiguo" ? "Ambíguo (mais de 1 parcela)" : r.resultado === "nenhum" ? "Sem parcela correspondente" : r.resultado}</strong>
+                          {" — pagador: "}{r.pagador ?? "?"} (doc. final {r.documento ?? "?"})
+                          {", valor pago: R$ "}{r.valor_pago}
+                          {r.valor_nominal != null && r.valor_nominal !== r.valor_pago && ` (nominal: R$ ${r.valor_nominal})`}
+                          {", pago em "}{r.data_pagamento}
+                          {r.aluno && ` — aluno: ${r.aluno}`}
+                          {r.motivo && ` — ${r.motivo}`}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
             </div>
           )}
 
