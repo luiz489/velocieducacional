@@ -466,7 +466,7 @@ function SicrediDialog({
   >(null);
 
   const diagnosticarVencimento = async () => {
-    if (!escolaId || !vencimentoDiag) return;
+    if (!escolaId) return;
     setDiagnosticando(true);
     setResultadosDiag(null);
     const achados: typeof resultadosDiag = [];
@@ -476,7 +476,13 @@ function SicrediDialog({
       });
       if (error) continue;
       const resultados = sim?.escolas?.[0]?.simulacao?.resultados ?? [];
-      for (const r of resultados) if (r.vencimento === vencimentoDiag) achados!.push(r);
+      for (const r of resultados) {
+        // Sem vencimento informado: traz tudo que não bateu sozinho (já baixado automaticamente
+        // ("unico") não interessa aqui) — pra varrer o histórico inteiro de uma vez.
+        if (!vencimentoDiag || r.vencimento === vencimentoDiag) {
+          if (vencimentoDiag || r.resultado !== "unico") achados!.push(r);
+        }
+      }
     }
     setDiagnosticando(false);
     setResultadosDiag(achados);
@@ -671,16 +677,17 @@ function SicrediDialog({
               <div className="border-t pt-2 space-y-2">
                 <p className="text-sm font-medium">Diagnóstico: "fulano diz que já pagou"</p>
                 <p className="text-xs text-muted-foreground">
-                  Informe o vencimento da parcela pra ver, sem alterar nada, tudo que o banco liquidou
-                  com esse vencimento nos últimos 180 dias (e por que não bateu automaticamente).
+                  Informe um vencimento pra investigar um caso específico, ou deixe em branco pra varrer os
+                  últimos 180 dias inteiros e listar tudo que o banco liquidou e não bateu sozinho com
+                  nenhuma parcela (sem alterar nada) — útil pra achar outros casos parecidos de uma vez.
                 </p>
                 <div className="flex gap-2 items-end">
                   <div className="space-y-1">
-                    <Label className="text-xs">Vencimento da parcela</Label>
+                    <Label className="text-xs">Vencimento da parcela (opcional)</Label>
                     <Input type="date" value={vencimentoDiag} onChange={(e) => setVencimentoDiag(e.target.value)} className="w-40" />
                   </div>
-                  <Button variant="outline" size="sm" onClick={diagnosticarVencimento} disabled={diagnosticando || !vencimentoDiag}>
-                    {diagnosticando ? "Buscando…" : "Buscar"}
+                  <Button variant="outline" size="sm" onClick={diagnosticarVencimento} disabled={diagnosticando}>
+                    {diagnosticando ? "Buscando (pode levar alguns minutos)…" : vencimentoDiag ? "Buscar esse vencimento" : "Varrer os 180 dias inteiros"}
                   </Button>
                 </div>
                 {resultadosDiag && (
@@ -695,6 +702,7 @@ function SicrediDialog({
                       {resultadosDiag.map((r, i) => (
                         <div key={i} className="text-xs rounded border p-2">
                           <strong>{r.resultado === "unico" ? "Bateu com 1 parcela" : r.resultado === "ambiguo" ? "Ambíguo (mais de 1 parcela)" : r.resultado === "nenhum" ? "Sem parcela correspondente" : r.resultado}</strong>
+                          {!vencimentoDiag && r.vencimento && ` — vencimento ${r.vencimento}`}
                           {" — pagador: "}{r.pagador ?? "?"} (doc. final {r.documento ?? "?"})
                           {", valor pago: R$ "}{r.valor_pago}
                           {r.valor_nominal != null && r.valor_nominal !== r.valor_pago && ` (nominal: R$ ${r.valor_nominal})`}
