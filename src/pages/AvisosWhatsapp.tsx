@@ -22,18 +22,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
 import { supabase } from "@/integrations/supabase/client";
+import { chamarAvisosWhatsapp, personasParaEnviar, PERSONAS, type Persona } from "@/lib/avisosWhatsapp";
 import { CheckCircle2, Loader2, MessageCircle, Search, Send, WifiOff, X } from "lucide-react";
-
-type Persona = "responsavel" | "pai" | "mae" | "ambos";
-const PERSONAS: { value: Persona; label: string }[] = [
-  { value: "responsavel", label: "Responsável financeiro" },
-  { value: "pai", label: "Pai" },
-  { value: "mae", label: "Mãe" },
-  { value: "ambos", label: "Pai e mãe (ambos)" },
-];
-function personasParaEnviar(p: Persona): string[] {
-  return p === "ambos" ? ["pai", "mae"] : [p];
-}
 
 type Contato = { parentesco: "pai" | "mae" | "responsavel"; nome: string | null; telefone: string | null };
 type AlunoBusca = { id: string; nome: string; contatos: Contato[] };
@@ -54,19 +44,6 @@ const STATUS_VARIANT: Record<Aviso["status"], "default" | "secondary" | "destruc
   pendente: "outline", enviando: "secondary", concluido: "default", erro: "destructive",
 };
 
-async function chamar<T = any>(acao: string, extra: Record<string, unknown> = {}, escolaId?: string | null) {
-  const { data, error } = await supabase.functions.invoke("avisos-whatsapp", { body: { acao, escola_id: escolaId, ...extra } });
-  if (error) {
-    // Quando a function responde com status != 2xx, o cliente não lê o corpo da resposta sozinho
-    // (troca por um texto genérico tipo "Edge Function returned a non-2xx status code"). O corpo
-    // real, com a mensagem útil (ex.: "sem telefone cadastrado"), está em error.context.
-    const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
-    throw new Error(corpo?.erro ?? error.message);
-  }
-  if (data && data.ok === false) throw new Error(data.erro ?? "Falha na operação.");
-  return data as T;
-}
-
 export default function AvisosWhatsapp() {
   const { escolaAtivaId } = useEscolaAtiva();
   const qc = useQueryClient();
@@ -83,7 +60,7 @@ export default function AvisosWhatsapp() {
       if (!s?.habilitado) return false;
       return s.status === "STARTING" || s.status === "SCAN_QR_CODE" ? 3000 : 10000;
     },
-    queryFn: () => chamar<EstadoWhatsapp>("status", {}, escolaAtivaId),
+    queryFn: () => chamarAvisosWhatsapp<EstadoWhatsapp>("status", {}, escolaAtivaId),
   });
   const status = estado?.habilitado ? estado.status : null;
 
@@ -100,7 +77,7 @@ export default function AvisosWhatsapp() {
     let ativo = true;
     const buscar = async () => {
       try {
-        const r = await chamar<{ imagem?: string }>("qr", {}, escolaAtivaId);
+        const r = await chamarAvisosWhatsapp<{ imagem?: string }>("qr", {}, escolaAtivaId);
         if (ativo && r.imagem) setQr(r.imagem);
       } catch { /* o QR se renova no próximo ciclo */ }
     };
@@ -110,12 +87,12 @@ export default function AvisosWhatsapp() {
   }, [status, escolaAtivaId]);
 
   const conectarMut = useMutation({
-    mutationFn: () => chamar("conectar", {}, escolaAtivaId),
+    mutationFn: () => chamarAvisosWhatsapp("conectar", {}, escolaAtivaId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["avisos-whatsapp-status", escolaAtivaId] }),
     onError: (e: Error) => toast.error(e.message),
   });
   const desconectarMut = useMutation({
-    mutationFn: () => chamar("desconectar", {}, escolaAtivaId),
+    mutationFn: () => chamarAvisosWhatsapp("desconectar", {}, escolaAtivaId),
     onSuccess: () => { toast.success("Número desconectado."); qc.invalidateQueries({ queryKey: ["avisos-whatsapp-status", escolaAtivaId] }); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -139,7 +116,7 @@ export default function AvisosWhatsapp() {
   const { data: resultadoBusca, isFetching: buscando } = useQuery({
     queryKey: ["avisos-whatsapp-buscar", escolaAtivaId, termo],
     enabled: !!escolaAtivaId && destino === "aluno" && termo.trim().length >= 2 && !alunoSelecionado,
-    queryFn: () => chamar<{ alunos: AlunoBusca[] }>("buscar_alunos", { termo }, escolaAtivaId),
+    queryFn: () => chamarAvisosWhatsapp<{ alunos: AlunoBusca[] }>("buscar_alunos", { termo }, escolaAtivaId),
   });
 
   const { data: turmas } = useQuery({
@@ -154,7 +131,7 @@ export default function AvisosWhatsapp() {
   });
 
   const enviarMut = useMutation({
-    mutationFn: () => chamar<{ total_destinatarios: number; total_sem_telefone: number }>("criar_envio", {
+    mutationFn: () => chamarAvisosWhatsapp<{ total_destinatarios: number; total_sem_telefone: number }>("criar_envio", {
       mensagem,
       destino_tipo: destino,
       aluno_id: destino === "aluno" ? alunoSelecionado?.id : undefined,
