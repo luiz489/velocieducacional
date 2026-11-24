@@ -28,6 +28,13 @@ export type MatriculaResumo = {
   parcelas_geradas: number;
   parcelas_pagas: number;
   valor_mensal: number | null;
+  mensalidade_dividida: boolean;
+  dividir_taxa_matricula: boolean;
+  responsavel2_nome: string | null;
+  responsavel2_cpf: string | null;
+  responsavel2_telefone: string | null;
+  responsavel2_email: string | null;
+  responsavel2_percentual: number;
 };
 
 export type TurmaComVagas = {
@@ -53,6 +60,7 @@ export function useMatriculas() {
       .from("matriculas")
       .select(`
         id, aluno_id, turma_id, data_ingresso, data_vencimento_matricula, dia_vencimento_mensalidade, parcelas_taxa_matricula, datas_taxa_matricula, valor_taxa_matricula, valor_mensalidade_negociado, modalidade_financeira_id, status_pagamento, percentual_desconto, bolsa_100,
+        mensalidade_dividida, dividir_taxa_matricula, responsavel2_nome, responsavel2_cpf, responsavel2_telefone, responsavel2_email, responsavel2_percentual,
         alunos ( nome, status ),
         turmas ( nome, turno, ano_letivo ),
         financeiro ( status, valor )
@@ -91,6 +99,13 @@ export function useMatriculas() {
         parcelas_geradas: parcelas.length,
         parcelas_pagas: parcelas.filter((p: any) => p.status === "Pago").length,
         valor_mensal: parcelas[0]?.valor ?? null,
+        mensalidade_dividida: m.mensalidade_dividida ?? false,
+        dividir_taxa_matricula: m.dividir_taxa_matricula ?? false,
+        responsavel2_nome: m.responsavel2_nome ?? null,
+        responsavel2_cpf: m.responsavel2_cpf ?? null,
+        responsavel2_telefone: m.responsavel2_telefone ?? null,
+        responsavel2_email: m.responsavel2_email ?? null,
+        responsavel2_percentual: m.responsavel2_percentual != null ? Number(m.responsavel2_percentual) : 50,
       };
     });
 
@@ -161,7 +176,14 @@ export function useMatriculas() {
 
   const updateMatricula = useCallback(async (
     id: string,
-    dados: { turma_id: string; data_ingresso: string; data_vencimento_matricula?: string | null; dia_vencimento_mensalidade?: number | null; percentual_desconto: number; bolsa_100: boolean; parcelas_taxa_matricula?: number; datas_taxa_matricula?: string[] | null; valor_taxa_matricula?: number | null; valor_mensalidade_negociado?: number | null; modalidade_financeira_id?: string | null }
+    dados: {
+      turma_id: string; data_ingresso: string; data_vencimento_matricula?: string | null; dia_vencimento_mensalidade?: number | null;
+      percentual_desconto: number; bolsa_100: boolean; parcelas_taxa_matricula?: number; datas_taxa_matricula?: string[] | null;
+      valor_taxa_matricula?: number | null; valor_mensalidade_negociado?: number | null; modalidade_financeira_id?: string | null;
+      mensalidade_dividida?: boolean; dividir_taxa_matricula?: boolean; responsavel2_nome?: string | null;
+      responsavel2_cpf?: string | null; responsavel2_telefone?: string | null; responsavel2_email?: string | null;
+      responsavel2_percentual?: number;
+    }
   ) => {
     const { error } = await supabase.from("matriculas").update({
       turma_id: dados.turma_id,
@@ -175,6 +197,13 @@ export function useMatriculas() {
       modalidade_financeira_id: dados.modalidade_financeira_id ?? null,
       percentual_desconto: dados.bolsa_100 ? 0 : dados.percentual_desconto,
       bolsa_100: dados.bolsa_100,
+      mensalidade_dividida: dados.mensalidade_dividida ?? false,
+      dividir_taxa_matricula: dados.mensalidade_dividida ? (dados.dividir_taxa_matricula ?? false) : false,
+      responsavel2_nome: dados.mensalidade_dividida ? (dados.responsavel2_nome?.trim() || null) : null,
+      responsavel2_cpf: dados.mensalidade_dividida ? (dados.responsavel2_cpf || null) : null,
+      responsavel2_telefone: dados.mensalidade_dividida ? (dados.responsavel2_telefone || null) : null,
+      responsavel2_email: dados.mensalidade_dividida ? (dados.responsavel2_email?.trim() || null) : null,
+      responsavel2_percentual: dados.responsavel2_percentual ?? 50,
     }).eq("id", id);
     if (error) {
       toast.error("Erro ao atualizar matrícula: " + error.message);

@@ -435,7 +435,10 @@ export default function Financeiro() {
                     <TableCell>
                       <div>
                         <p className="font-medium">{l.aluno_nome}</p>
-                        <p className="text-xs text-muted-foreground">{l.responsavel}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {l.responsavel}
+                          {l.dividido && <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px]" title="Mensalidade dividida entre dois responsáveis">½</Badge>}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">

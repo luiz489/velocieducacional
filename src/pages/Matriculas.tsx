@@ -27,7 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAlunos } from "@/hooks/useAlunos";
 import { useMatriculas } from "@/hooks/useMatriculas";
 import { useEscolaAtiva } from "@/contexts/EscolaContext";
-import { limparCPF } from "@/lib/masks";
+import { limparCPF, mascaraCPF, mascaraTelefone } from "@/lib/masks";
 import { AlunoCamposFieldset, lerAlunoCamposDeFormData } from "@/components/AlunoCamposFieldset";
 import { validarCPF } from "@/lib/validations";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -228,6 +228,13 @@ export default function Matriculas() {
   const [formDesconto, setFormDesconto] = useState("0");
   const [formValorNegociado, setFormValorNegociado] = useState("");
   const [formBolsa, setFormBolsa] = useState(false);
+  const [formDivideResp, setFormDivideResp] = useState(false);
+  const [formRespIncluirTaxa, setFormRespIncluirTaxa] = useState(false);
+  const [formResp2Nome, setFormResp2Nome] = useState("");
+  const [formResp2Cpf, setFormResp2Cpf] = useState("");
+  const [formResp2Telefone, setFormResp2Telefone] = useState("");
+  const [formResp2Email, setFormResp2Email] = useState("");
+  const [formResp2Percentual, setFormResp2Percentual] = useState("50");
 
   const [editOpen, setEditOpen] = useState(false);
   const [editingMatricula, setEditingMatricula] = useState<typeof matriculas[number] | null>(null);
@@ -245,6 +252,13 @@ export default function Matriculas() {
   const [editBolsa, setEditBolsa] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editValorNegociado, setEditValorNegociado] = useState("");
+  const [editDivideResp, setEditDivideResp] = useState(false);
+  const [editRespIncluirTaxa, setEditRespIncluirTaxa] = useState(false);
+  const [editResp2Nome, setEditResp2Nome] = useState("");
+  const [editResp2Cpf, setEditResp2Cpf] = useState("");
+  const [editResp2Telefone, setEditResp2Telefone] = useState("");
+  const [editResp2Email, setEditResp2Email] = useState("");
+  const [editResp2Percentual, setEditResp2Percentual] = useState("50");
 
   const { data: opcionaisDisponiveis } = useQuery({
     queryKey: ["valores-opcionais-matricula", escolaAtivaId],
@@ -394,6 +408,13 @@ export default function Matriculas() {
     setFormValorNegociado("");
     setFormModalidadeId("");
     setFormBolsa(false);
+    setFormDivideResp(false);
+    setFormRespIncluirTaxa(false);
+    setFormResp2Nome("");
+    setFormResp2Cpf("");
+    setFormResp2Telefone("");
+    setFormResp2Email("");
+    setFormResp2Percentual("50");
   };
 
   const handleSubmitMatricula = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -405,6 +426,16 @@ export default function Matriculas() {
     if (!formTurmaId) {
       toast.error("Selecione a turma.");
       return;
+    }
+    if (formDivideResp) {
+      if (!formResp2Nome.trim()) {
+        toast.error("Informe o nome do segundo responsável.");
+        return;
+      }
+      if (formResp2Cpf) {
+        const cpfErro = validarCPF(limparCPF(formResp2Cpf));
+        if (cpfErro) { toast.error("CPF do segundo responsável: " + cpfErro); return; }
+      }
     }
 
     setSubmitting(true);
@@ -466,6 +497,13 @@ export default function Matriculas() {
         datas_taxa_matricula: montarDatasTaxa(Number(formParcelasTaxa || 1), formDataVencimentoMatricula, formDatasExtrasTaxa),
         valor_taxa_matricula: valorMatriculaParaSalvar(formValorTaxa, valorPadraoForm),
         modalidade_financeira_id: formModalidadeId || undefined,
+        mensalidade_dividida: formDivideResp,
+        dividir_taxa_matricula: formRespIncluirTaxa,
+        responsavel2_nome: formDivideResp ? formResp2Nome : null,
+        responsavel2_cpf: formDivideResp ? limparCPF(formResp2Cpf) : null,
+        responsavel2_telefone: formDivideResp ? formResp2Telefone.replace(/\D/g, "") : null,
+        responsavel2_email: formDivideResp ? formResp2Email : null,
+        responsavel2_percentual: Number(formResp2Percentual || 50),
       });
 
       if (novaMatriculaId) {
@@ -498,6 +536,13 @@ export default function Matriculas() {
     setEditDesconto(String(m.percentual_desconto ?? 0));
     setEditValorNegociado(m.valor_mensalidade_negociado != null ? String(m.valor_mensalidade_negociado) : "");
     setEditBolsa(m.bolsa_100);
+    setEditDivideResp(m.mensalidade_dividida);
+    setEditRespIncluirTaxa(m.dividir_taxa_matricula);
+    setEditResp2Nome(m.responsavel2_nome ?? "");
+    setEditResp2Cpf(m.responsavel2_cpf ? mascaraCPF(m.responsavel2_cpf) : "");
+    setEditResp2Telefone(m.responsavel2_telefone ? mascaraTelefone(m.responsavel2_telefone) : "");
+    setEditResp2Email(m.responsavel2_email ?? "");
+    setEditResp2Percentual(String(m.responsavel2_percentual ?? 50));
     const { data: opcionaisAtuais } = await supabase
       .from("matricula_valores_opcionais")
       .select("valor_opcional_id")
@@ -511,6 +556,16 @@ export default function Matriculas() {
     if (!editTurmaId) {
       toast.error("Selecione a turma.");
       return;
+    }
+    if (editDivideResp) {
+      if (!editResp2Nome.trim()) {
+        toast.error("Informe o nome do segundo responsável.");
+        return;
+      }
+      if (editResp2Cpf) {
+        const cpfErro = validarCPF(limparCPF(editResp2Cpf));
+        if (cpfErro) { toast.error("CPF do segundo responsável: " + cpfErro); return; }
+      }
     }
     setSavingEdit(true);
     const opcionaisOriginais = await supabase
@@ -533,7 +588,12 @@ export default function Matriculas() {
       valorMatriculaParaSalvar(editValorTaxa, valorPadraoEdit) !== (editingMatricula.valor_taxa_matricula ?? null) ||
       Number(editParcelasTaxa || 1) !== (editingMatricula.parcelas_taxa_matricula ?? 1) ||
       (editDataVencimentoMatricula || null) !== (editingMatricula.data_vencimento_matricula ?? null) ||
-      JSON.stringify(montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null) !== JSON.stringify(editingMatricula.datas_taxa_matricula ?? null);
+      JSON.stringify(montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null) !== JSON.stringify(editingMatricula.datas_taxa_matricula ?? null) ||
+      editDivideResp !== editingMatricula.mensalidade_dividida ||
+      editRespIncluirTaxa !== editingMatricula.dividir_taxa_matricula ||
+      (editDivideResp ? editResp2Nome.trim() : null) !== (editingMatricula.responsavel2_nome ?? null) ||
+      (editDivideResp ? limparCPF(editResp2Cpf) || null : null) !== (editingMatricula.responsavel2_cpf ?? null) ||
+      Number(editResp2Percentual || 50) !== (editingMatricula.responsavel2_percentual ?? 50);
 
     const ok = await updateMatricula(editingMatricula.id, {
       turma_id: editTurmaId,
@@ -547,6 +607,13 @@ export default function Matriculas() {
       datas_taxa_matricula: montarDatasTaxa(Number(editParcelasTaxa || 1), editDataVencimentoMatricula, editDatasExtrasTaxa) ?? null,
       valor_taxa_matricula: valorMatriculaParaSalvar(editValorTaxa, valorPadraoEdit),
       modalidade_financeira_id: editModalidadeId || null,
+      mensalidade_dividida: editDivideResp,
+      dividir_taxa_matricula: editRespIncluirTaxa,
+      responsavel2_nome: editDivideResp ? editResp2Nome : null,
+      responsavel2_cpf: editDivideResp ? limparCPF(editResp2Cpf) : null,
+      responsavel2_telefone: editDivideResp ? editResp2Telefone.replace(/\D/g, "") : null,
+      responsavel2_email: editDivideResp ? editResp2Email : null,
+      responsavel2_percentual: Number(editResp2Percentual || 50),
     });
 
     if (ok && opcionaisMudaram) {
@@ -808,6 +875,53 @@ export default function Matriculas() {
                     Ao digitar o valor fixo negociado, ele vale como valor final exato (sem arredondar por %).
                     O desconto (%) acima é só uma referência; editá-lo diretamente limpa este campo.
                   </p>
+                </div>
+
+                <div className="space-y-3 rounded-md border p-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="divide-resp" checked={formDivideResp} onCheckedChange={(v) => setFormDivideResp(!!v)} />
+                    <Label htmlFor="divide-resp" className="cursor-pointer">Dividir mensalidade com um segundo responsável</Label>
+                  </div>
+                  {formDivideResp && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="divide-resp-taxa" checked={formRespIncluirTaxa} onCheckedChange={(v) => setFormRespIncluirTaxa(!!v)} />
+                        <Label htmlFor="divide-resp-taxa" className="cursor-pointer">Dividir também a taxa de matrícula</Label>
+                      </div>
+                      <div>
+                        <Label>Nome do 2º responsável</Label>
+                        <Input value={formResp2Nome} onChange={(e) => setFormResp2Nome(e.target.value)} className="mt-1" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>CPF</Label>
+                          <Input value={formResp2Cpf} onChange={(e) => setFormResp2Cpf(mascaraCPF(e.target.value))} className="mt-1" />
+                        </div>
+                        <div>
+                          <Label>Telefone</Label>
+                          <Input value={formResp2Telefone} onChange={(e) => setFormResp2Telefone(mascaraTelefone(e.target.value))} className="mt-1" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>E-mail</Label>
+                        <Input type="email" value={formResp2Email} onChange={(e) => setFormResp2Email(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Percentual do 2º responsável (%)</Label>
+                        <Input type="number" min="1" max="99" step="0.01" value={formResp2Percentual} onChange={(e) => setFormResp2Percentual(e.target.value)} className="mt-1" />
+                      </div>
+                      {valorFinal != null && (
+                        <p className="text-xs text-muted-foreground">
+                          {(() => {
+                            const pct2 = Number(formResp2Percentual || 50);
+                            const parte2 = Math.round(valorFinal * pct2) / 100;
+                            const parte1 = Math.round((valorFinal - parte2) * 100) / 100;
+                            return `Responsável 1 paga R$ ${parte1.toFixed(2)}/mês; Responsável 2 paga R$ ${parte2.toFixed(2)}/mês.`;
+                          })()}
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {formTurmaId && (
@@ -1232,6 +1346,53 @@ export default function Matriculas() {
                 Ao digitar o valor fixo negociado, ele vale como valor final exato (sem arredondar por %).
                 O desconto (%) acima é só uma referência; editá-lo diretamente limpa este campo.
               </p>
+            </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex items-center gap-2">
+                <Checkbox id="edit-divide-resp" checked={editDivideResp} onCheckedChange={(v) => setEditDivideResp(!!v)} />
+                <Label htmlFor="edit-divide-resp" className="cursor-pointer">Dividir mensalidade com um segundo responsável</Label>
+              </div>
+              {editDivideResp && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="edit-divide-resp-taxa" checked={editRespIncluirTaxa} onCheckedChange={(v) => setEditRespIncluirTaxa(!!v)} />
+                    <Label htmlFor="edit-divide-resp-taxa" className="cursor-pointer">Dividir também a taxa de matrícula</Label>
+                  </div>
+                  <div>
+                    <Label>Nome do 2º responsável</Label>
+                    <Input value={editResp2Nome} onChange={(e) => setEditResp2Nome(e.target.value)} className="mt-1" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>CPF</Label>
+                      <Input value={editResp2Cpf} onChange={(e) => setEditResp2Cpf(mascaraCPF(e.target.value))} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Telefone</Label>
+                      <Input value={editResp2Telefone} onChange={(e) => setEditResp2Telefone(mascaraTelefone(e.target.value))} className="mt-1" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>E-mail</Label>
+                    <Input type="email" value={editResp2Email} onChange={(e) => setEditResp2Email(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label>Percentual do 2º responsável (%)</Label>
+                    <Input type="number" min="1" max="99" step="0.01" value={editResp2Percentual} onChange={(e) => setEditResp2Percentual(e.target.value)} className="mt-1" />
+                  </div>
+                  {valorFinalEdit != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {(() => {
+                        const pct2 = Number(editResp2Percentual || 50);
+                        const parte2 = Math.round(valorFinalEdit * pct2) / 100;
+                        const parte1 = Math.round((valorFinalEdit - parte2) * 100) / 100;
+                        return `Responsável 1 paga R$ ${parte1.toFixed(2)}/mês; Responsável 2 paga R$ ${parte2.toFixed(2)}/mês.`;
+                      })()}
+                    </p>
+                  )}
+                </>
+              )}
             </div>
 
             {editTurmaId && (

@@ -97,7 +97,7 @@ type Resultado = "enviado" | "sem_email" | "erro" | "ignorado";
 async function enviarUm(db: SupabaseClient, segredo: string, financeiroId: string): Promise<{ r: Resultado; detalhe?: string }> {
   const { data: t } = await db.from("financeiro").select(`
       id, escola_id, descricao, valor, valor_integral, data_vencimento, status, gateway_status,
-      pix_qr_code, boleto_linha_digitavel,
+      pix_qr_code, boleto_linha_digitavel, responsavel_email,
       matriculas ( alunos ( nome, email_responsavel ) ),
       escolas ( nome )
     `).eq("id", financeiroId).maybeSingle();
@@ -108,7 +108,9 @@ async function enviarUm(db: SupabaseClient, segredo: string, financeiroId: strin
   const { data: token, error: errToken } = await db.rpc("boleto_link_garantir", { p_financeiro_id: t.id });
   if (errToken || !token) return { r: "erro", detalhe: "Falha ao criar o link: " + (errToken?.message ?? "sem token") };
 
-  const para = String(t.matriculas?.alunos?.email_responsavel ?? "").trim();
+  // Parcela com mensalidade dividida entre dois responsáveis tem seu próprio e-mail "gravado" na linha
+  // de financeiro (ver gerar_parcelas_para_matricula); sem divisão, continua indo pro e-mail do aluno.
+  const para = String(t.responsavel_email || t.matriculas?.alunos?.email_responsavel || "").trim();
   if (!EMAIL_OK.test(para)) {
     await db.from("boleto_links").update({ email_erro: "Responsável sem e-mail válido." }).eq("financeiro_id", t.id);
     return { r: "sem_email" };

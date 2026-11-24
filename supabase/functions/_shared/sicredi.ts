@@ -271,6 +271,7 @@ export async function registrarParcela(admin: SupabaseClient, financeiroId: stri
   const { data: t, error } = await admin.from("financeiro").select(`
       id, escola_id, descricao, valor, valor_integral, data_vencimento, status, tipo,
       gateway_cobranca_id, gateway_status,
+      responsavel_nome, responsavel_cpf, responsavel_telefone, responsavel_email,
       matriculas ( alunos ( nome, responsavel_financeiro, responsavel_cpf, responsavel_cep, responsavel_cidade,
                             responsavel_uf, endereco, email_responsavel, telefone_responsavel ),
                    turmas ( nome ) )
@@ -306,12 +307,18 @@ export async function registrarParcela(admin: SupabaseClient, financeiroId: stri
     mensagens.push(`Após o vencimento: ${partes.join(" + ")}.`);
   }
 
+  // Parcela com mensalidade dividida entre dois responsáveis tem seu próprio nome/CPF/telefone/e-mail
+  // "gravado" na própria linha de financeiro (ver gerar_parcelas_para_matricula); endereço/CEP/cidade/UF
+  // continuam vindo sempre do aluno (os dois responsáveis usam o mesmo endereço cadastrado por ora).
+  const usaResponsavelProprio = !!t.responsavel_nome;
   const montado = montarPayloadBoleto(
     { id: t.id, valor: Number(t.valor), valor_integral: t.valor_integral == null ? null : Number(t.valor_integral), data_vencimento: t.data_vencimento },
     {
-      nome: aluno.responsavel_financeiro, documento: aluno.responsavel_cpf, endereco: aluno.endereco,
-      cidade: aluno.responsavel_cidade, uf: aluno.responsavel_uf, cep: aluno.responsavel_cep,
-      email: aluno.email_responsavel, telefone: aluno.telefone_responsavel,
+      nome: usaResponsavelProprio ? t.responsavel_nome : aluno.responsavel_financeiro,
+      documento: usaResponsavelProprio ? t.responsavel_cpf : aluno.responsavel_cpf,
+      endereco: aluno.endereco, cidade: aluno.responsavel_cidade, uf: aluno.responsavel_uf, cep: aluno.responsavel_cep,
+      email: (usaResponsavelProprio ? t.responsavel_email : null) || aluno.email_responsavel,
+      telefone: (usaResponsavelProprio ? t.responsavel_telefone : null) || aluno.telefone_responsavel,
     },
     cfg, { mensagens }
   );

@@ -3280,6 +3280,10 @@ export type Database = {
           valor: number
           valor_antes_pagamento: number | null
           valor_integral: number | null
+          responsavel_nome: string | null
+          responsavel_cpf: string | null
+          responsavel_telefone: string | null
+          responsavel_email: string | null
         }
         Insert: {
           boleto_linha_digitavel?: string | null
@@ -3307,6 +3311,10 @@ export type Database = {
           valor: number
           valor_antes_pagamento?: number | null
           valor_integral?: number | null
+          responsavel_nome?: string | null
+          responsavel_cpf?: string | null
+          responsavel_telefone?: string | null
+          responsavel_email?: string | null
         }
         Update: {
           boleto_linha_digitavel?: string | null
@@ -3334,6 +3342,10 @@ export type Database = {
           valor?: number
           valor_antes_pagamento?: number | null
           valor_integral?: number | null
+          responsavel_nome?: string | null
+          responsavel_cpf?: string | null
+          responsavel_telefone?: string | null
+          responsavel_email?: string | null
         }
         Relationships: [
           {
@@ -4150,6 +4162,13 @@ export type Database = {
           status_pagamento: string
           turma_id: string
           updated_at: string
+          mensalidade_dividida: boolean
+          dividir_taxa_matricula: boolean
+          responsavel2_nome: string | null
+          responsavel2_cpf: string | null
+          responsavel2_telefone: string | null
+          responsavel2_email: string | null
+          responsavel2_percentual: number
         }
         Insert: {
           aluno_id: string
@@ -4169,6 +4188,13 @@ export type Database = {
           status_pagamento?: string
           turma_id: string
           updated_at?: string
+          mensalidade_dividida?: boolean
+          dividir_taxa_matricula?: boolean
+          responsavel2_nome?: string | null
+          responsavel2_cpf?: string | null
+          responsavel2_telefone?: string | null
+          responsavel2_email?: string | null
+          responsavel2_percentual?: number
         }
         Update: {
           aluno_id?: string
@@ -4188,6 +4214,13 @@ export type Database = {
           status_pagamento?: string
           turma_id?: string
           updated_at?: string
+          mensalidade_dividida?: boolean
+          dividir_taxa_matricula?: boolean
+          responsavel2_nome?: string | null
+          responsavel2_cpf?: string | null
+          responsavel2_telefone?: string | null
+          responsavel2_email?: string | null
+          responsavel2_percentual?: number
         }
         Relationships: [
           {

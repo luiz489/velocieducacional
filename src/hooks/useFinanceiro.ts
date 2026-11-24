@@ -9,6 +9,7 @@ export type LancamentoRow = {
   turma: string;
   aluno_nome: string;
   responsavel: string;
+  dividido: boolean;
   descricao: string;
   tipo: string;
   valor: number;
@@ -34,7 +35,7 @@ export function useFinanceiro() {
       .from("financeiro")
       .select(`
         id, descricao, valor, valor_integral, data_vencimento, data_pagamento, status, tipo, forma_pagamento,
-        gateway_status, gateway_erro, boleto_linha_digitavel, pix_qr_code,
+        gateway_status, gateway_erro, boleto_linha_digitavel, pix_qr_code, responsavel_nome,
         matricula_id, matriculas ( alunos ( nome, responsavel_financeiro ), turmas ( nome ) )
       `)
       .eq("escola_id", escolaAtivaId)
@@ -53,7 +54,8 @@ export function useFinanceiro() {
         matricula_id: l.matricula_id ?? null,
         turma: l.matriculas?.turmas?.nome ?? "—",
         aluno_nome: l.matriculas?.alunos?.nome ?? "—",
-        responsavel: l.matriculas?.alunos?.responsavel_financeiro ?? "—",
+        responsavel: l.responsavel_nome || l.matriculas?.alunos?.responsavel_financeiro || "—",
+        dividido: !!l.responsavel_nome,
         descricao: l.descricao,
         tipo: l.tipo,
         valor: Number(l.valor),
