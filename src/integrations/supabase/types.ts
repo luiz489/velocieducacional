@@ -659,6 +659,9 @@ export type Database = {
           expira_em: string | null
           hash_documento: string
           id: string
+          responsavel_nome_snapshot: string | null
+          responsavel_num: number
+          responsavel_telefone_snapshot: string | null
           rg_esperado: string | null
           template_id: string | null
           tentativas_invalidas: number
@@ -694,6 +697,9 @@ export type Database = {
           expira_em?: string | null
           hash_documento: string
           id?: string
+          responsavel_nome_snapshot?: string | null
+          responsavel_num?: number
+          responsavel_telefone_snapshot?: string | null
           rg_esperado?: string | null
           template_id?: string | null
           tentativas_invalidas?: number
@@ -729,6 +735,9 @@ export type Database = {
           expira_em?: string | null
           hash_documento?: string
           id?: string
+          responsavel_nome_snapshot?: string | null
+          responsavel_num?: number
+          responsavel_telefone_snapshot?: string | null
           rg_esperado?: string | null
           template_id?: string | null
           tentativas_invalidas?: number

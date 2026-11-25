@@ -96,7 +96,7 @@ export default function Matriculas() {
   const { matriculas, turmasComVagas, loading, refetch, updateMatricula, deleteMatricula, infoExclusaoMatricula, recalcularFinanceiro } = useMatriculas();
   const navigate = useNavigate();
   const { escolaAtivaId } = useEscolaAtiva();
-  const [alunoParaContrato, setAlunoParaContrato] = useState<string | null>(null);
+  const [matriculaParaContrato, setMatriculaParaContrato] = useState<typeof matriculas[number] | null>(null);
 
   const { data: templatesContrato } = useQuery({
     queryKey: ["templates-contrato", escolaAtivaId],
@@ -116,28 +116,43 @@ export default function Matriculas() {
 
   const [gerandoAssinatura, setGerandoAssinatura] = useState<string | null>(null);
   const [linkAssinatura, setLinkAssinatura] = useState<
-    { link: string | null; titulo: string; alunoNome: string; telefone: string | null } | null
+    { link: string | null; titulo: string; alunoNome: string; telefone: string | null; responsavelLabel?: string } | null
   >(null);
   const { can } = usePermissoes();
   const [assinandoPelaEscola, setAssinandoPelaEscola] = useState<
-    { id: string; token: string; titulo: string; alunoNome: string; telefone: string | null } | null
+    { id: string; token: string; titulo: string; alunoNome: string; telefone: string | null; responsavelLabel?: string } | null
   >(null);
 
-  const enviarParaAssinatura = async (templateId: string, titulo: string) => {
-    if (!alunoParaContrato) return;
-    const alunoId = alunoParaContrato;
-    setGerandoAssinatura(templateId);
+  const enviarParaAssinatura = async (templateId: string, titulo: string, responsavel: 1 | 2 = 1) => {
+    if (!matriculaParaContrato) return;
+    const m = matriculaParaContrato;
+    const alunoId = m.aluno_id;
+    const chaveGerando = responsavel === 2 ? `${templateId}:2` : templateId;
+    setGerandoAssinatura(chaveGerando);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).rpc("solicitar_assinatura_documento", {
         p_template_id: templateId,
         p_aluno_id: alunoId,
+        p_valores_manuais: {},
+        p_responsavel: responsavel,
       });
       if (error) throw error;
       const novo = Array.isArray(data) ? data[0] : data;
-      const { data: aluno } = await supabase.from("alunos").select("nome, telefone_responsavel").eq("id", alunoId).maybeSingle();
-      setAlunoParaContrato(null);
-      const info = { titulo, alunoNome: aluno?.nome ?? "", telefone: aluno?.telefone_responsavel ?? null };
+      let alunoNome = m.aluno_nome;
+      let telefone: string | null = null;
+      if (responsavel === 2) {
+        telefone = m.responsavel2_telefone;
+      } else {
+        const { data: aluno } = await supabase.from("alunos").select("nome, telefone_responsavel").eq("id", alunoId).maybeSingle();
+        alunoNome = aluno?.nome ?? alunoNome;
+        telefone = aluno?.telefone_responsavel ?? null;
+      }
+      setMatriculaParaContrato(null);
+      const responsavelLabel = m.mensalidade_dividida
+        ? (responsavel === 2 ? `Responsável 2 — ${m.responsavel2_nome}` : "Responsável 1")
+        : undefined;
+      const info = { titulo, alunoNome, telefone, responsavelLabel };
       if (can("relatorios_documentos", "assinar")) {
         // quem pode assinar pela escola (diretora) assina agora; o link só existe depois disso
         setAssinandoPelaEscola({ id: novo.assinatura_id, token: novo.assinatura_token, ...info });
@@ -151,15 +166,15 @@ export default function Matriculas() {
     }
   };
 
-  const emitirContrato = (templateId: string) => {
-    if (!alunoParaContrato) return;
-    const alunoId = alunoParaContrato;
+  const emitirContrato = (templateId: string, responsavel: 1 | 2 = 1) => {
+    if (!matriculaParaContrato) return;
+    const alunoId = matriculaParaContrato.aluno_id;
     // Fecha o diálogo ANTES de trocar de rota. Navegar com o Dialog do Radix
     // ainda aberto deixa `pointer-events: none` preso no <body> e a próxima
     // tela fica "morta" / em branco até dar F5.
-    setAlunoParaContrato(null);
+    setMatriculaParaContrato(null);
     setTimeout(() => {
-      navigate("/documentos/gerar", { state: { templateId, alunoId } });
+      navigate("/documentos/gerar", { state: { templateId, alunoId, responsavel } });
     }, 0);
   };
 
@@ -1086,7 +1101,7 @@ export default function Matriculas() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleOpenCarne(m)}>Ver Carnê</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setAlunoParaContrato(m.aluno_id)}>
+                      <DropdownMenuItem onClick={() => setMatriculaParaContrato(m)}>
                         <FileSignature className="h-4 w-4 mr-2" /> Emitir Contrato
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openEditMatricula(m)}>Editar</DropdownMenuItem>
@@ -1111,35 +1126,52 @@ export default function Matriculas() {
         Mostrando {filtered.length} de {matriculasVisiveis.length} matrículas
       </div>
 
-      <Dialog open={!!alunoParaContrato} onOpenChange={(open) => !open && setAlunoParaContrato(null)}>
+      <Dialog open={!!matriculaParaContrato} onOpenChange={(open) => !open && setMatriculaParaContrato(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Escolha o modelo de contrato</DialogTitle>
-            <DialogDescription>Imprima/salve em PDF (você confere os dados antes) ou envie um link para o responsável assinar pelo celular.</DialogDescription>
+            <DialogDescription>
+              Imprima/salve em PDF (você confere os dados antes) ou envie um link para o responsável assinar pelo celular.
+              {matriculaParaContrato?.mensalidade_dividida && " Essa matrícula tem dois responsáveis financeiros: gere um contrato para cada um."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {!templatesContrato?.length ? (
               <p className="text-sm text-muted-foreground">Nenhum modelo de contrato cadastrado.</p>
             ) : (
-              templatesContrato.map((t) => (
-                <div key={t.id} className="rounded-md border p-3 space-y-2">
-                  <p className="text-sm font-medium flex items-center gap-2">
-                    <FileSignature className="h-4 w-4 shrink-0" /> {t.nome}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" className="gap-2" onClick={() => emitirContrato(t.id)}>
-                      <Printer className="h-4 w-4" /> Imprimir / PDF
-                    </Button>
-                    <Button
-                      size="sm" className="gap-2"
-                      disabled={gerandoAssinatura !== null}
-                      onClick={() => void enviarParaAssinatura(t.id, t.nome)}
-                    >
-                      <PenLine className="h-4 w-4" /> {gerandoAssinatura === t.id ? "Gerando…" : "Assinatura digital"}
-                    </Button>
+              templatesContrato.map((t) => {
+                const dividida = !!matriculaParaContrato?.mensalidade_dividida;
+                const responsaveis: (1 | 2)[] = dividida ? [1, 2] : [1];
+                return (
+                  <div key={t.id} className="rounded-md border p-3 space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <FileSignature className="h-4 w-4 shrink-0" /> {t.nome}
+                    </p>
+                    {responsaveis.map((resp) => (
+                      <div key={resp} className={dividida ? "space-y-1 border-t pt-2 first:border-t-0 first:pt-0" : undefined}>
+                        {dividida && (
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {resp === 1 ? "Responsável 1" : `Responsável 2 — ${matriculaParaContrato?.responsavel2_nome}`}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" className="gap-2" onClick={() => emitirContrato(t.id, resp)}>
+                            <Printer className="h-4 w-4" /> Imprimir / PDF
+                          </Button>
+                          <Button
+                            size="sm" className="gap-2"
+                            disabled={gerandoAssinatura !== null}
+                            onClick={() => void enviarParaAssinatura(t.id, t.nome, resp)}
+                          >
+                            <PenLine className="h-4 w-4" />
+                            {gerandoAssinatura === (resp === 2 ? `${t.id}:2` : t.id) ? "Gerando…" : "Assinatura digital"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </DialogContent>
@@ -1151,7 +1183,8 @@ export default function Matriculas() {
           <DialogHeader>
             <DialogTitle>{linkAssinatura?.link ? "Link de assinatura gerado" : "Falta a assinatura da escola"}</DialogTitle>
             <DialogDescription>
-              {linkAssinatura?.titulo} — {linkAssinatura?.alunoNome}.{" "}
+              {linkAssinatura?.titulo} — {linkAssinatura?.alunoNome}
+              {linkAssinatura?.responsavelLabel ? ` (${linkAssinatura.responsavelLabel})` : ""}.{" "}
               {linkAssinatura?.link
                 ? "A escola já assinou e o texto do contrato foi fixado. O responsável abre o link, lê e assina na tela, informando o CPF do responsável cadastrado. O link vale 15 dias."
                 : "O texto do contrato foi fixado. Quem assina pela escola (a diretora) precisa assinar em Documentos → Assinaturas Digitais; depois disso o link fica disponível para enviar à família."}
@@ -1193,16 +1226,20 @@ export default function Matriculas() {
       <AssinarPelaEscolaDialog
         assinaturaId={assinandoPelaEscola?.id ?? null}
         titulo={assinandoPelaEscola?.titulo ?? ""}
-        alunoNome={assinandoPelaEscola?.alunoNome}
+        alunoNome={
+          assinandoPelaEscola?.responsavelLabel
+            ? `${assinandoPelaEscola.alunoNome} (${assinandoPelaEscola.responsavelLabel})`
+            : assinandoPelaEscola?.alunoNome
+        }
         onClose={() => {
           const a = assinandoPelaEscola;
           setAssinandoPelaEscola(null);
-          if (a) setLinkAssinatura({ link: null, titulo: a.titulo, alunoNome: a.alunoNome, telefone: a.telefone });
+          if (a) setLinkAssinatura({ link: null, titulo: a.titulo, alunoNome: a.alunoNome, telefone: a.telefone, responsavelLabel: a.responsavelLabel });
         }}
         onAssinado={() => {
           const a = assinandoPelaEscola;
           setAssinandoPelaEscola(null);
-          if (a) setLinkAssinatura({ link: urlAssinatura(a.token), titulo: a.titulo, alunoNome: a.alunoNome, telefone: a.telefone });
+          if (a) setLinkAssinatura({ link: urlAssinatura(a.token), titulo: a.titulo, alunoNome: a.alunoNome, telefone: a.telefone, responsavelLabel: a.responsavelLabel });
         }}
       />
 

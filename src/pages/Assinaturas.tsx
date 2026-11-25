@@ -33,6 +33,9 @@ type Linha = {
   escola_assinou_em: string | null;
   escola_assinante_nome: string | null;
   assinante_nome: string | null;
+  responsavel_num: number;
+  responsavel_nome_snapshot: string | null;
+  responsavel_telefone_snapshot: string | null;
   alunos: { nome: string; telefone_responsavel: string | null } | null;
 };
 
@@ -73,7 +76,7 @@ export default function Assinaturas() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from("assinaturas_documentos")
-        .select("id, titulo, token, template_id, aluno_id, criado_em, assinado_em, cancelado_em, expira_em, tentativas_invalidas, escola_assinou_em, escola_assinante_nome, assinante_nome, alunos(nome, telefone_responsavel)")
+        .select("id, titulo, token, template_id, aluno_id, criado_em, assinado_em, cancelado_em, expira_em, tentativas_invalidas, escola_assinou_em, escola_assinante_nome, assinante_nome, responsavel_num, responsavel_nome_snapshot, responsavel_telefone_snapshot, alunos(nome, telefone_responsavel)")
         .eq("escola_id", escolaAtivaId!)
         .order("criado_em", { ascending: false })
         .limit(300);
@@ -116,7 +119,12 @@ export default function Assinaturas() {
 
   const reemitir = useMutation({
     mutationFn: async (l: Linha) => {
-      const { data, error } = await rpc("solicitar_assinatura_documento", { p_template_id: l.template_id, p_aluno_id: l.aluno_id });
+      const { data, error } = await rpc("solicitar_assinatura_documento", {
+        p_template_id: l.template_id,
+        p_aluno_id: l.aluno_id,
+        p_valores_manuais: {},
+        p_responsavel: l.responsavel_num,
+      });
       if (error) throw error;
       return (Array.isArray(data) ? data[0] : data) as { assinatura_id: string };
     },
@@ -206,7 +214,14 @@ export default function Assinaturas() {
                 const podeExcluirEste = podeExcluir && (!l.assinado_em || podeAssinarPelaEscola);
                 return (
                   <TableRow key={l.id}>
-                    <TableCell className="font-medium">{l.alunos?.nome ?? "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      {l.alunos?.nome ?? "—"}
+                      {l.responsavel_num === 2 && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          Responsável 2{l.responsavel_nome_snapshot ? ` — ${l.responsavel_nome_snapshot}` : ""}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>{l.titulo}</TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">{formatarDataHoraBrasilia(l.criado_em).slice(0, 16)}</TableCell>
                     <TableCell>
@@ -239,7 +254,7 @@ export default function Assinaturas() {
                             </Button>
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Enviar pelo WhatsApp" asChild>
                               <a
-                                href={linkWhatsapp(l.alunos?.telefone_responsavel, `Olá! Segue o documento "${l.titulo}" para assinatura digital: ${urlAssinatura(l.token)}`)}
+                                href={linkWhatsapp(l.responsavel_telefone_snapshot || l.alunos?.telefone_responsavel, `Olá! Segue o documento "${l.titulo}" para assinatura digital: ${urlAssinatura(l.token)}`)}
                                 target="_blank" rel="noreferrer"
                               ><Send className="h-4 w-4" /></a>
                             </Button>

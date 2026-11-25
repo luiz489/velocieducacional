@@ -26,9 +26,10 @@ export default function GerarDocumento() {
   const { escolaAtivaId } = useEscolaAtiva();
   const location = useLocation();
   const navigate = useNavigate();
-  const preSelecao = (location.state ?? {}) as { templateId?: string; alunoId?: string };
+  const preSelecao = (location.state ?? {}) as { templateId?: string; alunoId?: string; responsavel?: 1 | 2 };
   const [templateId, setTemplateId] = useState<string>(preSelecao.templateId ?? "");
   const [alunoId, setAlunoId] = useState<string>(preSelecao.alunoId ?? "");
+  const responsavel = preSelecao.responsavel ?? 1;
   const [valoresManuais, setValoresManuais] = useState<Record<string, string>>({});
   const [resultado, setResultado] = useState<string | null>(null);
 
@@ -90,6 +91,7 @@ export default function GerarDocumento() {
         p_template_id: templateId,
         p_aluno_id: alunoId,
         p_valores_manuais: payload,
+        p_responsavel: responsavel,
       });
       if (error) throw error;
       return data as string;
