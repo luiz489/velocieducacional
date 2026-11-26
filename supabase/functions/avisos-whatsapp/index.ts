@@ -250,6 +250,55 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, aviso_id: aviso.id, total_destinatarios: comTelefone, total_sem_telefone: semTelefone });
     }
 
+    if (acao === "enviar_avulso") {
+      // Envio transacional de 1 destinatário avulso (ex.: link de assinatura de contrato) — reaproveita
+      // o mesmo canal (WAHA via n8n) e as mesmas tabelas de acompanhamento dos avisos em massa, só que
+      // com o telefone/nome informados direto na chamada em vez de vir do cadastro do aluno. Isso cobre
+      // o caso do responsável 2 (mensalidade dividida), cujo telefone não está em `alunos`.
+      if (!(await temPermissao(req, escolaId, "editar"))) return json({ ok: false, erro: "Sem permissão." }, 403);
+      const cfg = await sessaoDaEscola(db, escolaId);
+      if (!cfg) return json({ ok: false, erro: "O WhatsApp ainda não está liberado para esta escola." }, 400);
+
+      const mensagem = String(corpo.mensagem ?? "").trim();
+      if (!mensagem) return json({ ok: false, erro: "A mensagem não pode ficar vazia." }, 400);
+      const telefone = normalizarTelefone(String(corpo.telefone ?? ""));
+      if (!telefone) return json({ ok: false, erro: "Telefone inválido ou não informado." }, 400);
+      const nomeDestino = String(corpo.nome ?? "").trim() || null;
+      const alunoId = corpo.aluno_id ? String(corpo.aluno_id) : null;
+
+      let alunoNome = "—";
+      if (alunoId) {
+        const { data: a } = await db.from("alunos").select("nome").eq("id", alunoId).eq("escola_id", escolaId).maybeSingle();
+        if (a?.nome) alunoNome = a.nome as string;
+      }
+
+      const { data: aviso, error: errAviso } = await db.from("avisos_whatsapp").insert({
+        escola_id: escolaId, mensagem, destino_tipo: "aluno", aluno_id: alunoId, aluno_nome: alunoNome,
+        personas: ["responsavel"], status: "enviando", total_destinatarios: 1, total_sem_telefone: 0,
+      }).select("id").single();
+      if (errAviso || !aviso) return json({ ok: false, erro: errAviso?.message ?? "Falha ao criar o envio." }, 500);
+
+      const { data: itemSalvo, error: errItem } = await db.from("avisos_whatsapp_itens").insert({
+        aviso_id: aviso.id, aluno_id: alunoId, aluno_nome: alunoNome, parentesco: "responsavel",
+        destinatario_nome: nomeDestino, telefone, status: "pendente",
+      }).select("id").single();
+      if (errItem || !itemSalvo) {
+        await db.from("avisos_whatsapp").update({ status: "erro", erro: errItem?.message?.slice(0, 300) ?? "Falha ao gravar o destinatário." }).eq("id", aviso.id);
+        return json({ ok: false, erro: "Falha ao gravar o destinatário." }, 500);
+      }
+
+      try {
+        await chamarN8n(db, { acao: "enviar", sessao: cfg.sessao, aviso_id: aviso.id, mensagem, itens: [{ item_id: itemSalvo.id, telefone }] }, 15_000);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await db.from("avisos_whatsapp").update({ status: "erro", erro: msg.slice(0, 300) }).eq("id", aviso.id);
+        await db.from("avisos_whatsapp_itens").update({ status: "erro", erro: "Não foi possível iniciar o envio." }).eq("id", itemSalvo.id);
+        return json({ ok: false, erro: "Não foi possível iniciar o envio: " + msg }, 502);
+      }
+
+      return json({ ok: true, aviso_id: aviso.id });
+    }
+
     return json({ ok: false, erro: "Ação desconhecida." }, 400);
   } catch (e) {
     return json({ ok: false, erro: e instanceof Error ? e.message.slice(0, 300) : String(e) }, 500);

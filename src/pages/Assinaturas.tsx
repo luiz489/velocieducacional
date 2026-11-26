@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Copy, Eye, MoreHorizontal, PenLine, Search, Send } from "lucide-react";
+import { Copy, Eye, MoreHorizontal, PenLine, Search, Send, Zap } from "lucide-react";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { AssinarPelaEscolaDialog } from "@/components/AssinarPelaEscolaDialog";
 import { toast } from "sonner";
@@ -140,6 +140,30 @@ export default function Assinaturas() {
     onError: (e: Error) => toast.error("Não foi possível reemitir: " + e.message),
   });
 
+  const enviarAutomatico = useMutation({
+    mutationFn: async (l: Linha) => {
+      const telefone = l.responsavel_telefone_snapshot || l.alunos?.telefone_responsavel;
+      const nome = l.responsavel_num === 2 ? l.responsavel_nome_snapshot : l.alunos?.nome;
+      const { data, error } = await supabase.functions.invoke("avisos-whatsapp", {
+        body: {
+          acao: "enviar_avulso",
+          escola_id: escolaAtivaId,
+          aluno_id: l.aluno_id,
+          telefone,
+          nome,
+          mensagem: `Olá! Segue o documento "${l.titulo}" para assinatura digital: ${urlAssinatura(l.token)}`,
+        },
+      });
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resp = data as any;
+      if (!resp?.ok) throw new Error(resp?.erro ?? "Falha ao enviar.");
+      return resp;
+    },
+    onSuccess: () => toast.success("Mensagem enviada pelo WhatsApp."),
+    onError: (e: Error) => toast.error("Não foi possível enviar automático: " + e.message),
+  });
+
   const copiar = async (token: string) => {
     await navigator.clipboard.writeText(urlAssinatura(token));
     toast.success("Link copiado");
@@ -252,11 +276,18 @@ export default function Assinaturas() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Copiar link" onClick={() => void copiar(l.token)}>
                               <Copy className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Enviar pelo WhatsApp" asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Enviar pelo WhatsApp (abre manualmente)" asChild>
                               <a
                                 href={linkWhatsapp(l.responsavel_telefone_snapshot || l.alunos?.telefone_responsavel, `Olá! Segue o documento "${l.titulo}" para assinatura digital: ${urlAssinatura(l.token)}`)}
                                 target="_blank" rel="noreferrer"
                               ><Send className="h-4 w-4" /></a>
+                            </Button>
+                            <Button
+                              variant="ghost" size="icon" className="h-8 w-8" title="Enviar automático pelo WhatsApp"
+                              disabled={enviarAutomatico.isPending && enviarAutomatico.variables?.id === l.id}
+                              onClick={() => enviarAutomatico.mutate(l)}
+                            >
+                              <Zap className="h-4 w-4" />
                             </Button>
                           </>
                         )}
